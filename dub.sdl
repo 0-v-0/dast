@@ -1,0 +1,97 @@
+name "dast"
+description "A flexible, lightweight framework for D programming language."
+homepage "https://gitee.com/wayd/dast"
+authors "0-v-0"
+copyright "Copyright © 2022, 0-v-0"
+license "MIT"
+buildType "debug" {
+	lflags "/incremental" "/opt:noref"
+	debugVersions "DisableCache"
+}
+sourceFiles "dast/package.d"
+importPaths "."
+subPackage {
+	name "async"
+	dflags "-preview=in" "-dip1008"
+	sourcePaths "dast/async"
+	importPaths "."
+}
+subPackage {
+	name "config"
+	sourceFiles "dast/config.d"
+	dependency "ctfepp" version="~>0.1.0" optional=true default=false
+	dependency "dast:util" path="."
+	dependency "lyaml" version="0.1.0"
+}
+subPackage {
+	name "fcgi"
+	sourceFiles "dast/fcgi.d"
+	importPaths "."
+	dependency "dast:map" path="."
+	dependency "tame" version="~>0.0.2"
+	dflags "-preview=in" "-dip1008"
+}
+subPackage {
+	name "http"
+	sourceFiles "dast/http.d"
+	importPaths "."
+	dependency "dast:map" path="."
+	dflags "-preview=in"
+}
+subPackage {
+	name "http1"
+	sourceFiles "dast/http1.d"
+	importPaths "."
+	dependency "dast:http" path="."
+	dependency "tame" version="~>0.0.2"
+	dflags "-preview=in" "-dip1008"
+}
+subPackage {
+	name "lshttp"
+	description "A lightweight & simple HTTP server for static files."
+	sourceFiles "dast/lshttp.d"
+	importPaths "."
+	dependency "datefmt-redthing1" version="~>1.0.6"
+	dependency "dast:ws" path="."
+}
+subPackage {
+	name "map"
+	sourceFiles "dast/map.d"
+	importPaths "."
+}
+subPackage "md2d"
+subPackage {
+	name "util"
+	sourceFiles "dast/util.d"
+	importPaths "."
+	dependency "database:util" version="*" optional=true
+	dependency "tame" version="~>0.0.2"
+}
+subPackage {
+	name "uwsgi"
+	sourceFiles "dast/uwsgi.d"
+	importPaths "."
+	dependency "dast:map" path="."
+	dependency "tame" version="~>0.0.2"
+	dflags "-preview=in" "-dip1008"
+}
+subPackage {
+	name "ws"
+	sourcePaths "dast/ws"
+	importPaths "."
+	dependency "dast:async" path="."
+	dependency "dast:http" path="."
+	dependency "sha1ct" version="~>1.0.0"
+	dependency "tame" version="~>0.0.2"
+}
+subPackage {
+	name "wsrpc"
+	sourceFiles "dast/wsrpc.d"
+	importPaths "."
+	dflags "-dip1008"
+	dependency "tame:lockfree" version="*"
+	dependency "lmpl4d" version="~>0.0.6"
+	dependency "dast:ws" path="."
+}
+dependency ":config" path="."
+dependency ":util" path="."

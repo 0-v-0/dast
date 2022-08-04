@@ -1,0 +1,38 @@
+name "examples"
+importPaths "."
+targetType "executable"
+configuration "fcgi" {
+	dependency "dast:fcgi" path=".."
+	sourceFiles "fcgi.d"
+}
+configuration "http1" {
+	dependency "dast:http1" path=".."
+	sourceFiles "http1.d"
+}
+configuration "httpserver" {
+	dependency "dast:async" path=".."
+	sourceFiles "httpserver.d"
+}
+configuration "lshttp" {
+	dependency "dast:lshttp" path=".."
+	sourceFiles "lshttp.d"
+}
+configuration "uwsgi" {
+	dependency "dast:uwsgi" path=".."
+	sourceFiles "uwsgi.d"
+}
+configuration "echo" {
+	dependency "dast:ws" path=".."
+	sourceFiles "ws.d"
+	versions "echo"
+}
+configuration "broadcast" {
+	dependency "dast:ws" path=".."
+	sourceFiles "ws.d"
+	versions "broadcast"
+}
+configuration "wshttp" {
+	dependency "dast:ws" path=".."
+	sourceFiles "ws.d"
+	versions "wshttp"
+}

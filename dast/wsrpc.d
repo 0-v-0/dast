@@ -1,0 +1,192 @@
+module dast.wsrpc;
+// dfmt off
+import
+	core.thread,
+	lmpl4d,
+	lockfree.queue,
+	dast.ws.server;
+// dfmt on
+public import dast.ws.server : PeerID, WSClient;
+
+struct Action {
+	string name;
+}
+
+struct WSRequest {
+	WSClient src;
+	Unpacker!() unpacker;
+	Packer!() packer;
+	alias unpacker this;
+
+	auto send(T...)(T data) {
+		return packer.pack(data);
+	}
+
+	auto read(T)() {
+		return unpacker.unpack!T;
+	}
+
+	auto read(T)(ref T data) {
+		return unpacker.unpack(data);
+	}
+
+	auto read(T...)(T data) {
+		return unpacker.unpack(data);
+	}
+
+	@property auto OK() {
+		string err;
+		return read(err) || err == "";
+	}
+
+	void reverse() nothrow {
+		unpacker = Unpacker!()(packer.buf);
+		packer.buf.length = 0;
+	}
+
+	bool call(Args...)(void function(ref WSRequest req) fn, Args args) {
+		static if (Args.length)
+			send(args);
+		reverse();
+		fn(this);
+		reverse();
+		return OK;
+	}
+
+	bool call(Args...)(void delegate(ref WSRequest req) fn, Args args) {
+		static if (Args.length)
+			send(args);
+		reverse();
+		fn(this);
+		reverse();
+		return OK;
+	}
+}
+
+/// get all functions with @Action
+template getActions(T...) {
+	import std.meta, std.traits;
+
+	static if (T.length > 1)
+		alias getActions = AliasSeq!(getActions!(T[0]), getActions!(T[1 .. $]));
+	else
+		alias getActions = Filter!(isCallable, getSymbolsByUDA!(T, Action));
+}
+
+package alias
+SReq = shared WSRequest,
+LFQ = LockFreeQueue!SReq;
+
+class WSRPCServer(bool multiThread, T...) : WebSocketServer {
+	public import dast.ws : Request;
+
+	alias AllActions = getActions!T;
+
+	static if (multiThread) {
+		LFQ queue = LFQ(shared WSRequest());
+		Thread[] threads;
+		@property {
+			size_t threadCount() const {
+				return threads.length;
+			}
+
+			size_t threadCount(in size_t n) {
+				synchronized {
+					auto i = threads.length;
+					threads.length = n;
+					for (; i < n; i++) {
+						auto thread = new Thread(&mainLoop);
+						thread.start();
+						threads ~= thread;
+					}
+					return n;
+				}
+			}
+		}
+	}
+	protected ubyte[] buf;
+
+	override void onBinaryMessage(WSClient src, ubyte[] msg) {
+		static if (multiThread)
+			queue.enqueue(SReq(cast(shared)src, cast(shared)Unpacker!()(msg)));
+		else {
+			auto req = WSRequest(src, Unpacker!()(msg));
+			handleRequest(req, buf);
+		}
+	}
+
+	static if (multiThread)
+		noreturn mainLoop() {
+			for (;;) {
+				WSRequest req = void;
+				while (!queue.dequeue(cast(SReq)req))
+					Thread.yield();
+				handleRequest(req, buf);
+			}
+		}
+
+	void handleRequest(ref WSRequest req, ref ubyte[] buf) nothrow {
+		auto unpacker = &req.unpacker;
+		req.packer = packer(buf);
+		uint id = void;
+		scope (exit)
+			buf.length = 0;
+		try
+			req.send(id = unpacker.unpack!uint);
+		catch (Exception e) {
+			try
+				req.src.send(e.toString);
+			catch (Exception) {
+			}
+			return;
+		}
+		try {
+			// 调用字符串action对应的带@Action的函数
+			auto action = unpacker.unpack!string;
+		s:
+			switch (action) {
+				static foreach (i, f; AllActions) {
+					static foreach (attr; getUDAs!(f, Action)) {
+						static if (__traits(compiles, { s = attr.name; })) {
+							//pragma(msg, attr.name);
+			case attr.name:
+						} else {
+							//pragma(msg, __traits(identifier, f));
+			case __traits(identifier, f):
+						}
+						static if (arity!f == 0)
+							f();
+						else {
+							static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
+								static assert(ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_,
+									"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
+								static if (arity!f == 1)
+									f(req);
+								else static if (arity!f == 2)
+									f(req, unpacker.unpack!(Parameters!f[1]));
+								else
+									mixin("Parameters!f[1..$] p", i, ";",
+										"unpacker.unpack(p", i, ");",
+										"f(req, p", i, ");");
+							} else {
+								static if (arity!f == 1)
+									f(unpacker.unpack!(Parameters!f));
+								else
+									mixin("Parameters!f p", i, ";",
+										"unpacker.unpack(p", i, ");",
+										"f(p", i, ");");
+							}
+						}
+						break s;
+					}
+				}
+			default:
+				throw new Exception("Unknown action \"" ~ action ~ "\"");
+			}
+		} catch (Exception e) {
+			buf.length = 0;
+			req.send(id, e.msg);
+		}
+		req.src.send(req.packer[]);
+	}
+}

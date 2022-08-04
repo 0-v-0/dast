@@ -1,0 +1,7 @@
+name "demmet"
+description "D implemention of emmet"
+authors "0-v-0"
+license "MIT"
+targetType "library"
+sourceFiles "demmet.d"
+importPaths "."

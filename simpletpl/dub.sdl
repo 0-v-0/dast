@@ -1,0 +1,12 @@
+name "simpletpl"
+description "A simple template engine."
+authors "0-v-0"
+license "MIT"
+targetType "library"
+sourceFiles "simpletpl.d"
+importPaths "."
+configurations "library" {
+}
+configurations "betterC" {
+	dflags "-nogc" "-betterC"
+}

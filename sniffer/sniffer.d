@@ -6,12 +6,14 @@ auto cb(char* data, size_t size, size_t nmemb, void* strm) {
 }
 
 int main(string[] args) {
-	import core.stdc.stdio;
-	import core.stdc.string;
-	import etc.c.curl;
-	import std.parallelism;
-	import std.string;
-	import std.stdio;
+	// dfmt off
+	import core.stdc.stdio,
+		core.stdc.string,
+		etc.c.curl,
+		std.parallelism,
+		std.string,
+		std.stdio;
+	// dfmt on
 	import std.conv : to;
 	import std.range : iota;
 

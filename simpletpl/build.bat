@@ -1,0 +1,1 @@
+ldc2 -mtriple=wasm32-wasi -betterC -Oz --cache-retrieval=hardlink -release -fvisibility=hidden -L-s -L--compress-relocations -L--gc-sections -L--merge-data-segments -L-O4 -L--lto-O1 -L--no-entry -L-allow-undefined -mattr=+bulk-memory simpletpl.d

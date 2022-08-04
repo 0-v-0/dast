@@ -1,0 +1,14 @@
+name "md2d"
+description "convert markdown table to D code."
+authors "0-v-0"
+copyright "Copyright © 2022, 0-v-0"
+license "MIT"
+sourcePaths "."
+importPaths ".."
+mainSourceFile "app.d"
+configuration "lib" {
+	targetType "library"
+}
+configuration "exe" {
+	targetType "executable"
+}
