@@ -28,7 +28,7 @@ abstract class ListenerBase : SocketChannelBase {
 		debug (Log)
 			trace("new connection coming...");
 		clearError();
-		socket_t clientFd = cast(socket_t)(accept(handle, null, null));
+		auto clientFd = cast(socket_t)accept(handle, null, null);
 		if (clientFd == socket_t.init)
 			return false;
 

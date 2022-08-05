@@ -15,6 +15,12 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
+	configuration "full" {
+		versions "HaveTimer"
+	}
+	configuration "lite" {
+		excludedSourceFiles "dast/async/timer/*.d"
+	}
 }
 subPackage {
 	name "config"
@@ -83,6 +89,12 @@ subPackage {
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
 	dependency "tame" version="~>0.0.2"
+	configuration "full" {
+		subConfiguration "dast:async" "full"
+	}
+	configuration "lite" {
+		subConfiguration "dast:async" "lite"
+	}
 }
 subPackage {
 	name "wsrpc"

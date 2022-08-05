@@ -2,19 +2,20 @@ module dast.async.selector.iocp;
 
 // dfmt off
 version (Windows):
+import core.sys.windows.windows,
+	dast.async.socket,
+	dast.async.core,
+	dast.async.socket.iocp,
+	std.conv;
+version (HaveTimer) import dast.async.timer;
 // dfmt on
-import dast.async.socket;
-import dast.async.core;
-import dast.async.socket.iocp;
-import dast.async.timer;
-import core.sys.windows.windows;
-import std.conv;
 
 class SelectorBase : Selector {
 	this() {
 		_iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
 		_event = new EventChannel(this);
-		_timer.init();
+		version (HaveTimer)
+			_timer.init();
 	}
 
 	/+ ~this() {
@@ -23,19 +24,22 @@ class SelectorBase : Selector {
 
 	override bool register(Channel watcher)
 	in (watcher) {
-		if (watcher.type == WatcherType.Timer) {
-			auto wt = cast(TimerBase)watcher;
-			assert(wt !is null);
-			if (wt is null || !wt.setTimerOut())
-				return false;
-			_timer.timeWheel().addNewTimer(wt.timer, wt.wheelSize());
-		} else if (watcher.type == WatcherType.TCP
+		if (watcher.type == WatcherType.TCP
 			|| watcher.type == WatcherType.Accept
 			|| watcher.type == WatcherType.UDP) {
 			debug (Log)
 				trace("Run CreateIoCompletionPort on socket: ", watcher.handle);
 			CreateIoCompletionPort(cast(HANDLE)watcher.handle, _iocpHandle,
 				cast(size_t)cast(void*)watcher, 0);
+		} else {
+			version (HaveTimer)
+				if (watcher.type == WatcherType.Timer) {
+					auto wt = cast(TimerBase)watcher;
+					assert(wt);
+					if (wt is null || !wt.setTimerOut())
+						return false;
+					_timer.timeWheel().addNewTimer(wt.timer, wt.wheelSize);
+				}
 		}
 
 		debug (Log)
@@ -71,7 +75,8 @@ class SelectorBase : Selector {
 
 	void onLoop(scope void delegate() handler) {
 		running = true;
-		_timer.init();
+		version (HaveTimer)
+			_timer.init();
 		do {
 			handler();
 			handleEvents();
@@ -80,7 +85,10 @@ class SelectorBase : Selector {
 	}
 
 	private void handleEvents() {
-		auto timeout = _timer.doWheel();
+		version (HaveTimer)
+			int timeout = _timer.doWheel();
+		else
+			int timeout = 250;
 		OVERLAPPED* overlapped;
 		ULONG_PTR key;
 		DWORD bytes;
@@ -148,9 +156,6 @@ class SelectorBase : Selector {
 		weakUp();
 	}
 
-	void handleTimer() {
-	}
-
 	void dispose() {
 	}
 
@@ -190,5 +195,5 @@ private:
 	bool running;
 	HANDLE _iocpHandle;
 	EventChannel _event;
-	CustomTimer _timer;
+	version (HaveTimer) CustomTimer _timer;
 }

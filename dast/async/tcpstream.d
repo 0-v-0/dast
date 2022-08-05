@@ -2,10 +2,8 @@ module dast.async.tcpstream;
 
 // dfmt off
 import dast.async.core,
-	dast.async.eventloop,
 	dast.async.selector,
 	dast.async.socket,
-	core.thread,
 	core.time,
 	std.format,
 	std.exception,
@@ -121,8 +119,7 @@ protected:
 			while (_isRegistered && !tryRead()) {
 				debug (Log)
 					trace("continue reading...");
-			}
-		else
+			} else
 			doRead();
 
 		if (isError) {

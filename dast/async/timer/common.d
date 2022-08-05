@@ -256,16 +256,16 @@ struct CustomTimer {
 	void init() {
 		if (_timeWheel is null)
 			_timeWheel = new TimingWheel(CustomTimerWheelSize);
-		_nextTime = Clock.currStdTime() / 10000 + CustomTimerMinTimeout;
+		_nextTime = Clock.currStdTime / 10000 + CustomTimerMinTimeout;
 	}
 
 	int doWheel() {
-		auto nowTime = Clock.currStdTime() / 10000;
+		auto nowTime = Clock.currStdTime / 10000;
 		// tracef("nowTime - _nextTime = %d", nowTime - _nextTime);
 		while (nowTime >= _nextTime) {
 			_timeWheel.prevWheel();
 			_nextTime += CustomTimerMinTimeout;
-			nowTime = Clock.currStdTime() / 10000;
+			nowTime = Clock.currStdTime / 10000;
 		}
 		nowTime = _nextTime - nowTime;
 		return cast(int)nowTime;

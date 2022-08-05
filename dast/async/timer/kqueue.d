@@ -10,7 +10,6 @@ import core.stdc.errno,
 	core.sys.posix.unistd,
 	dast.async.core,
 	dast.async.timer.common,
-	dast.async.socket,
 	std.exception,
 	std.socket;
 // dfmt on

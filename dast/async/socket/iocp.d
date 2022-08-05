@@ -265,7 +265,7 @@ abstract class StreamBase : SocketChannelBase {
 	private void setWriteBuffer(in ubyte[] data) {
 		debug (Log)
 			trace("buffer content length: ", data.length);
-		// trace(cast(string) data);
+		// trace(cast(string)data);
 		// tracef("%(%02X %)", data);
 
 		sendDataBuffer = data; //data[writeLen .. $]; // TODO: need more tests

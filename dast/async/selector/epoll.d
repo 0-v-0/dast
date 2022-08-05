@@ -3,17 +3,14 @@ module dast.async.selector.epoll;
 // dfmt off
 version(linux):
 import dast.async.core,
-	async.socket,
-	async.timer,
-	async.timer.epoll,
+	dast.async.socket,
 	core.time,
 	core.stdc.string,
 	core.stdc.errno,
-	core.sys.posix.sys.types, // for ssize_t, size_t
 	core.sys.posix.netinet.tcp,
 	core.sys.posix.netinet.in_,
 	core.sys.posix.unistd;
-import core.sys.posix.time : itimerspec, CLOCK_MONOTONIC;
+version (HaveTimer) import dast.async.timer;
 import std.exception,
 	std.socket,
 	std.string;
@@ -42,11 +39,12 @@ class SelectorBase : Selector {
 
 	override bool register(Channel watcher)
 	in (watcher) {
-		if (watcher.type == WatcherType.Timer) {
-			auto wt = cast(TimerBase)watcher;
-			if (wt)
-				wt.setTimer();
-		}
+		version (HaveTimer)
+			if (watcher.type == WatcherType.Timer) {
+				auto wt = cast(TimerBase)watcher;
+				if (wt)
+					wt.setTimer();
+			}
 
 		// version(DebugMode) infof("register, watcher(fd=%d)", watcher.handle);
 		const fd = watcher.handle;
@@ -121,7 +119,7 @@ class SelectorBase : Selector {
 			}
 
 			if (watch.isRegistered && isWrite(events[i].events)) {
-				SocketChannelBase wt = cast(SocketChannelBase)watch;
+				auto wt = cast(SocketChannelBase)watch;
 				assert(wt);
 				wt.onWriteDone();
 				// watch.onWrite();

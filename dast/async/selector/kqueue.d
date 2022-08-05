@@ -14,10 +14,10 @@ import core.time,
 	core.sys.posix.unistd,
 	core.sys.posix.time,
 	dast.async.core,
-	dast.async.timer.kqueue,
 	std.exception,
 	std.socket,
 	std.string;
+version (HaveTimer) import dast.async.timer.kqueue;
 // dfmt on
 
 class SelectorBase : Selector {
@@ -44,16 +44,7 @@ class SelectorBase : Selector {
 	override bool register(Channel watcher)
 	in (watcher) {
 		int err = -1;
-		if (watcher.type == WatcherType.Timer) {
-			kevent_t ev;
-			auto watch = cast(TimerBase)watcher;
-			if (watch is null)
-				return false;
-			size_t time = watch.time < 20 ? 20 : watch.time; // in millisecond
-			EV_SET(&ev, watch.handle, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_CLEAR,
-				0, time, cast(void*)watcher);
-			err = kevent(_kqueueFD, &ev, 1, null, 0, null);
-		} else {
+		if (watcher.type != WatcherType.Timer) {
 			const int fd = watcher.handle;
 			if (fd < 0)
 				return false;
@@ -72,10 +63,20 @@ class SelectorBase : Selector {
 				err = kevent(_kqueueFD, &(ev[0]), 1, null, 0, null);
 			else if (watcher.flag(WatchFlag.Write))
 				err = kevent(_kqueueFD, &(ev[1]), 1, null, 0, null);
+		} else {
+			version (HaveTimer) {
+				kevent_t ev;
+				auto watch = cast(TimerBase)watcher;
+				if (watch is null)
+					return false;
+				size_t time = watch.time < 20 ? 20 : watch.time; // in millisecond
+				EV_SET(&ev, watch.handle, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_CLEAR,
+					0, time, cast(void*)watcher);
+				err = kevent(_kqueueFD, &ev, 1, null, 0, null);
+			}
 		}
-		if (err < 0) {
+		if (err < 0)
 			return false;
-		}
 		// watcher.currtLoop = this;
 		_event.setNext(watcher);
 		return true;
@@ -93,14 +94,7 @@ class SelectorBase : Selector {
 			return false;
 
 		int err = -1;
-		if (watcher.type == WatcherType.Timer) {
-			kevent_t ev;
-			auto watch = cast(TimerBase)watcher;
-			if (watch is null)
-				return false;
-			EV_SET(&ev, fd, EVFILT_TIMER, EV_DELETE, 0, 0, cast(void*)watcher);
-			err = kevent(_kqueueFD, &ev, 1, null, 0, null);
-		} else {
+		if (watcher.type != WatcherType.Timer) {
 			kevent_t[2] ev = void;
 			EV_SET(&(ev[0]), fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
 			EV_SET(&(ev[1]), fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
@@ -110,6 +104,15 @@ class SelectorBase : Selector {
 				err = kevent(_kqueueFD, &(ev[0]), 1, null, 0, null);
 			else if (watcher.flag(WatchFlag.Write))
 				err = kevent(_kqueueFD, &(ev[1]), 1, null, 0, null);
+		} else {
+			version (HaveTimer) {
+				kevent_t ev;
+				auto watch = cast(TimerBase)watcher;
+				if (watch is null)
+					return false;
+				EV_SET(&ev, fd, EVFILT_TIMER, EV_DELETE, 0, 0, cast(void*)watcher);
+				err = kevent(_kqueueFD, &ev, 1, null, 0, null);
+			}
 		}
 		if (err < 0)
 			return false;
@@ -135,19 +138,20 @@ class SelectorBase : Selector {
 			if (len < 1)
 				continue;
 			foreach (i; 0 .. len) {
-				Channel watch = cast(Channel)(events[i].udata);
+				auto watch = cast(Channel)(events[i].udata);
 				if ((events[i].flags & EV_EOF) || (events[i].flags & EV_ERROR)) {
 					watch.close();
 					continue;
 				}
-				if (watch.type == WatcherType.Timer) {
-					watch.onRead();
-					continue;
-				}
+				version (HaveTimer)
+					if (watch.type == WatcherType.Timer) {
+						watch.onRead();
+						continue;
+					}
 				if ((events[i].filter & EVFILT_WRITE) && watch.isRegistered) {
 					// version(DebugMode) trace("The channel socket is: ", typeid(watch));
-					SocketChannelBase wt = cast(SocketChannelBase)watch;
-					assert(wt !is null);
+					auto wt = cast(SocketChannelBase)watch;
+					assert(wt);
 					wt.onWriteDone();
 				}
 
@@ -243,10 +247,7 @@ enum {
 
 	/* returned values */
 	EV_EOF = 0x8000, /* EOF detected */
-	EV_ERROR = 0x4000, /* error, data contains errno */
-
-
-
+	EV_ERROR = 0x4000 /* error, data contains errno */
 }
 
 enum {
@@ -297,10 +298,7 @@ enum {
 	/* additional flags for EVFILT_PROC */
 	NOTE_TRACK = 0x00000001, /* follow across forks */
 	NOTE_TRACKERR = 0x00000002, /* could not track child */
-	NOTE_CHILD = 0x00000004, /* am a child process */
-
-
-
+	NOTE_CHILD = 0x00000004 /* am a child process */
 }
 
 extern (C) {
