@@ -22,6 +22,3 @@ A collection of modules mainly about server-side code
 | sniffer     | A crawler-like tool                                                                 |
 
 some usage can be found in the examples folder
-
-## Note
-The optional dependency `ctfepp` of `dast.config` can be downloaded [HERE](https://github.com/rikkimax/ctfepp)

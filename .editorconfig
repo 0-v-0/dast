@@ -1,0 +1,14 @@
+root = true
+
+[*.md]
+max_line_length = 100
+trim_trailing_whitespace = false
+
+[COMMIT_EDITMSG]
+max_line_length = 72
+
+[*.d]
+indent_size = 4
+indent_type = tab
+end_of_line = lf
+max_line_length = 100

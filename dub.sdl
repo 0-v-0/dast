@@ -25,7 +25,7 @@ subPackage {
 subPackage {
 	name "config"
 	sourceFiles "dast/config.d"
-	dependency "ctfepp" version="~>0.1.0" optional=true default=false
+	dependency "ctfepp" version="775759f" optional=true default=false repository="git+https://github.com/rikkimax/ctfepp.git"
 	dependency "dast:util" path="."
 	dependency "lyaml" version="0.1.0"
 }
