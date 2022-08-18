@@ -71,11 +71,11 @@ class WebSocketServer : ListenerBase {
 	void onOpen(WSClient, Request) nothrow {}
 	void onClose(WSClient) nothrow {}
 	void onTextMessage(WSClient, string) nothrow {}
-	void onBinaryMessage(WSClient, ubyte[]) nothrow {}
+	void onBinaryMessage(WSClient, const(ubyte)[]) nothrow {}
 
 	void add(TcpStream client) nothrow {
 		if (clients.length > maxConnections) {
-			try infof("Maximum number of connections reached (%u)", maxConnections); catch(Exception) {}
+			try warningf("Maximum number of connections reached (%u)", maxConnections); catch(Exception) {}
 			client.close();
 		} else
 			clients[WSClient(client).id] = WSClient(client);
@@ -83,6 +83,8 @@ class WebSocketServer : ListenerBase {
 
 	void remove(int id) nothrow {
 		map.remove(id);
+		dataBySource.remove(id);
+		frames.remove(id);
 		if (auto client = clients[id]) {
 			onClose(WSClient(client));
 			try infof("Closing connection #%d", id); catch(Exception) {}
@@ -111,14 +113,15 @@ class WebSocketServer : ListenerBase {
 	}
 
 	protected override void onRead() {
-		bool canRead = true;
+		//bool canRead = true;
 		debug (Log)
 			trace("start to listen");
 		// while(canRead && isRegistered) // why??
 		{
 			debug (Log)
 				trace("listening...");
-			canRead = onAccept((Socket socket) {
+			//canRead =
+			onAccept((Socket socket) {
 				debug (Log)
 					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
 
@@ -131,7 +134,7 @@ class WebSocketServer : ListenerBase {
 			});
 
 			if (isError) {
-				canRead = false;
+				//canRead = false;
 				error("listener error: ", erroString);
 				close();
 			}
@@ -148,12 +151,13 @@ class WebSocketServer : ListenerBase {
 			KEY = "Sec-WebSocket-Key".toLower,
 			KEY_MAXLEN = 192 - MAGIC.length;
 		const(ubyte)[] data = void;
-		if (auto p = client.id in dataBySource)
-			data = dataBySource[client.id] ~= msg;
+		int id = client.id;
+		if (auto p = id in dataBySource)
+			data = dataBySource[id] ~= msg;
 		else
-			data = dataBySource[client.id] = msg;
+			data = dataBySource[id] = msg;
 		if (data.length > 2048) {
-			remove(client.id);
+			remove(id);
 			return false;
 		}
 		if (!req.tryParse(data))
@@ -182,7 +186,6 @@ class WebSocketServer : ListenerBase {
 					"\r\n\r\n");
 		} catch (Exception)
 			return false;
-		int id = client.id;
 		if (map[id])
 			map[id].length = 0;
 		else {
@@ -190,11 +193,12 @@ class WebSocketServer : ListenerBase {
 			frames.reserve(1);
 			map[id] = frames;
 		}
+		dataBySource[id] = [];
 		return true;
 	}
 
 private nothrow:
-	void onReceive(WSClient client, const scope ubyte[] data) @trusted {
+	void onReceive(WSClient client, const scope ubyte[] data) {
 		import std.algorithm : swap;
 
 		try
@@ -213,7 +217,7 @@ private nothrow:
 				swap(newFrame, prevFrame);
 			}
 		} else {
-			Request req = void;
+			Request req;
 			if (performHandshake(client, data, req)) {
 				try
 					infof("Handshake with %d done (path=%s)", client.id, req.path);
@@ -224,7 +228,7 @@ private nothrow:
 		}
 	}
 
-	void handleFrame(WSClient client, Frame frame) {
+	void handleFrame(WSClient client, in Frame frame) {
 		try
 			tracef("From client %s received frame: done=%s; fin=%s; op=%s; length=%u",
 				client.id, frame.done, frame.fin, frame.op, frame.length);
@@ -259,7 +263,7 @@ private nothrow:
 
 	import std.array, std.format;
 
-	void handleCont(WSClient client, Frame frame)
+	void handleCont(WSClient client, in Frame frame)
 	in (!client.id || map[client.id], "Client #%d is used before handshake".format(client.id)) {
 		if (!frame.fin) {
 			if (frame.data.length)
@@ -280,11 +284,11 @@ private nothrow:
 			onBinaryMessage(client, data[]);
 	}
 
-	void handle(bool binary)(WSClient client, Frame frame)
+	void handle(bool binary)(WSClient client, in Frame frame)
 	in (!map[client.id].length, "Protocol error") {
 		if (frame.fin) {
 			static if (binary)
-				onBinaryMessage(client, cast(ubyte[])frame.data);
+				onBinaryMessage(client, frame.data);
 			else
 				onTextMessage(client, cast(string)frame.data);
 		} else

@@ -106,12 +106,12 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 	}
 	protected ubyte[] buf;
 
-	override void onBinaryMessage(WSClient src, ubyte[] msg) {
+	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
 		static if (multiThread)
 			queue.enqueue(SReq(cast(shared)src, cast(shared)Unpacker!()(msg)));
 		else {
 			auto req = WSRequest(src, Unpacker!()(msg));
-			handleRequest(req, buf);
+			handleRequest(req);
 		}
 	}
 
@@ -121,11 +121,11 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 				WSRequest req = void;
 				while (!queue.dequeue(cast(SReq)req))
 					Thread.yield();
-				handleRequest(req, buf);
+				handleRequest(req);
 			}
 		}
 
-	void handleRequest(ref WSRequest req, ref ubyte[] buf) nothrow {
+	void handleRequest(ref WSRequest req) nothrow {
 		auto unpacker = &req.unpacker;
 		req.packer = packer(buf);
 		uint id = void;

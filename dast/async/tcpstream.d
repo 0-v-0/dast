@@ -70,11 +70,7 @@ class TcpStream : StreamBase {
 		connect(addr);
 	}
 
-	void onDisconnected(SimpleEventHandler handler) {
-		disconnectionHandler = handler;
-	}
-
-	bool isConnected() nothrow {
+	@property bool isConnected() const nothrow @nogc @safe pure {
 		return _isConnected;
 	}
 

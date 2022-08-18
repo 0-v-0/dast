@@ -16,18 +16,20 @@ struct Frame {
 		Op op;
 		bool masked;
 	}
+
 	State state;
 	ubyte[4] mask;
 	ulong length;
 	const(ubyte)[] data;
 
-	invariant(op < 16);
+	invariant (op < 16);
 
-	@property bool done() inout pure nothrow @nogc {
+pure nothrow:
+	@property bool done() const @nogc {
 		return state == State.done;
 	}
 
-	@property size_t remaining() inout pure nothrow @nogc {
+	@property size_t remaining() const @nogc {
 		return cast(size_t)length - data.length;
 	}
 
@@ -41,32 +43,31 @@ struct Frame {
 			*p++ = b2 | cast(ubyte)length;
 		else if (length < 0xffff) {
 			*p++ = b2 | 126;
-			p[0..2] = nativeToBigEndian(cast(ushort)length);
+			p[0 .. 2] = nativeToBigEndian(cast(ushort)length);
 			p += 2;
 		} else {
 			*p++ = b2 | 127;
-			p[0..8] = nativeToBigEndian(length);
+			p[0 .. 8] = nativeToBigEndian(length);
 			p += 8;
 		}
 
 		ubyte[] result = void;
 		if (masked) {
-			p[0..4] = mask;
+			p[0 .. 4] = mask;
 			p += 4;
-			result = buf[0..p - buf.ptr];
+			result = buf[0 .. p - buf.ptr];
 			result.reserve(result.length + data.length);
 			for (size_t i; i < data.length; i++)
 				result ~= data[i] ^ mask[i & 3];
 		} else
-			result = buf[0..p - buf.ptr] ~ data;
+			result = buf[0 .. p - buf.ptr] ~ data;
 
 		return result;
 	}
 }
 
 auto next(size_t n = 1)(ref const(ubyte)[] data, size_t m = n)
-in (data.length >= m, "Insufficient data")
-{
+in (data.length >= m, "Insufficient data") {
 	static if (n == 1) {
 		ubyte b = data[0];
 		data = data[1 .. $];
@@ -97,10 +98,9 @@ enum State : ubyte {
 }
 
 package const(ubyte)[][int] dataBySource;
+package Frame[int] frames;
 
 Frame parse(int source, const(ubyte)[] data) nothrow {
-	static Frame[int] frames;
-
 	Frame frame;
 	if (auto p = source in frames)
 		frame = *p;
@@ -110,15 +110,14 @@ Frame parse(int source, const(ubyte)[] data) nothrow {
 	enum changeState(string state) =
 		"{ frame.state = " ~ state ~ "; goto case " ~ state ~ "; }";
 
-	switch (frame.state) with(State) {
-		case prev_start:
-		case start:
-		case fin_rsv_opcode:
-		if (data.length)
-		{
+	switch (frame.state) with (State) {
+	case prev_start:
+	case start:
+	case fin_rsv_opcode:
+		if (data.length) {
 			frame = Frame.init;
 			ubyte b = data.next; // next() modifies `data` by consuming the first byte
-			if((b >>> 4) & 7)
+			if ((b >>> 4) & 7)
 				return frame;
 			frame.fin = b >>> 7;
 			frame.op = cast(Op)(b & 0xf);
@@ -166,19 +165,15 @@ Frame parse(int source, const(ubyte)[] data) nothrow {
 		goto case;
 	case prev_maskOn_mask:
 	case message_extraction:
-		if ((frame.length && data.length) || frame.length == 0)
-		{
-			if (frame.masked)
-			{
+		if ((frame.length && data.length) || frame.length == 0) {
+			if (frame.masked) {
 				auto i = frame.data.length;
-				while (frame.remaining && data.length)
-				{
+				while (frame.remaining && data.length) {
 					ubyte b = data.next;
 					frame.data ~= b ^ frame.mask[i % 4];
 					i++;
 				}
-			}
-			else if (data.length >= frame.remaining)
+			} else if (data.length >= frame.remaining)
 				frame.data ~= data.next!2(frame.remaining);
 			else
 				frame.data ~= data.next!2(data.length);
@@ -201,17 +196,23 @@ Frame parse(int source, const(ubyte)[] data) nothrow {
 		dataBySource[source] = data;
 	}
 	return frame;
-	save:
-		frames[source] = frame;
-	save_data:
-		dataBySource[source] = data;
-		return frame;
+save:
+	frames[source] = frame;
+save_data:
+	dataBySource[source] = data;
+	return frame;
 }
 
 unittest { // test multiple frames in one go
-	auto f1 = Frame(true, Op.TEXT, true, State.done, [0, 0, 0, 0], 6, [0, 1, 2, 3, 4, 5]);
-	auto f2 = Frame(false, Op.BINARY, true, State.done, [0, 1, 2, 3], 3, [8, 7, 6]);
-	auto f3 = Frame(false, Op.CLOSE, true, State.done, [0, 1, 2, 3], 10, [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
+	auto f1 = Frame(true, Op.TEXT, true, State.done, [0, 0, 0, 0], 6, [
+			0, 1, 2, 3, 4, 5
+		]);
+	auto f2 = Frame(false, Op.BINARY, true, State.done, [0, 1, 2, 3], 3, [
+			8, 7, 6
+		]);
+	auto f3 = Frame(false, Op.CLOSE, true, State.done, [0, 1, 2, 3], 10, [
+			9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+		]);
 	auto d = f1.serialize ~ f2.serialize ~ f3.serialize;
 	auto f4 = 0.parse(d);
 	auto f5 = 0.parse([]);
@@ -222,7 +223,9 @@ unittest { // test multiple frames in one go
 }
 
 unittest { // test streaming one byte at a time
-	auto f = Frame(true, Op.TEXT, true, State.done, [1, 2, 3, 4], 6, [0, 1, 2, 3, 4, 5]);
+	auto f = Frame(true, Op.TEXT, true, State.done, [1, 2, 3, 4], 6, [
+			0, 1, 2, 3, 4, 5
+		]);
 	ubyte[] data = f.serialize;
 	foreach (b; data[0 .. $ - 1]) {
 		auto _f = 1.parse([b]);
@@ -235,7 +238,7 @@ unittest { // test streaming one byte at a time
 
 unittest { // test some funky streaming
 	ubyte[] data;
-	foreach (i; 0..(1 << 20))
+	foreach (i; 0 .. (1 << 20))
 		data ~= cast(ubyte)i;
 	auto f = Frame(false, Op.BINARY, true, State.done, [0, 0, 0, 0], data.length, data);
 	ubyte[] serialized = f.serialize;

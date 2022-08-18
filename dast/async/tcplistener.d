@@ -50,7 +50,7 @@ class TcpListener : ListenerBase {
 		bool canRead = true;
 		debug (Log)
 			trace("start to listen");
-		// while(canRead && isRegistered) // why??
+		// while(canRead && isRegistered) // why?
 		{
 			debug (Log)
 				trace("listening...");
