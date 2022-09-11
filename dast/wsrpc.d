@@ -90,14 +90,14 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 				return threads.length;
 			}
 
-			size_t threadCount(in size_t n) {
+			size_t threadCount(size_t n) {
 				synchronized {
 					auto i = threads.length;
 					threads.length = n;
 					for (; i < n; i++) {
 						auto thread = new Thread(&mainLoop);
 						thread.start();
-						threads ~= thread;
+						threads[i] = thread;
 					}
 					return n;
 				}

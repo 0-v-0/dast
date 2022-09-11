@@ -38,7 +38,7 @@ class SelectorBase : Selector {
 					assert(wt);
 					if (wt is null || !wt.setTimerOut())
 						return false;
-					_timer.timeWheel().addNewTimer(wt.timer, wt.wheelSize);
+					_timer.timeWheel.addNewTimer(wt.timer, wt.wheelSize);
 				}
 		}
 
@@ -147,7 +147,6 @@ class SelectorBase : Selector {
 			break;
 		default:
 			warning("unsupported operation type: ", op);
-			break;
 		}
 	}
 

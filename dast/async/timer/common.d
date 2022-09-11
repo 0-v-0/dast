@@ -271,7 +271,7 @@ struct CustomTimer {
 		return cast(int)nowTime;
 	}
 
-	TimingWheel timeWheel() {
+	@property TimingWheel timeWheel() {
 		return _timeWheel;
 	}
 
