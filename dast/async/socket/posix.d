@@ -190,9 +190,10 @@ abstract class StreamBase : SocketChannelBase {
 		debug (Log)
 			tracef("actually sent bytes: %d / %d", nBytes, data.length);
 
-		if (nBytes > 0) {
+		if (nBytes > 0)
 			return nBytes;
-		} else if (nBytes == Socket.ERROR) {
+
+		if (nBytes == Socket.ERROR) {
 			debug (Log)
 				warningf("errno=%d, message: %s", errno, lastSocketError());
 
@@ -273,13 +274,9 @@ abstract class DatagramSocketBase : SocketChannelBase {
 		}
 	}
 
-	final bool isBind() {
-		return _binded;
-	}
+	final bool isBind() => _binded;
 
-	Address bindAddr() {
-		return _bindAddress;
-	}
+	Address bindAddr() => _bindAddress;
 
 protected:
 	UdpDataObject _readBuffer;

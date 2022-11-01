@@ -47,13 +47,9 @@ struct Node {
 
 	@property @safe pure @nogc nothrow const {
 
-		NodeType type() {
-			return type_;
-		}
+		NodeType type() => type_;
 
-		Mark mark() {
-			return mark_;
-		}
+		Mark mark() => mark_;
 
 		bool empty() @trusted {
 			switch (type_) {
@@ -179,9 +175,7 @@ struct Node {
 
 	alias as = get;
 
-	T get(T)() const if (is(Unqual!T == enum)) {
-		return cast(T)get!(OriginalType!T);
-	}
+	T get(T)() const if (is(Unqual!T == enum)) => cast(T)get!(OriginalType!T);
 
 	T get(T)() @trusted const if (isScalarType!T && !is(T == enum)) {
 		if (type_ == NodeType.boolean)
@@ -534,16 +528,14 @@ struct Node {
 		assert("a" in iNode);
 	}
 
-	bool opEquals(const Node rhs) const @safe {
-		return opCmp(rhs) == 0;
-	}
+	bool opEquals(const Node rhs) const @safe => opCmp(rhs) == 0;
 
 	/// Compare with another _node.
 	int opCmp(const ref Node rhs) const @trusted {
 		import std.math;
 		import std.algorithm.comparison : scmp = cmp;
 
-		static int cmp(T1, T2)(T1 a, T2 b) {
+		static int cmp(T, U)(T a, U b) {
 			return a > b ? 1 : a < b ? -1 : 0;
 		}
 
@@ -598,16 +590,16 @@ struct Node {
 		case NodeType.decimal:
 			const r1 = as!double;
 			const r2 = rhs.as!double;
-			if (isNaN(r1)) {
+			if (isNaN(r1))
 				return isNaN(r2) ? 0 : -1;
-			}
-			if (isNaN(r2)) {
+
+			if (isNaN(r2))
 				return 1;
-			}
+
 			// Fuzzy equality.
-			if (r1 <= r2 + double.epsilon && r1 >= r2 - double.epsilon) {
+			if (r1 <= r2 + double.epsilon && r1 >= r2 - double.epsilon)
 				return 0;
-			}
+
 			return cmp(r1, r2);
 		case NodeType.timestamp:
 			return cmp(time, rhs.as!SysTime);

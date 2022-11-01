@@ -1,6 +1,6 @@
 module dast.util;
 
-version(Have_database_util) {
+version (Have_database_util) {
 	public import database.util : as, ignore, snakeCase, camelCase, KeyName;
 } else {
 	struct as { // @suppress(dscanner.style.phobos_naming_convention)
@@ -183,6 +183,4 @@ unittest {
 	assert(getST() != getST());
 }
 
-auto toStr(T)(T ptr) {
-	return std.string.fromStringz(ptr).idup;
-}
+auto toStr(T)(T ptr) => std.string.fromStringz(ptr).idup;

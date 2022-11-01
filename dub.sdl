@@ -15,6 +15,7 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
+	dflags "-preview=shortenedMethods"
 	configuration "full" {
 		versions "HaveTimer"
 	}
@@ -35,7 +36,7 @@ subPackage {
 	importPaths "."
 	dependency "dast:map" path="."
 	dependency "tame" version="~>0.0.2"
-	dflags "-preview=in" "-dip1008"
+	dflags "-preview=in" "-preview=shortenedMethods"
 }
 subPackage {
 	name "http"
@@ -50,13 +51,14 @@ subPackage {
 	importPaths "."
 	dependency "dast:http" path="."
 	dependency "tame" version="~>0.0.2"
-	dflags "-preview=in" "-dip1008"
+	dflags "-dip1008" "-preview=in" "-preview=shortenedMethods"
 }
 subPackage {
 	name "lshttp"
 	description "A lightweight & simple HTTP server for static files."
 	sourceFiles "dast/lshttp.d"
 	importPaths "."
+	dflags "-preview=shortenedMethods"
 	dependency "datefmt-redthing1" version="~>1.0.6"
 	dependency "dast:ws" path="."
 }
@@ -64,6 +66,7 @@ subPackage {
 	name "map"
 	sourceFiles "dast/map.d"
 	importPaths "."
+	dflags "-preview=shortenedMethods"
 }
 subPackage "md2d"
 subPackage {
@@ -85,6 +88,7 @@ subPackage {
 	name "ws"
 	sourcePaths "dast/ws"
 	importPaths "."
+	dflags "-preview=shortenedMethods"
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
@@ -100,7 +104,7 @@ subPackage {
 	name "wsrpc"
 	sourceFiles "dast/wsrpc.d"
 	importPaths "."
-	dflags "-dip1008"
+	dflags "-dip1008" "-preview=shortenedMethods"
 	dependency "tame:lockfree" version="*"
 	dependency "lmpl4d" version="~>0.0.6"
 	dependency "dast:ws" path="."

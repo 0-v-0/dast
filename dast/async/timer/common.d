@@ -102,9 +102,7 @@ protected:
 	}
 
 	/// get the index which is farthest with current index.
-	size_t getPrev() const {
-		return (_now ? _now : _list.length) - 1;
-	}
+	size_t getPrev() const => (_now ? _now : _list.length) - 1;
 	/// go forward a element,and return the element.
 	pragma(inline) NullWheelTimer doNext() {
 		++_now;
@@ -158,14 +156,10 @@ abstract class WheelTimer {
 	}
 
 	/// the time is active.
-	pragma(inline, true) final bool isActive() const {
-		return _manger !is null;
-	}
+	pragma(inline, true) final bool isActive() const => _manger !is null;
 
 	/// get the timer only run once.
-	pragma(inline, true) final @property oneShop() {
-		return _oneShop;
-	}
+	pragma(inline, true) final @property oneShop() => _oneShop;
 	/// set the timer only run once.
 	pragma(inline) final @property oneShop(bool one) {
 		_oneShop = one;
@@ -271,9 +265,7 @@ struct CustomTimer {
 		return cast(int)nowTime;
 	}
 
-	@property TimingWheel timeWheel() {
-		return _timeWheel;
-	}
+	@property TimingWheel timeWheel() => _timeWheel;
 
 private:
 	TimingWheel _timeWheel;
@@ -294,22 +286,14 @@ abstract class TimerChannelBase : Channel, ITimer {
 
 	@property const nothrow @nogc {
 		///
-		bool isActive() {
-			return _isActive;
-		}
+		bool isActive() => _isActive;
 
-		size_t wheelSize() {
-			return _wheelSize;
-		}
+		size_t wheelSize() => _wheelSize;
 
-		size_t time() {
-			return _interval;
-		}
+		size_t time() => _interval;
 
 		/// in ms
-		size_t interval() {
-			return _interval;
-		}
+		size_t interval() => _interval;
 	}
 
 	/// ditto

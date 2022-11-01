@@ -23,9 +23,7 @@ class Request {
 	size_t pos, stop;
 	int requestId;
 
-	@property auto socket() {
-		return ipcSock;
-	}
+	@property auto socket() => ipcSock;
 
 	@property void socket(Socket socket) {
 		pos = 0;

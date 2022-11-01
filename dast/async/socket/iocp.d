@@ -372,13 +372,9 @@ abstract class DatagramSocketBase : SocketChannelBase {
 	}
 
 	@property @safe {
-		final bool isBind() {
-			return _binded;
-		}
+		final bool isBind() => _binded;
 
-		Address bindAddr() {
-			return _bindAddress;
-		}
+		Address bindAddr() => _bindAddress;
 	}
 
 	override void start() {

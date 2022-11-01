@@ -54,9 +54,7 @@ class TimerBase : TimerChannelBase {
 		return false;
 	}
 
-	@property KissWheelTimer timer() {
-		return _timer;
-	}
+	@property KissWheelTimer timer() pure => _timer;
 
 	UintObject _readBuffer;
 

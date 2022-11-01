@@ -17,13 +17,9 @@ class Request {
 	size_t stop;
 	int requestId;
 
-	@property auto params() {
-		return headers;
-	}
+	@property auto params() => headers;
 
-	@property auto socket() {
-		return ipcSock;
-	}
+	@property auto socket() => ipcSock;
 
 	@property void socket(Socket socket) {
 		static id = 0;
@@ -96,9 +92,7 @@ class Response {
 
 	alias put = write;
 
-	void flush() {
-		buf.flush();
-	}
+	void flush() => buf.flush();
 
 	void send(in char[] s) {
 		if (!headerSent) {

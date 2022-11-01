@@ -25,13 +25,9 @@ struct Frame {
 	invariant (op < 16);
 
 pure nothrow:
-	@property bool done() const @nogc {
-		return state == State.done;
-	}
+	@property bool done() const @nogc => state == State.done;
 
-	@property size_t remaining() const @nogc {
-		return cast(size_t)length - data.length;
-	}
+	@property size_t remaining() const @nogc => cast(size_t)length - data.length;
 
 	ubyte[] serialize() nothrow {
 		ubyte[14] buf = void;

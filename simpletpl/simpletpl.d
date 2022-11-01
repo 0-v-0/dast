@@ -16,15 +16,14 @@ private:
 
 enum Error(string s) = s;
 
-extern(C):
+extern (C):
 
-bool isAllowedChar(char c) {
-	return ('0' <= c && c <= '9') ||
-		('a' <= c && c <= 'z') ||
-		('A' <= c && c <= 'Z') ||
-		c == '_' || c == '.';
-		// || c == '[' || c == ']';
-}
+bool isAllowedChar(char c) =>
+	('0' <= c && c <= '9') ||
+	('a' <= c && c <= 'z') ||
+	('A' <= c && c <= 'Z') ||
+	c == '_' || c == '.';
+// || c == '[' || c == ']';
 
 /++
 	Params: c = The character to test.
@@ -46,14 +45,15 @@ size_t search(string s, char c) {
 
 bool isTrue(string str) {
 	size_t i;
-	while (i < str.length && str[i].isWhite) i++;
-	str = str[i..$];
+	while (i < str.length && str[i].isWhite)
+		i++;
+	str = str[i .. $];
 	for (i = str.length; i;)
 		if (!str[--i].isWhite)
 			break;
 	if (!str.length)
 		return false;
-	str = str[0..i+1];
+	str = str[0 .. i + 1];
 	if (str.length == 5 && str[4] == 'e') {
 		auto p = cast(int*)str.ptr;
 		if (*p == 1936482662)
@@ -74,8 +74,8 @@ bool findSplit(ref string str, ref string slice, char c) {
 	size_t i;
 	for (; i < str.length; i++) {
 		if (str[i] == c) {
-			slice = str[0..i];
-			str = str[i+1..$];
+			slice = str[0 .. i];
+			str = str[i + 1 .. $];
 			return true;
 		}
 	}
@@ -107,7 +107,7 @@ size_t intToStr(char* buf, size_t value) {
 			break;
 		value /= 10;
 	}
-	for(char* i = buf, j = p - 1; i < j; i++, j--) {
+	for (char* i = buf, j = p - 1; i < j; i++, j--) {
 		char t = *i;
 		*i = *j;
 		*j = t;
@@ -119,11 +119,11 @@ unittest {
 	char[10] buf = void;
 	auto str = buf[];
 	assert(intToStr(buf.ptr, 0));
-	assert(str[0..1] == "0", str);
+	assert(str[0 .. 1] == "0", str);
 	assert(intToStr(buf.ptr, 255));
-	assert(str[0..3] == "255", str);
+	assert(str[0 .. 3] == "255", str);
 	assert(intToStr(buf.ptr, 20170), str);
-	assert(str[0..5] == "20170", str);
+	assert(str[0 .. 5] == "20170", str);
 	assert(intToStr(buf.ptr, 4294967295), str);
 	assert(str == "4294967295", str);
 }
@@ -134,9 +134,11 @@ void getBlock(char bs = '[', char be = ']', C)(const(C[]) str, ref size_t start,
 	end = start;
 	size_t j = start;
 	while (j < str.length) {
-		if (str[j].isWhite) j++;
+		if (str[j].isWhite)
+			j++;
 		else {
-			if (str[j] != bs) return;
+			if (str[j] != bs)
+				return;
 			break;
 		}
 	}
@@ -144,10 +146,13 @@ void getBlock(char bs = '[', char be = ']', C)(const(C[]) str, ref size_t start,
 		return;
 	start = j;
 	for (uint level; j < str.length; j++) {
-		if (str[j] == bs) level++;
-		else if (str[j] == be){
-			if (level == 0) break;
-			else level--;
+		if (str[j] == bs)
+			level++;
+		else if (str[j] == be) {
+			if (level == 0)
+				break;
+			else
+				level--;
 		}
 	}
 	end = j < str.length ? j : start;
@@ -189,7 +194,7 @@ in (maxDepth < 24) {
 			sink.put(tpl);
 			break;
 		}
-		sink.put(tpl[0..i]);
+		sink.put(tpl[0 .. i]);
 		i++;
 		size_t bs, be, j = void;
 		String var = void;
@@ -198,22 +203,24 @@ in (maxDepth < 24) {
 			bs = i;
 			getBlock!('{', '}')(tpl, bs, be);
 			if (bs == be) {
-				sink.put(tpl[i..$]);
+				sink.put(tpl[i .. $]);
 				return null;
 			}
 			if (maxDepth == 0)
 				return Error!"MaxDepth exceeded";
 			push();
-			renderImpl!getContent(sink, getContent(tpl[bs..be]), maxDepth - 1);
+			renderImpl!getContent(sink, getContent(tpl[bs .. be]), maxDepth - 1);
 			popFront();
-			i = be+1;
+			i = be + 1;
 			goto next;
 		}
 		j = i + (i < tpl.length && tpl[i] == ':');
-		while (j < tpl.length && tpl[j].isAllowedChar) j++;
-		var = tpl[i..j];
+		while (j < tpl.length && tpl[j].isAllowedChar)
+			j++;
+		var = tpl[i .. j];
 		i = j;
-		while (j < tpl.length && tpl[j].isWhite) j++;
+		while (j < tpl.length && tpl[j].isWhite)
+			j++;
 		if (j + 3 < tpl.length) {
 			if (tpl[j] == '?') { // cond
 				bs = ++j;
@@ -223,11 +230,13 @@ in (maxDepth < 24) {
 				alias cond = flag;
 				cond = getVal(var).isTrue;
 				if (cond) {
-					renderImpl!getContent(sink, tpl[bs..be], maxDepth);
+					renderImpl!getContent(sink, tpl[bs .. be], maxDepth);
 				}
-				j = be+1;
-				while (j < tpl.length && tpl[j].isWhite) j++;
-				if (j == tpl.length) return null;
+				j = be + 1;
+				while (j < tpl.length && tpl[j].isWhite)
+					j++;
+				if (j == tpl.length)
+					return null;
 				if (tpl[j] == ':') {
 					bs = j + 1;
 					getBlock(tpl, bs, be);
@@ -236,15 +245,16 @@ in (maxDepth < 24) {
 						goto next;
 					}
 					if (!cond) {
-						renderImpl!getContent(sink, tpl[bs..be], maxDepth);
+						renderImpl!getContent(sink, tpl[bs .. be], maxDepth);
 					}
 				}
-				i = be+1;
+				i = be + 1;
 				goto next;
 			}
-			if (tpl[j] == ':') {// loop
+			if (tpl[j] == ':') { // loop
 				++j;
-				while (j < tpl.length && tpl[j].isWhite) j++;
+				while (j < tpl.length && tpl[j].isWhite)
+					j++;
 				if (j == tpl.length)
 					goto output;
 				auto str = var;
@@ -255,34 +265,37 @@ in (maxDepth < 24) {
 				version (WASI) {
 					auto mbuf = cast(char*)alloca(map.length);
 					memcpy(mbuf, map.ptr, map.length);
-					map = cast(String)mbuf[0..map.length];
+					map = cast(String)mbuf[0 .. map.length];
 				}
 				auto k = j;
-				while (j < tpl.length && tpl[j].isAllowedChar) j++;
-				auto keyname = tpl[k..j];
-				while (j < tpl.length && tpl[j].isWhite) j++;
+				while (j < tpl.length && tpl[j].isAllowedChar)
+					j++;
+				auto keyname = tpl[k .. j];
+				while (j < tpl.length && tpl[j].isWhite)
+					j++;
 				if (j == tpl.length)
 					goto output;
 				k = j;
-				while (j < tpl.length && tpl[j].isAllowedChar) j++;
+				while (j < tpl.length && tpl[j].isAllowedChar)
+					j++;
 				bs = j;
 				getBlock(tpl, bs, be);
 				if (bs == be)
 					goto output;
 				if (k < j) {
-					var = tpl[k..j];
+					var = tpl[k .. j];
 				} else {
 					var = keyname;
 					keyname = null;
 				}
 				if (map.length) {
-					auto block = tpl[bs..be];
+					auto block = tpl[bs .. be];
 					char[256] buf = void;
 					auto p = buf.ptr;
 					alias isArray = flag;
 					isArray = map[0] == '\0';
 					if (isArray)
-						map = map[1..$];
+						map = map[1 .. $];
 					else {
 						memcpy(p, mapname.ptr, mapname.length);
 						p += mapname.length;
@@ -291,13 +304,13 @@ in (maxDepth < 24) {
 					if (map.length) {
 						push();
 						alias index = k,
-							  keystr = str;
+						keystr = str;
 						for (index = 0; map.findSplit(keystr, '\0'); index++) {
 							if (isArray) {
 								if (keyname.length) {
 									auto keylen = intToStr(p, index);
 									assert(keylen <= 10);
-									setValue(keyname, cast(string)buf[0..keylen]);
+									setValue(keyname, cast(string)buf[0 .. keylen]);
 								}
 								if (var.length)
 									setValue(var, keystr);
@@ -306,7 +319,7 @@ in (maxDepth < 24) {
 								auto keylen = p - buf.ptr + keystr.length;
 								if (keylen > 256)
 									return Error!"Name too long";
-								auto fullkey = cast(string)buf[0..keylen];
+								auto fullkey = cast(string)buf[0 .. keylen];
 								if (keyname.length)
 									setValue(keyname, fullkey);
 								if (var.length)
@@ -317,28 +330,29 @@ in (maxDepth < 24) {
 						popFront();
 					}
 				}
-				i = be+1;
+				i = be + 1;
 				goto next;
 			}
 		}
-		output:
+	output:
 		auto value = cast(String)getVal(var);
 		if (!value.length) {
 			sink.put("$");
 			value = var;
 		}
 		sink.put(value);
-		next:
-		tpl = tpl[i..$];
-	} while(tpl.length);
+	next:
+		tpl = tpl[i .. $];
+	}
+	while (tpl.length);
 	return null;
 }
 
 public:
 
 version (WASI) {
-	export byte[24<<10] buf, inbuf;
-	byte[8<<10] outbuf;
+	export byte[24 << 10] buf, inbuf;
+	byte[8 << 10] outbuf;
 	size_t pos;
 
 	private void put(void[], string s) {
@@ -347,8 +361,9 @@ version (WASI) {
 			auto outlen = remain < outbuf.length ? remain : outbuf.length;
 			outlen -= pos;
 			memcpy(outbuf.ptr + pos, s.ptr, outlen);
-			s = s[outlen..$];
-			if (outlen+pos != outbuf.length) break;
+			s = s[outlen .. $];
+			if (outlen + pos != outbuf.length)
+				break;
 			pos = 0;
 			remain -= outbuf.length;
 			flushBuffer(outbuf[]);
@@ -359,13 +374,14 @@ version (WASI) {
 	size_t getValue(in string key);
 	string getVal(in string key) {
 		size_t len = getValue(key);
-		return cast(string)inbuf[0..len];
+		return cast(string)inbuf[0 .. len];
 	}
+
 	void setValue(in string key, in string value);
 	size_t evalExpr(in string expr);
 	string getContent(in string expr) {
 		auto len = evalExpr(expr);
-		return cast(string)inbuf[0..len];
+		return cast(string)inbuf[0 .. len];
 	}
 	//size_t inputBuffer(byte[] buf);
 	void flushBuffer(void[] buf);
@@ -375,15 +391,15 @@ version (WASI) {
 		auto arr = cast(char[])outbuf[];
 		auto errmsg = renderImpl!getContent(arr, tpl, maxDepth);
 		if (pos) {
-			flushBuffer(outbuf[0..pos]);
+			flushBuffer(outbuf[0 .. pos]);
 			pos = 0;
 		}
 		return errmsg.ptr;
 	}
 } else {
 	alias
-		getVal = getValue,
-		render = renderImpl;
+	getVal = getValue,
+	render = renderImpl;
 
 	struct Context {
 		string[string] data;
@@ -399,13 +415,9 @@ version (WASI) {
 			data[key] = value;
 		}
 
-		auto opDispatch(string key)() {
-			return this[key];
-		}
+		auto opDispatch(string key)() => this[key];
 
-		auto opDispatch(string key)(in string value) {
-			return data[key] = value;
-		}
+		auto opDispatch(string key)(in string value) => data[key] = value;
 
 		void free() nothrow @nogc {
 			destroy!false(data);
@@ -421,7 +433,7 @@ version (WASI) {
 
 		foreach (i, c; text) {
 			String temp = void;
-
+			// dfmt off
 			switch (c) {
 			case '&': temp = "&amp;";  break;
 			case '"': temp = "&quot;"; break;
@@ -429,6 +441,7 @@ version (WASI) {
 			case '>': temp = "&gt;";   break;
 			default: continue;
 			}
+			// dfmt on
 
 			sink.put(text[index .. i]);
 			sink.put(temp);
@@ -447,7 +460,7 @@ version (WASI) {
 
 		bool flag = key[0] == ':';
 		if (flag)
-			key = key[1..$];
+			key = key[1 .. $];
 
 		foreach_reverse (x; data)
 			if (auto p = cast(string)key in x) {
@@ -464,19 +477,23 @@ version (WASI) {
 
 	void setValue(scope const(char[]) key, scope const(char[]) value)
 	in (data.length) {
-		data[$-1][cast(string)key] = cast(string)value;
+		data[$ - 1][cast(string)key] = cast(string)value;
 	}
+
 	void push() {
 		data ~= Context();
 	}
+
 	void popFront() {
-		data[$-1].free();
-		data = data[0..$-1];
+		data[$ - 1].free();
+		data = data[0 .. $ - 1];
 	}
+
 	T render(alias getContent, T)(T tpl, Context data, uint maxDepth = 5) {
 		import std.array;
 
 		auto app = appender!T;
+
 		.data = [data];
 		renderImpl!getContent(app, tpl, maxDepth);
 		return app[];
@@ -488,14 +505,16 @@ unittest {
 		auto result = tpl.render!getVal(data[0]);
 		assert(result == expected, tpl ~ ": " ~ result);
 	}
+
 	Context data; // @suppress(dscanner.suspicious.label_var_same_name)
-	data.a="55";
-	data.b="<";
-	data.m="x\0y\0n";
-	data.l="\0b\0c\0d\0e";
+	data.a = "55";
+	data.b = "<";
+	data.m = "x\0y\0n";
+	data.l = "\0b\0c\0d\0e";
 	data["m.x"] = "a";
 	data["m.y"] = "foo";
 	data["m.n"] = "bar";
+
 	.data = [data];
 	test("a $a $n $b $:b", "a 55 $n &lt; <");
 	test("$a?bcd", "55?bcd");

@@ -65,9 +65,9 @@ dchar fromEscape(dchar escape) {
 	case 'f':  return '\x0C';
 	case 'r':  return '\x0D';
 	case 'e':  return '\x1B';
-	case ' ':  return '\x20';
-	case '\"': return '\"';
-	case '\\': return '\\';
+	case ' ':
+	case '"':
+	case '\\': return escape;
 	case 'N':  return '\x85';
 	case '_':  return '\xA0';
 	case 'L':  return '\u2028';

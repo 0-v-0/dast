@@ -14,11 +14,7 @@ struct Map {
 		data[key] = value;
 	}
 
-	auto opDispatch(string key)() const {
-		return this[key];
-	}
+	auto opDispatch(string key)() const => this[key];
 
-	auto opDispatch(string key)(in string value) {
-		return data[key] = value;
-	}
+	auto opDispatch(string key)(string value) => data[key] = value;
 }

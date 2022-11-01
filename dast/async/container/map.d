@@ -2,8 +2,7 @@ module dast.async.container.map;
 
 import core.sync.mutex;
 
-class Map(TKey, TValue)
-{
+class Map(TKey, TValue) {
 nothrow:
 	this() { mutex = new Mutex; }
 
@@ -11,9 +10,9 @@ nothrow:
 		import std.traits : isArray;
 
 		lock();
-		scope(exit) unlock();
-		if (key !in data)
-		{
+		scope (exit)
+			unlock();
+		if (key !in data) {
 			static if (isArray!TValue)
 				data[key] = [];
 			else
@@ -29,11 +28,12 @@ nothrow:
 		unlock();
 	}
 
-	@property bool empty() const pure @safe @nogc { return data.length == 0; }
+	@property bool empty() const pure @safe @nogc => data.length == 0;
 
 	bool remove(TKey key) {
 		lock();
-		scope(exit) unlock();
+		scope (exit)
+			unlock();
 		return data.remove(key);
 	}
 
@@ -44,9 +44,9 @@ nothrow:
 	}
 
 @safe:
-	final lock() { mutex.lock_nothrow(); }
+	final lock() => mutex.lock_nothrow();
 
-	final unlock() { mutex.unlock_nothrow(); }
+	final unlock() => mutex.unlock_nothrow();
 
 	TValue[TKey] data;
 	alias data this;

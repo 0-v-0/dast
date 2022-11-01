@@ -7,9 +7,7 @@ import
 	std.socket,
 	std.string;
 
-T align8(T : ulong)(T n) {
-	return (n + 7) & ~7;
-}
+T align8(T : ulong)(T n) => (n + 7) & ~7;
 
 size_t intToStr(char* buf, size_t value) {
 	char* p = buf;
@@ -124,9 +122,7 @@ class Request {
 	protected bool* ipcSockClosed;
 	// dfmt on
 
-	@property auto socket() {
-		return ipcSock;
-	}
+	@property auto socket() => ipcSock;
 
 	ubyte initialize(Socket socket, bool* sockClosed) {
 		params.data.clear();

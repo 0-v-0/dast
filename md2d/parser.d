@@ -531,15 +531,13 @@ bool isHtmlBlockCloseLine(string ln) {
 	return bi.isHtmlBlock && !bi.open;
 }
 
-string getHtmlTagName(string ln) {
-	return parseHtmlBlockLine(ln).tagName;
-}
+string getHtmlTagName(string ln) => parseHtmlBlockLine(ln).tagName;
 
 int parseEmphasis(ref string str, ref string text) {
-	string pstr = str;
-	if (pstr.length < 3)
+	if (str.length < 3)
 		return false;
 
+	string pstr = str;
 	string ctag;
 	if (pstr.startsWith("***"))
 		ctag = "***";
@@ -569,9 +567,10 @@ int parseEmphasis(ref string str, ref string text) {
 }
 
 bool parseInlineCode(ref string str, ref string code) {
-	string pstr = str;
-	if (pstr.length < 3)
+	if (str.length < 3)
 		return false;
+
+	string pstr = str;
 	string ctag;
 	if (pstr.startsWith("``"))
 		ctag = "``";

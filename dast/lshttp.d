@@ -7,13 +7,12 @@ import std.datetime;
 import std.socket : Address, Socket, TcpSocket, SocketShutdown;
 import dast.ws.request : Request;
 
-alias ReqHandler = void[] function(in Request);
+alias ReqHandler = void[]function(in Request);
 
-struct LSServer
-{
+struct LSServer {
 	import std.concurrency : Tid, send;
 
-	auto addr() const { return _addr; }
+	auto addr() const => _addr;
 
 	void shutdown() {
 		if (sock) {
@@ -54,55 +53,50 @@ private void loop(shared TcpSocket listener, shared ReqHandler handler = null) {
 	import std.string;
 	import std.uni : toLower;
 
-	try while (true) {
-		Socket s = (cast() listener).accept;
+	try
+		while (true) {
+			Socket s = (cast()listener).accept;
 
-		ubyte[1024] tmp = void;
-		ubyte[] buf;
+			ubyte[1024] tmp = void;
+			ubyte[] buf;
 
-		auto nbytes = s.receive(tmp[]);
-		if (nbytes <= 0) {
-			if (s.isAlive)
-				s.close();
-			continue;
-		}
+			auto nbytes = s.receive(tmp[]);
+			if (nbytes <= 0) {
+				if (s.isAlive)
+					s.close();
+				continue;
+			}
 
-		immutable beg = buf.length > 3 ? buf.length - 3 : 0;
-		buf ~= tmp[0 .. nbytes];
-		auto bdy = buf[beg .. $].find(cast(ubyte[])"\r\n\r\n");
-		auto req = Request.parse(buf);
-		if (req.done)
-		{
-			bdy = bdy[4..$];
-			// no support for chunked transfer-encoding
-			if (auto p = "content-length" in req.headers)
-			{
-				size_t m = void;
-				sscanf((*p).toStringz, "%llu", &m);
-				if (auto expect = "expect" in req.headers)
-					if ((*expect).toLower == "100-continue")
-						s.send(httpContinue);
+			immutable beg = buf.length > 3 ? buf.length - 3 : 0;
+			buf ~= tmp[0 .. nbytes];
+			auto bdy = buf[beg .. $].find(cast(ubyte[])"\r\n\r\n");
+			auto req = Request.parse(buf);
+			if (req.done) {
+				bdy = bdy[4 .. $];
+				// no support for chunked transfer-encoding
+				if (auto p = "content-length" in req.headers) {
+					size_t m = void;
+					sscanf((*p).toStringz, "%llu", &m);
+					if (auto expect = "expect" in req.headers)
+						if ((*expect).toLower == "100-continue")
+							s.send(httpContinue);
 
-				for (auto remain = m - bdy.length;
-					remain;
-					remain -= nbytes) {
-					nbytes = s.receive(tmp[0 .. min(remain, $)]);
-					assert(nbytes >= 0);
-					bdy ~= tmp[0 .. nbytes];
+					for (auto remain = m - bdy.length; remain; remain -= nbytes) {
+						nbytes = s.receive(tmp[0 .. min(remain, $)]);
+						assert(nbytes >= 0);
+						bdy ~= tmp[0 .. nbytes];
+					}
+				}
+				if (handler !is null && s.isAlive) {
+					req.message = cast(string)bdy;
+					s.send(handler(req));
+					//if (auto p = "connection" in req.headers)
+					//if ((*p).toLower == "close")
+					s.close();
 				}
 			}
-			if (handler !is null && s.isAlive) {
-				req.message = cast(string)bdy;
-				s.send(handler(req));
-				//if (auto p = "connection" in req.headers)
-					//if ((*p).toLower == "close")
-						s.close();
-			}
-		}
-	}
-	catch (Exception e) {
+		} catch (Exception e)
 		fprintf(stderr, "%s\n", e.toString.toStringz);
-	}
 }
 
 string dateStr(SysTime st) {
@@ -138,38 +132,40 @@ uint readMimeTypes(string s) {
 shared basepath = ".";
 
 void[] handle(in Request req) {
-	import
-		std.array,
-		std.base64,
-		std.conv,
-		std.file,
-		std.path,
-		std.string;
+	import std.array,
+	std.base64,
+	std.conv,
+	std.file,
+	std.path,
+	std.string;
 
 	ubyte[] buf;
 	auto a = appender!string;
 	a ~= "HTTP/1.1 ";
 	string status = "200 OK", mimeType;
 	SysTime modified;
-	if (req.method != "GET") status = "405 Method Not Allowed";
+	if (req.method != "GET")
+		status = "405 Method Not Allowed";
 	else {
 		string path = req.path;
 		auto i = path.indexOf('?');
 		if (i > 0)
-			path = path[0..i];
+			path = path[0 .. i];
 		path = basepath ~ (path == "/" ? "/index.html" : path);
-		if (!path.exists) status = "404 Not Found";
+		if (!path.exists)
+			status = "404 Not Found";
 		else
 			try {
-				if (path.isDir) status = "403 Forbidden";
+				if (path.isDir)
+					status = "403 Forbidden";
 				buf = cast(ubyte[])read(path);
 				mimeType = path.extension;
 				if (mimeType.length > 1 && mimeType[0] == '.')
-					mimeType = mimeTypes.get(mimeType[1..$], "");
+					mimeType = mimeTypes.get(mimeType[1 .. $], "");
 				if (mimeType.length == 0)
 					mimeType = "application/octet-stream";
 				modified = path.timeLastModified;
-			} catch(Exception e) {
+			} catch (Exception e) {
 				status = "500 Internal Server Error";
 				buf = cast(ubyte[])e.toString;
 				mimeType = "text/plain";
@@ -186,10 +182,14 @@ void[] handle(in Request req) {
 	a ~= "\r\nDate: ";
 	a ~= Clock.currTime.dateStr;
 	if (modified.stdTime) {
-		union _Conv { long n; ubyte[8] b; }
+		union _Conv {
+			long n;
+			ubyte[8] b;
+		}
+
 		a ~= "\r\nLast-Modified: ";
 		a ~= modified.dateStr;
-		_Conv hash = { modified.stdTime };
+		_Conv hash = {modified.stdTime};
 		a ~= "\r\nETag: \"";
 		a ~= Base64URLNoPadding.encode(hash.b[]);
 		a ~= `"`;

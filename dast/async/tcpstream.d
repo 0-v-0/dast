@@ -70,9 +70,7 @@ class TcpStream : StreamBase {
 		connect(addr);
 	}
 
-	@property bool isConnected() const nothrow @nogc @safe pure {
-		return _isConnected;
-	}
+	@property auto isConnected() const => _isConnected;
 
 	override void start() {
 		if (_isRegistered)

@@ -28,9 +28,7 @@ struct SlugRange(R) if (isInputRange!R && is(typeof(R.init.front) == dchar)) {
 	}
 
 	@property {
-		bool empty() const {
-			return !_dash && _input.empty;
-		}
+		bool empty() const => !_dash && _input.empty;
 
 		char front() const {
 			if (_dash)
@@ -70,9 +68,7 @@ struct SlugRange(R) if (isInputRange!R && is(typeof(R.init.front) == dchar)) {
 	}
 }
 
-auto asSlug(R)(R text) {
-	return SlugRange!R(text);
-}
+auto asSlug(R)(R text) => SlugRange!R(text);
 
 unittest {
 	import std.algorithm : equal;
@@ -142,15 +138,11 @@ ptrdiff_t matchBracket(string str, bool nested = true) nothrow {
 	return -1;
 }
 
-bool isLineBlank(S)(S ln) {
-	return allOf(ln, " \t");
-}
+bool isLineBlank(S)(S ln) => allOf(ln, " \t");
 
 pure @safe:
 @nogc {
-	bool isLineIndented(S)(S ln) {
-		return ln.startsWith('\t') || ln.startsWith("    ");
-	}
+	bool isLineIndented(S)(S ln) => ln.startsWith('\t') || ln.startsWith("    ");
 
 	string unindentLine(S)(S ln) {
 		if (ln.startsWith('\t'))
@@ -198,9 +190,7 @@ bool isHlineLine(S)(S ln) {
 }
 // dfmt on
 
-bool isQuoteLine(S)(S ln) {
-	return ln.stripLeft().startsWith(">");
-}
+bool isQuoteLine(S)(S ln) => ln.stripLeft().startsWith(">");
 
 size_t getQuoteLevel(S)(S ln) {
 	size_t level;
@@ -216,7 +206,7 @@ bool isUListLine(S)(S ln) {
 	ln = ln.stripLeft;
 	if (ln.length < 2)
 		return false;
-	if (!canFind("*+-", ln[0]))
+	if (!"*+-".canFind(ln[0]))
 		return false;
 	if (ln[1] != ' ' && ln[1] != '\t')
 		return false;
@@ -225,12 +215,10 @@ bool isUListLine(S)(S ln) {
 
 bool isOListLine(S)(S ln) {
 	ln = ln.stripLeft;
-	if (ln.length < 1)
-		return false;
-	if (ln[0] < '0' || ln[0] > '9')
+	if (!ln.length || ln[0] < '0' || ln[0] > '9')
 		return false;
 	ln = ln[1 .. $];
-	while (ln.length > 0 && ln[0] >= '0' && ln[0] <= '9')
+	while (ln.length && ln[0] >= '0' && ln[0] <= '9')
 		ln = ln[1 .. $];
 	if (ln.length < 2)
 		return false;
@@ -242,15 +230,13 @@ bool isOListLine(S)(S ln) {
 }
 
 bool isTableRowLine(bool proper = false)(string ln) {
-	static if (proper) {
+	static if (proper)
 		return ln.indexOf(" | ") >= 0
 			&& !ln.isOListLine
 			&& !ln.isUListLine
 			&& !ln.isAtxHeaderLine;
-	} else
+	else
 		return ln.indexOf(" | ") >= 0;
 }
 
-bool isCodeBlockDelimiter(S)(S ln) {
-	return ln.startsWith("```");
-}
+bool isCodeBlockDelimiter(S)(S ln) => ln.startsWith("```");

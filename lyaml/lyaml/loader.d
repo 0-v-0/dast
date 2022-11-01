@@ -20,11 +20,9 @@ class YAMLException : Exception {
 
 enum indent = 2;
 
-public Node loadyml(string str) @safe {
-	return loadyml(str, 0, 0);
-}
+Node loadyml(string str) @safe => loadyml(str, 0, 0);
 
-public Node loadyml(ref string str, int n, uint ln) @safe {
+Node loadyml(ref string str, int n, uint ln) @safe {
 	import std.array;
 	import std.ascii : isWhite;
 	import std.conv : text;
@@ -342,7 +340,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 }
 
 version (unittest) {
-	bool eq(in double a, in double b, in double epsilon = 1e-4) {
+	bool eq(double a, double b, double epsilon = 1e-4) {
 		return a >= b - epsilon && a <= b + epsilon;
 	}
 

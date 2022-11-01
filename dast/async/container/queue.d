@@ -1,14 +1,10 @@
 module dast.async.container.queue;
 
-struct Queue(T, bool check = false) if(is(typeof(null) : T)) {
+struct Queue(T, bool check = false) if (is(typeof(null) : T)) {
 nothrow @safe:
-	@property T front() {
-		return _first;
-	}
+	@property T front() => _first;
 
-	@property bool empty() const {
-		return _first is null;
-	}
+	@property bool empty() const => _first is null;
 
 	void enqueue(T item)
 	in (item) {

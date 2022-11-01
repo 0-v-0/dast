@@ -132,17 +132,11 @@ class SelectorBase : Selector {
 	}
 
 protected:
-	bool isErro(uint events) nothrow {
-		return (events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) != 0;
-	}
+	bool isErro(uint events) nothrow => (events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) != 0;
 
-	bool isRead(uint events) nothrow {
-		return (events & EPOLLIN) != 0;
-	}
+	bool isRead(uint events) nothrow => (events & EPOLLIN) != 0;
 
-	bool isWrite(uint events) nothrow {
-		return (events & EPOLLOUT) != 0;
-	}
+	bool isWrite(uint events) nothrow => (events & EPOLLOUT) != 0;
 
 	static epoll_event buildEpollEvent(Channel watch) {
 		epoll_event ev;

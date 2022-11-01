@@ -44,21 +44,13 @@ abstract class Channel {
 	}
 
 	@property @safe {
-		bool isRegistered() const {
-			return _isRegistered;
-		}
+		bool isRegistered() const => _isRegistered;
 
-		bool isClosed() const {
-			return _isClosed;
-		}
+		bool isClosed() const => _isClosed;
 
-		WatcherType type() const {
-			return _type;
-		}
+		WatcherType type() const => _type;
 
-		Selector eventLoop() {
-			return _inLoop;
-		}
+		Selector eventLoop() => _inLoop;
 	}
 
 	protected bool _isClosed;
@@ -86,9 +78,7 @@ abstract class Channel {
 		assert(0, "unimplemented");
 	}
 
-	final bool flag(WatchFlag index) {
-		return (_flags & index) != 0;
-	}
+	final bool flag(WatchFlag index) => (_flags & index) != 0;
 
 	void close() nothrow {
 		if (!_isClosed) {
@@ -156,9 +146,7 @@ struct StreamWriteBuffer {
 		_sentHandler = handler;
 	}
 
-	@property const(ubyte)[] data() const {
-		return cast(const(ubyte)[])_data[_site .. $];
-	}
+	@property auto data() const => cast(const(ubyte)[])_data[_site .. $];
 
 	/// add send offset and return is empty
 	bool popSize(size_t size) {
@@ -190,9 +178,7 @@ abstract class SocketChannelBase : Channel {
 		super(loop, type);
 	}
 
-	pragma(inline) @property final socket() @trusted {
-		return _socket;
-	}
+	pragma(inline) @property final socket() @trusted => _socket;
 
 	version (Windows) {
 
@@ -225,13 +211,9 @@ protected:
 alias WriteBufferQueue = Queue!(StreamWriteBuffer*);
 
 package template OverrideErro() {
-	bool isError() {
-		return _error;
-	}
+	bool isError() => _error;
 
-	string erroString() {
-		return _erroString;
-	}
+	string erroString() => _erroString;
 
 	void clearError() {
 		_error = false;
