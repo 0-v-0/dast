@@ -368,7 +368,7 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 		size_t[2] prevg = void;
 		enum {
 			re1 = ctRegex!(`(\$+)@(-?)(\d*)`),
-			re2 = ctRegex!(`\{[\s\S]+\}|\[[\s\S]+\]|(?:\.|#)?(?:\w|:|=|!|\$|@|-)+(?:(?<=\$)\{[^\}]+\})?`),
+			re2 = ctRegex!(`\{[\s\S]+\}|\[[\s\S]+?\]|(?:\.|#)?(?:\w|:|=|!|\$|@|-)+(?:(?<=\$)\{[^\}]+\})?`),
 			re3 = ctRegex!(`(?:!|\s)[\S\s]*`)
 		}
 		switch (set[0]) {
@@ -578,7 +578,7 @@ unittest {
 	b{y}
 		i{z}
 	{0}`, "<a>x<b>y<i>z</i></b>0</a>");
-	test(`a[data-a=[[] data-b=[]]]{foo{1}}b[data-a=[] data-b=[]]{bar{2}`, `<a data-a="[[]" data-b="[]]">foo{1}</a><b data-a="[]" data-b="[]">bar{2</b>`);
+	test(`a[data-a={]{foo{1}}b{bar{2}`, `<a data-a="{">foo{1}</a><b>bar{2</b>`);
 	test(`[href=#t$@]a*1 b+s+a*0`, `<a href="#t0"></a><s></s>`);
 	test("a[hid]", `<a hidden></a>`);
 	test("a[hid=]", `<a hidden=""></a>`);
