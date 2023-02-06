@@ -3,10 +3,11 @@ module dast.ws.server;
 // dfmt off
 import dast.async,
 	dast.async.socket,
-	std.socket,
-	std.experimental.logger,
 	dast.http,
-	dast.ws.frame;
+	dast.ws.frame,
+	std.socket,
+	std.experimental.logger;
+import std.conv : text, to;
 
 alias
 	PeerID = int,
@@ -141,7 +142,6 @@ class WebSocketServer : ListenerBase {
 
 	bool performHandshake(WSClient client, in ubyte[] msg, ref Request req) nothrow {
 		import sha1ct : sha1Of;
-		import std.conv : to;
 		import std.uni : toLower;
 		import tame.base64 : encode;
 
@@ -181,11 +181,11 @@ class WebSocketServer : ListenerBase {
 					"Connection: Upgrade\r\n" ~
 					"Sec-WebSocket-Accept: " ~ encode(
 						sha1Of(buf[0 .. len + MAGIC.length]), buf) ~
-					"\r\n\r\n");
+				"\r\n\r\n");
 		} catch (Exception)
 			return false;
 		if (map[id])
-			map[id].length = 0;
+		map[id].length = 0;
 		else {
 			Frame[] frames;
 			frames.reserve(1);
@@ -242,7 +242,7 @@ private nothrow:
 		// dfmt on
 		case Op.PING:
 			enum pong = Frame(true, Op.PONG, false, State.done, [0, 0, 0, 0], 0, [
-					]).serialize;
+			]).serialize;
 			try
 				client.write(pong);
 			catch (Exception) {
@@ -259,10 +259,10 @@ private nothrow:
 		}
 	}
 
-	import std.array, std.format;
+	import std.array;
 
 	void handleCont(WSClient client, in Frame frame)
-	in (!client.id || map[client.id], "Client #%d is used before handshake".format(client.id)) {
+	in (!client.id || map[client.id], text("Client #", client.id, " is used before handshake")) {
 		if (!frame.fin) {
 			if (frame.data.length)
 				map[client.id] ~= frame;

@@ -6,6 +6,7 @@ import
 	lockfree.queue,
 	dast.ws.server;
 // dfmt on
+import std.traits : isCallable;
 public import dast.ws.server : PeerID, WSClient;
 
 struct Action {
@@ -36,16 +37,7 @@ struct WSRequest {
 		packer.buf.length = 0;
 	}
 
-	bool call(Args...)(void function(ref WSRequest req) fn, Args args) {
-		static if (Args.length)
-			send(args);
-		reverse();
-		fn(this);
-		reverse();
-		return OK;
-	}
-
-	bool call(Args...)(void delegate(ref WSRequest req) fn, Args args) {
+	bool call(alias fn, Args...)(auto ref const Args args) if (isCallable!fn) {
 		static if (Args.length)
 			send(args);
 		reverse();
@@ -149,11 +141,9 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 						else {
 							static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
 								static assert(ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_,
-									"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
+								"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
 								static if (arity!f == 1)
 									f(req);
-								else static if (arity!f == 2)
-									f(req, unpacker.unpack!(Parameters!f[1]));
 								else
 									mixin("Parameters!f[1..$] p", i, ";",
 										"unpacker.unpack(p", i, ");",

@@ -106,7 +106,7 @@ subPackage {
 	importPaths "."
 	dflags "-dip1008" "-preview=shortenedMethods"
 	dependency "tame:lockfree" version="*"
-	dependency "lmpl4d" version="~>0.0.6"
+	dependency "lmpl4d" version="~>0.0.8"
 	dependency "dast:ws" path="."
 }
 dependency ":config" path="."

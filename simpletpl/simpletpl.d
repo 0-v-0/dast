@@ -405,19 +405,19 @@ version (WASI) {
 		string[string] data;
 		alias data this;
 
-		auto opIndex(in string key) {
+		auto opIndex(const string key) {
 			if (auto p = key in data)
 				return *p;
 			return null;
 		}
 
-		void opIndexAssign(in string value, in string key) pure {
+		void opIndexAssign(const string value, const string key) pure {
 			data[key] = value;
 		}
 
 		auto opDispatch(string key)() => this[key];
 
-		auto opDispatch(string key)(in string value) => data[key] = value;
+		auto opDispatch(string key)(const string value) => data[key] = value;
 
 		void free() nothrow @nogc {
 			destroy!false(data);
