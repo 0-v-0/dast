@@ -92,7 +92,9 @@ class Response {
 
 	alias put = write;
 
-	void flush() => buf.flush();
+	void flush() {
+		buf.flush();
+	}
 
 	void send(in char[] s) {
 		if (!headerSent) {
