@@ -368,7 +368,7 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 		size_t[2] prevg = void;
 		enum {
 			re1 = ctRegex!(`(\$+)@(-?)(\d*)`),
-			re2 = ctRegex!(`\{[\s\S]+\}|\[[\s\S]+?\]|(?:\.|#)?(?:\w|:|=|!|\$|@|-)+(?:(?<=\$)\{[^\}]+\})?`),
+			re2 = ctRegex!(`\{[\s\S]+\}|\[[\s\S]+?\]|(?:\.|#)?[^\[.#{\s]+(?:(?<=\$)\{[^\}]+\})?`),
 			re3 = ctRegex!(`(?:!|\s)[\S\s]*`)
 		}
 		switch (set[0]) {
