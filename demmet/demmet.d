@@ -1,7 +1,7 @@
 /* demmet - D implemention of emmet */
 module demmet;
 
-import std.algorithm : canFind;
+import std.algorithm : canFind, splitter;
 
 // dfmt off
 import
@@ -11,16 +11,15 @@ import
 	std.string,
 	std.traits;
 
-alias
-	Map = string[string],
-	TagProcFunc = bool function(ref TagProp prop),
-	StyleProcFunc = string function(string buffer, string tag, ref string[] attr, ref string[] result);
+alias TagProcFunc = bool function(ref TagProp prop);
 
 struct TagProp {
 	string tag;
-	string[] list;
+	string[] tags;
 	string[] attr;
 	string content;
+	string match;
+	string token;
 	string[] result;
 }
 
@@ -197,9 +196,9 @@ int countChar(in string input, char c) nothrow {
 
 int countTokens(string str, char c) {
 	enum {
-		re1 = ctRegex!(`[^\\]?".+?[^\\]"`),
-		re2 = ctRegex!(`[^\\]?'.+?[^\\]'`),
-		re3 = ctRegex!(`[^\\]?\{.+?[^\\]\}`)
+		re1 = ctRegex!`[^\\]?".+?[^\\]"`,
+		re2 = ctRegex!`[^\\]?'.+?[^\\]'`,
+		re3 = ctRegex!`[^\\]?\{.+?[^\\]\}`
 	}
 	return str.replaceAll(re1, "").replaceAll(re2, "").replaceAll(re3, "").countChar(c);
 }
@@ -281,16 +280,11 @@ span`);
 }`, str);
 }
 
-string emmet(S)(S input, S indent = "", StyleProcFunc styleProc = null)
-if (isSomeString!S) {
-	if (indent.length)
-		input = extractTabs(input, indent);
-	if (!styleProc)
-		styleProc = &defProc;
-	return zencode(input, styleProc);
+string emmet(S)(S input, S indent = "") if (isSomeString!S) {
+	return zencode(indent.length ? extractTabs(input, indent) : input);
 }
 
-private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) {
+private string zencode(S)(S input) if (isSomeString!S) {
 	static string closeTag(string tag) {
 		enum noCloseTags = ctRegex!(
 				`^!|^(area|base|br|col|embed|frame|hr|img|input|link|meta|param|source|wbr)\b`, "i");
@@ -300,12 +294,12 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 		return "";
 	}
 
-	enum xmlComment = ctRegex!(`<!--[\S\s]*?-->`);
+	enum xmlComment = ctRegex!`<!--[\S\s]*?-->`;
 
 	input = input.replaceAll(xmlComment, "");
 	auto s = appender!(string[]);
-	string[] taglist, lastgroup, result;
-	size_t[2][] grouplist;
+	string[] tagList, lastGroup, result;
+	size_t[2][] groups;
 	size_t i, len = input.length, g, n;
 	int l;
 	for (; i < len; i++) {
@@ -362,53 +356,53 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 	}
 	if (g < len)
 		s ~= input[g .. len];
-	foreach (set; s[]) {
-		string lasttag;
+	foreach (token; s[]) {
+		string lastTag;
 		string[] attr = [""];
 		size_t[2] prevg = void;
 		enum {
-			re1 = ctRegex!(`(\$+)@(-?)(\d*)`),
-			re2 = ctRegex!(`\{[\s\S]+\}|\[[\s\S]+?\]|(?:\.|#)?[^\[.#{\s]+(?:(?<=\$)\{[^\}]+\})?`),
-			re3 = ctRegex!(`(?:!|\s)[\S\s]*`)
+			re1 = ctRegex!`(\$+)@(-?)(\d*)`,
+			re2 = ctRegex!(`((?:[^\[{\s]+(?:(?<=\$)\{[^}]+\})?)*)(\[.+?\])?(?:\{(.+)\})?`, "s"),
+			re3 = ctRegex!`(?:!|\s)[\S\s]*`
 		}
-		switch (set[0]) {
+		switch (token[0]) {
 		case '^':
 			if (result.length) {
-				lasttag = result[$ - 1];
-				if (lasttag.length < 2 || lasttag[0 .. 2] != "</")
-					result ~= closeTag(taglist.pop());
+				lastTag = result[$ - 1];
+				if (lastTag.length < 2 || lastTag[0 .. 2] != "</")
+					result ~= closeTag(tagList.pop());
 			}
-			result ~= closeTag(taglist.pop());
+			result ~= closeTag(tagList.pop());
 			break;
 		case '>':
 			break;
 		case '+':
 			if (result.length) {
-				lasttag = result[$ - 1];
-				if (lasttag.length < 2 || lasttag[0 .. 2] != "</")
-					result ~= closeTag(taglist.pop());
+				lastTag = result[$ - 1];
+				if (lastTag.length < 2 || lastTag[0 .. 2] != "</")
+					result ~= closeTag(tagList.pop());
 			}
 			break;
 		case '(':
-			grouplist ~= [result.length, taglist.length];
+			groups ~= [result.length, tagList.length];
 			break;
 		case ')':
-			prevg = grouplist[$ - 1];
+			prevg = groups[$ - 1];
 			len = prevg[1];
-			for (g = taglist.length; g-- > len;)
-				result ~= closeTag(taglist.pop());
-			lastgroup = result[prevg[0] .. $];
+			for (g = tagList.length; g-- > len;)
+				result ~= closeTag(tagList.pop());
+			lastGroup = result[prevg[0] .. $];
 			break;
 		default:
-			if (set[0] == '*') {
+			if (token[0] == '*') {
 				string[] tags;
-				g = toInt(cast(string)set[1 .. $]);
-				if (lastgroup.length) {
-					tags = lastgroup;
-					result.length = grouplist.pop()[0];
+				g = toInt(cast(string)token[1 .. $]);
+				if (lastGroup.length) {
+					tags = lastGroup;
+					result.length = groups.pop()[0];
 				} else if (result.length) {
 					tags ~= result.pop();
-					tags ~= closeTag(taglist.pop());
+					tags ~= closeTag(tagList.pop());
 				}
 				for (n = 0; n < g; n++)
 					foreach (r; tags) {
@@ -432,64 +426,65 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 			} else {
 				import std.ascii : isWhite;
 
-				string buf = void, tag, content;
-				lastgroup.length = 0;
-				for (;;) {
-					auto t = set.matchFirst(re2);
-					if (!t)
-						break;
-					buf = t[0];
-					set = t.post;
-					switch (buf[0]) {
-					case '.':
-						attr[0] ~= buf[1 .. $] ~ ' ';
-						break;
-					case '#':
-						attr ~= `id="` ~ buf[1 .. $] ~ '"';
-						break;
-					case '[':
-
-						buf = buf[0 .. $ - 1];
-						string str;
-						for (i = 1; i < buf.length;) {
-							size_t j = i;
-							do
-								if (buf[i] == '=' || buf[i].isWhite)
+				lastGroup.length = 0;
+				auto t = token.matchFirst(re2);
+				auto buf = t[2]; // attrs
+				if (buf.length)
+					buf = buf[0 .. $ - 1];
+				if (buf.length) {
+					string str;
+					for (i = 1; i < buf.length;) {
+						size_t j = i;
+						do
+							if (buf[i] == '=' || buf[i].isWhite)
+								break;
+						while (++i < buf.length);
+						auto key = buf[j .. i];
+						str ~= aabbr.get(key, key);
+						if (i == buf.length)
+							break;
+						if (buf[i] == '=') {
+							str ~= '=';
+							j = ++i;
+							for (; i < buf.length; i++)
+								if (buf[i].isWhite)
 									break;
-							while (++i < buf.length);
-							auto key = buf[j .. i];
-							str ~= aabbr.get(key, key);
-							if (i == buf.length)
-								break;
-							if (buf[i] == '=') {
-								str ~= '=';
-								j = ++i;
-								for (; i < buf.length; i++)
-									if (buf[i].isWhite)
-										break;
-								auto val = buf[j .. i];
-								str ~= j == buf.length || (buf[j] != '"' && buf[j] != '\'') ? '"' ~ val ~ '"'
-									: val;
-							}
-							if (i == buf.length)
-								break;
-							i++;
-							str ~= ' ';
+							auto val = buf[j .. i];
+							str ~= j == buf.length || (buf[j] != '"' && buf[j] != '\'') ? '"' ~ val ~ '"'
+								: val;
 						}
-						attr ~= str;
+						if (i == buf.length)
+							break;
+						i++;
+						str ~= ' ';
+					}
+					attr ~= str;
+				}
+				buf = "";
+				bool first = true;
+				foreach (cls; t[1].splitter('.')) {
+					if (first) {
+						buf = cls;
+						first = false;
+					} else
+						attr[0] ~= attr[0].length ? ' ' ~ cls : cls;
+				}
+				string tag, content = t[3];
+				first = true;
+				foreach (str; buf.splitter('#')) {
+					if (first) {
+						tag = str;
+						first = false;
+					} else {
+						attr ~= `id="` ~ str ~ '"';
 						break;
-					case '{':
-						content = buf[1 .. $ - 1];
-						break;
-					default:
-						tag = styleProc(buf, tag, attr, result);
 					}
 				}
 				buf = attr[0];
 				if (buf.length)
-					attr[0] = ` class="` ~ buf.stripRight() ~ '"';
+					attr[0] = ` class="` ~ buf ~ '"';
 				if (!content.length || tag.length || buf.length || attr.length > 1) {
-					auto prop = TagProp(tag, taglist, attr, content, result);
+					auto prop = TagProp(tag, tagList, attr, content, t[0], token, result);
 					foreach (tagProc; tagProcs) {
 						if (tagProc(prop))
 							break;
@@ -498,25 +493,25 @@ private string zencode(S)(S input, StyleProcFunc styleProc) if (isSomeString!S) 
 					attr = prop.attr;
 					if (tag.length) {
 						result ~= "<%r%(%r %)>%r".format(tag, attr, prop.content);
-						taglist ~= tag.replaceAll(re3, "");
+						tagList ~= tag.replaceAll(re3, "");
 					}
 				} else {
 					result ~= content;
-					taglist ~= "";
+					tagList ~= "";
 				}
 			}
 		}
 	}
-	for (i = taglist.length; i--;)
-		result ~= closeTag(taglist[i]);
+	for (i = tagList.length; i--;)
+		result ~= closeTag(tagList[i]);
 	return result.join("");
 }
 
 bool fabbr(ref TagProp prop) {
-	enum RE = ctRegex!(`[\s>][\S\s]*`);
+	enum RE = ctRegex!`[\s>][\S\s]*`;
 
 	auto tag = prop.tag;
-	auto list = prop.list;
+	auto tags = prop.tags;
 	auto result = prop.result;
 	auto s = tag.split(':');
 	string t;
@@ -531,8 +526,8 @@ bool fabbr(ref TagProp prop) {
 		}
 	}
 	if (!tag.length) {
-		if (list.length)
-			tag = list[$ - 1];
+		if (tags.length)
+			tag = tags[$ - 1];
 		if (tag.length)
 			tag = itags.get(tag.toLower, "");
 		if (!tag.length) {
@@ -554,10 +549,6 @@ bool fabbr(ref TagProp prop) {
 	return false;
 }
 
-private string defProc(string buffer, string, ref string[], ref string[]) {
-	return buffer;
-}
-
 unittest {
 	void test(string a, string b) {
 		auto str = emmet(a, "\t");
@@ -566,12 +557,10 @@ unittest {
 
 	test("", "");
 	test("ul>.>a", "<ul><li><a></a></li></ul>");
-	test(`[href=#]a`, `<a href="#"></a>`);
-	test(`b[href=#]a`, `<a href="#"></a>`);
-	test(`[href=#]b a`, `<a href="#"></a>`);
+	test(`a[href=#]b`, `<a href="#"></a>`);
 	test(`a(b)`, `<a><b></b></a>`);
 	test(`* single line commet`, ``);
-	test(`*{ commet } a(b)`, `<a><b></b></a>`);
+	test(`a(b) { commet }*`, `<a><b></b></a>`);
 	test(`a(b)(a comment)*`, `<a><b></b></a>`);
 	test(`a
 	{x}
@@ -579,7 +568,7 @@ unittest {
 		i{z}
 	{0}`, "<a>x<b>y<i>z</i></b>0</a>");
 	test(`a[data-a={]{foo{1}}b{bar{2}`, `<a data-a="{">foo{1}</a><b>bar{2</b>`);
-	test(`[href=#t$@]a*1 b+s+a*0`, `<a href="#t0"></a><s></s>`);
+	test(`a[href=#t$@]*1 b+s+a*0`, `<a href="#t0"></a><s></s>`);
 	test("a[hid]", `<a hidden></a>`);
 	test("a[hid=]", `<a hidden=""></a>`);
 	test(`a[hid=""]`, `<a hidden=""></a>`);
