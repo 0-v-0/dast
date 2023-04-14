@@ -294,7 +294,7 @@ private string zencode(S)(S input) if (isSomeString!S) {
 		return "";
 	}
 
-	enum xmlComment = ctRegex!`<!--[\S\s]*?-->`;
+	enum xmlComment = ctRegex!(`<!--.*?-->`, "s");
 
 	input = input.replaceAll(xmlComment, "");
 	auto s = appender!(string[]);
@@ -363,7 +363,7 @@ private string zencode(S)(S input) if (isSomeString!S) {
 		enum {
 			re1 = ctRegex!`(\$+)@(-?)(\d*)`,
 			re2 = ctRegex!(`((?:[^\[{\s]+(?:(?<=\$)\{[^}]+\})?)*)(\[.+?\])?(?:\{(.+)\})?`, "s"),
-			re3 = ctRegex!`(?:!|\s)[\S\s]*`
+			re3 = ctRegex!(`(?:!|\s).*`, "s")
 		}
 		switch (token[0]) {
 		case '^':
@@ -508,7 +508,7 @@ private string zencode(S)(S input) if (isSomeString!S) {
 }
 
 bool fabbr(ref TagProp prop) {
-	enum RE = ctRegex!`[\s>][\S\s]*`;
+	enum RE = ctRegex!(`[\s>].*`, "s");
 
 	auto tag = prop.tag;
 	auto tags = prop.tags;
