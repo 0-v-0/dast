@@ -11,7 +11,12 @@ import dast.async.core,
 // dfmt on
 
 class TcpStream : StreamBase {
-	alias socket this;
+	ref auto opDispatch(string member, Args...)(Args args) {
+		static if (Args.length)
+			mixin("return _socket.", member, "(", args, ");");
+		else
+			mixin("return _socket.", member, ";");
+	}
 
 	SimpleEventHandler onClosed;
 

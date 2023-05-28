@@ -2,7 +2,7 @@ name "dast"
 description "A flexible, lightweight framework for D programming language."
 homepage "https://gitee.com/wayd/dast"
 authors "0-v-0"
-copyright "Copyright © 2022, 0-v-0"
+copyright "Copyright © 2022-2023, 0-v-0"
 license "MIT"
 buildType "debug" {
 	lflags "/incremental" "/opt:noref"
@@ -12,10 +12,10 @@ sourceFiles "dast/package.d"
 importPaths "."
 subPackage {
 	name "async"
-	dflags "-preview=in" "-dip1008"
+	dflags "-preview=in" "-dip1008" "-preview=shortenedMethods"
 	sourcePaths "dast/async"
 	importPaths "."
-	dflags "-preview=shortenedMethods"
+	dependency "tame" version="~>0.0.3"
 	configuration "full" {
 		versions "HaveTimer"
 	}
@@ -35,7 +35,7 @@ subPackage {
 	sourceFiles "dast/fcgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.2"
+	dependency "tame" version="~>0.0.3"
 	dflags "-preview=in" "-preview=shortenedMethods"
 }
 subPackage {
@@ -50,7 +50,7 @@ subPackage {
 	sourceFiles "dast/http1.d"
 	importPaths "."
 	dependency "dast:http" path="."
-	dependency "tame" version="~>0.0.2"
+	dependency "tame" version="~>0.0.3"
 	dflags "-dip1008" "-preview=in" "-preview=shortenedMethods"
 }
 subPackage {
@@ -74,14 +74,14 @@ subPackage {
 	sourceFiles "dast/util.d"
 	importPaths "."
 	dependency "database:util" version="*" optional=true
-	dependency "tame" version="~>0.0.2"
+	dependency "tame" version="~>0.0.3"
 }
 subPackage {
 	name "uwsgi"
 	sourceFiles "dast/uwsgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.2"
+	dependency "tame" version="~>0.0.3"
 	dflags "-preview=in" "-dip1008"
 }
 subPackage {
@@ -92,7 +92,7 @@ subPackage {
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
-	dependency "tame" version="~>0.0.2"
+	dependency "tame" version="~>0.0.3"
 	configuration "full" {
 		subConfiguration "dast:async" "full"
 	}

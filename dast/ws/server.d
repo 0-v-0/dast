@@ -43,9 +43,11 @@ struct WSClient {
 }
 
 class WebSocketServer : ListenerBase {
-	import dast.async.container.map;
+	import dast.async.container;
+	import tame.meta;
 
-	alias socket this;
+	mixin Forward!"_socket";
+
 	private size_t _bufferSize;
 	protected Map!(PeerID, Frame[]) map;
 	Map!(PeerID, WSClient) clients;
@@ -80,7 +82,7 @@ class WebSocketServer : ListenerBase {
 			clients[WSClient(client).id] = WSClient(client);
 	}
 
-	void remove(int id) nothrow {
+	void remove(PeerID id) nothrow {
 		map.remove(id);
 		dataBySource.remove(id);
 		frames.remove(id);
@@ -95,8 +97,8 @@ class WebSocketServer : ListenerBase {
 	// dfmt on
 	void run(ushort port) {
 		this.reusePort = true;
-		this.bind(new InternetAddress("127.0.0.1", port));
-		this.listen(128);
+		socket.bind(new InternetAddress("127.0.0.1", port));
+		socket.listen(128);
 
 		infof("Listening on port: %u", port);
 		infof("Maximum allowed connections: %u", maxConnections);
@@ -149,7 +151,7 @@ class WebSocketServer : ListenerBase {
 			KEY = "Sec-WebSocket-Key".toLower,
 			KEY_MAXLEN = 192 - MAGIC.length;
 		const(ubyte)[] data = void;
-		int id = client.id;
+		const id = client.id;
 		if (auto p = id in dataBySource)
 			data = dataBySource[id] ~= msg;
 		else
@@ -185,7 +187,7 @@ class WebSocketServer : ListenerBase {
 		} catch (Exception)
 			return false;
 		if (map[id])
-		map[id].length = 0;
+			map[id].length = 0;
 		else {
 			Frame[] frames;
 			frames.reserve(1);
@@ -205,7 +207,7 @@ private nothrow:
 		}
 
 		if (map[client.id].ptr) {
-			int id = client.id;
+			const id = client.id;
 			Frame prevFrame = id.parse(data);
 			for (;;) {
 				handleFrame(WSClient(client), prevFrame);

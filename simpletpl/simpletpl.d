@@ -485,8 +485,7 @@ version (WASI) {
 	}
 
 	void popFront() {
-		data[$ - 1].free();
-		data = data[0 .. $ - 1];
+		data.length--;
 	}
 
 	T render(alias getContent, T)(T tpl, Context data, uint maxDepth = 5) {

@@ -1,6 +1,7 @@
 module dast.async.container.map;
 
 import core.sync.mutex;
+import tame.meta;
 
 class Map(TKey, TValue) {
 nothrow:
@@ -49,6 +50,11 @@ nothrow:
 	final unlock() => mutex.unlock_nothrow();
 
 	TValue[TKey] data;
-	alias data this;
+	mixin Forward!"data";
+
+	auto opBinaryRight(string op : "in", R)(in R rhs) const {
+		return rhs in data;
+	}
+
 	protected Mutex mutex;
 }

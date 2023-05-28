@@ -1,5 +1,7 @@
 module dast.util;
 
+import tame.meta;
+
 version (Have_database_util) {
 	public import database.util : as, ignore, snakeCase, camelCase, KeyName;
 } else {
@@ -146,12 +148,6 @@ template getSymbols(alias symbol, alias attr) {
 enum isStruct(T) = is(T == struct);
 
 alias ExceptionCtors = std.exception.basicExceptionCtors;
-
-struct Import(string Module) {
-	template opDispatch(string name) {
-		mixin("import opDispatch = " ~ Module ~ "." ~ name ~ ";");
-	}
-}
 
 size_t intToStr(char* buf, size_t value) pure @nogc nothrow @trusted {
 	char* p = buf;
