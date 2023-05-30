@@ -26,7 +26,7 @@ interface Selector {
 
 	void stop();
 
-	void dispose();
+	void dispose() nothrow;
 }
 
 abstract class Channel {

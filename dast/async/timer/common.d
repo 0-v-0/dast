@@ -11,7 +11,6 @@ enum CustomTimer_Next_Timeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 alias UintObject = BaseTypeObject!uint;
 
 interface ITimer {
-
 	///
 	bool isActive();
 
@@ -297,20 +296,20 @@ abstract class TimerChannelBase : Channel, ITimer {
 	}
 
 	/// ditto
-	@property ITimer interval(size_t v) {
+	@property ITimer interval(size_t v) pure {
 		_interval = v;
 		return this;
 	}
 
 	/// ditto
-	@property ITimer interval(Duration duration) {
+	@property ITimer interval(Duration duration) pure {
 		_interval = cast(size_t)duration.total!"msecs";
 		return this;
 	}
 
 	/// The handler will be handled in another thread.
-	ITimer onTick(TickedEventHandler handler) {
-		this.ticked = handler;
+	ITimer onTick(TickedEventHandler handler) pure {
+		ticked = handler;
 		return this;
 	}
 
@@ -328,12 +327,12 @@ abstract class TimerChannelBase : Channel, ITimer {
 	}
 
 	void reset(size_t interval) {
-		this.interval = interval;
+		_interval = interval;
 		reset();
 	}
 
 	void reset(Duration duration) {
-		this.interval = duration;
+		interval = duration;
 		reset();
 	}
 

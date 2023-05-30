@@ -32,7 +32,7 @@ class SelectorBase : Selector {
 			return;
 		isDisposed = true;
 		unregister(_event);
-		core.sys.posix.unistd.close(_epollFD);
+		close(_epollFD);
 	}
 
 	private bool isDisposed;

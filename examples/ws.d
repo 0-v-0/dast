@@ -40,7 +40,7 @@ class BroadcastServer : WebSocketServer {
 		}
 	}
 
-	override void onBinaryMessage(WSClient client, ubyte[] msg) {
+	override void onBinaryMessage(WSClient client, const(ubyte)[] msg) {
 		auto src = client.id;
 		auto srcPath = peers[src];
 		try {

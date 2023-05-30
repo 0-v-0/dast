@@ -7,7 +7,6 @@ version(Kqueue):
 import core.time,
 	core.stdc.string,
 	core.stdc.errno,
-	core.sys.posix.sys.types, // for ssize_t, size_t
 	core.sys.posix.signal,
 	core.sys.posix.netinet.tcp,
 	core.sys.posix.netinet.in_,
@@ -32,11 +31,11 @@ class SelectorBase : Selector {
 	}
 
 	void dispose() {
-		if (isDisposed)
+		if (!isDisposed)
 			return;
 		isDisposed = true;
 		unregister(_event);
-		core.sys.posix.unistd.close(_kqueueFD);
+		close(_kqueueFD);
 	}
 
 	private bool isDisposed = false;

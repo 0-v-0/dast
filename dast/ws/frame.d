@@ -29,7 +29,7 @@ pure nothrow:
 
 	@property size_t remaining() const @nogc => cast(size_t)length - data.length;
 
-	ubyte[] serialize() nothrow {
+	ubyte[] serialize() {
 		ubyte[14] buf = void;
 		auto p = buf.ptr;
 
@@ -47,18 +47,15 @@ pure nothrow:
 			p += 8;
 		}
 
-		ubyte[] result = void;
 		if (masked) {
 			p[0 .. 4] = mask;
-			p += 4;
-			result = buf[0 .. p - buf.ptr];
+			auto result = buf[0 .. p + 4 - buf.ptr];
 			result.reserve(result.length + data.length);
 			for (size_t i; i < data.length; i++)
 				result ~= data[i] ^ mask[i & 3];
+			return result;
 		} else
-			result = buf[0 .. p - buf.ptr] ~ data;
-
-		return result;
+			return buf[0 .. p - buf.ptr] ~ data;
 	}
 }
 
@@ -201,14 +198,14 @@ save_data:
 
 unittest { // test multiple frames in one go
 	auto f1 = Frame(true, Op.TEXT, true, State.done, [0, 0, 0, 0], 6, [
-			0, 1, 2, 3, 4, 5
-		]);
+		0, 1, 2, 3, 4, 5
+	]);
 	auto f2 = Frame(false, Op.BINARY, true, State.done, [0, 1, 2, 3], 3, [
-			8, 7, 6
-		]);
+		8, 7, 6
+	]);
 	auto f3 = Frame(false, Op.CLOSE, true, State.done, [0, 1, 2, 3], 10, [
-			9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-		]);
+		9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+	]);
 	auto d = f1.serialize ~ f2.serialize ~ f3.serialize;
 	auto f4 = 0.parse(d);
 	auto f5 = 0.parse([]);
@@ -220,8 +217,8 @@ unittest { // test multiple frames in one go
 
 unittest { // test streaming one byte at a time
 	auto f = Frame(true, Op.TEXT, true, State.done, [1, 2, 3, 4], 6, [
-			0, 1, 2, 3, 4, 5
-		]);
+		0, 1, 2, 3, 4, 5
+	]);
 	ubyte[] data = f.serialize;
 	foreach (b; data[0 .. $ - 1]) {
 		auto _f = 1.parse([b]);

@@ -3,7 +3,6 @@ module dast.async.timer.kqueue;
 // dfmt off
 version (Kqueue):
 import core.stdc.errno,
-	core.sys.posix.sys.types, // for ssize_t, size_t
 	core.sys.posix.netinet.tcp,
 	core.sys.posix.netinet.in_,
 	core.sys.posix.time,

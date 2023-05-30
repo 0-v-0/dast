@@ -101,10 +101,8 @@ class TcpStream : StreamBase {
 
 	/// safe for big data sending
 	void write(in void[] data, DataWrittenHandler handler = null) {
-		if (!data.length)
-			return;
-
-		write(new StreamWriteBuffer(data, handler));
+		if (data.length)
+			write(new StreamWriteBuffer(data, handler));
 	}
 
 protected:

@@ -13,9 +13,7 @@ import core.sys.windows.windows,
 	std.process;
 // dfmt on
 
-/**
-TCP Server
-*/
+/** TCP Server */
 abstract class ListenerBase : SocketChannelBase {
 	this(Selector loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
 		import std.array;
@@ -70,7 +68,6 @@ abstract class ListenerBase : SocketChannelBase {
 	}
 
 	override void onClose() {
-		// assert(0, "");
 		// TODO: created by Administrator @ 2018-3-27 15:51:52
 	}
 
@@ -82,9 +79,7 @@ abstract class ListenerBase : SocketChannelBase {
 
 alias AcceptorBase = ListenerBase;
 
-/**
-TCP Client
-*/
+/** TCP Client */
 abstract class StreamBase : SocketChannelBase {
 	DataReceivedHandler onDataReceived;
 	DataWrittenHandler sentHandler;
