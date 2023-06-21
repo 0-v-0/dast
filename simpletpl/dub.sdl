@@ -5,7 +5,6 @@ license "MIT"
 targetType "library"
 sourceFiles "simpletpl.d"
 importPaths "."
-dflags "-preview=shortenedMethods"
 configurations "library" {
 }
 configurations "betterC" {

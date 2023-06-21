@@ -8,9 +8,8 @@ sourcePaths "lyaml"
 importPaths "."
 configuration "library" {
 	targetType "library"
-	dflags "-preview=shortenedMethods" platform="ldc"
 }
 configuration "lshared" {
 	targetType "library"
-	dflags "-preview=shortenedMethods" "-link-defaultlib-shared" "-L/force:unresolved" platform="ldc"
+	dflags "-link-defaultlib-shared" "-L/force:unresolved" platform="ldc"
 }

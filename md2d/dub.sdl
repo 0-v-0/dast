@@ -6,7 +6,6 @@ license "MIT"
 sourcePaths "."
 importPaths ".."
 mainSourceFile "app.d"
-dflags "-preview=shortenedMethods"
 configuration "lib" {
 	targetType "library"
 }
