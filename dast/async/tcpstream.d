@@ -11,7 +11,7 @@ import dast.async.core,
 // dfmt on
 
 class TcpStream : StreamBase {
-	ref auto opDispatch(string member, Args...)(Args args) {
+	ref auto opDispatch(string member, Args...)(auto ref Args args) {
 		static if (Args.length)
 			mixin("return _socket.", member, "(", args, ");");
 		else

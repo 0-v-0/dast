@@ -427,7 +427,7 @@ version (WASI) {
 	Context[] data;
 
 	// helper for HTML escape(original function from std.xml.encode)
-	void escape(String, Sink)(in String text, ref Sink sink)
+	void escape(String, Sink)(const String text, ref Sink sink)
 	if (isOutputRange!(Sink, String)) {
 		size_t index;
 

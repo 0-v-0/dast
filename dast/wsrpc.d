@@ -23,9 +23,7 @@ struct WSRequest {
 
 	auto read(T)() => unpacker.unpack!T;
 
-	auto read(T)(ref T data) => unpacker.unpack(data);
-
-	auto read(T...)(T data) => unpacker.unpack(data);
+	auto read(T...)(auto ref T data) => unpacker.unpack(data);
 
 	@property auto OK() {
 		string err;
@@ -67,7 +65,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 	alias AllActions = getActions!T;
 
 	static if (multiThread) {
-		LFQ queue = LFQ(shared WSRequest());
+		LFQ queue = LFQ(SReq());
 		Thread[] threads;
 		@property {
 			size_t threadCount() const => threads.length;
@@ -100,10 +98,10 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 	static if (multiThread)
 		noreturn mainLoop() {
 			for (;;) {
-				WSRequest req = void;
-				while (!queue.dequeue(cast(SReq)req))
+				SReq req = void;
+				while (!queue.dequeue(req))
 					Thread.yield();
-				handleRequest(req);
+				handleRequest(cast()req);
 			}
 		}
 

@@ -18,7 +18,7 @@ alias PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket, 
 class TcpListener : ListenerBase {
 	private size_t _bufferSize = 4 * 1024;
 
-	ref auto opDispatch(string member, Args...)(Args args) {
+	ref auto opDispatch(string member, Args...)(auto ref Args args) {
 		static if (Args.length)
 			mixin("return _socket.", member, "(", args, ");");
 		else
