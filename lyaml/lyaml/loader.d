@@ -340,9 +340,8 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 }
 
 version (unittest) {
-	bool eq(double a, double b, double epsilon = 1e-4) {
-		return a >= b - epsilon && a <= b + epsilon;
-	}
+	bool eq(double a, double b, double epsilon = 1e-4)
+		=> a >= b - epsilon && a <= b + epsilon;
 
 	void test(T)(in string s, in T expected) {
 		T result;
@@ -510,16 +509,14 @@ unittest {
 	assert(tryParse(".NaN", result) && result != result);
 }
 
-SysTime parseTimestamp(string value) {
-	return value.length < 11 ?
-		SysTime(Date.fromISOExtString(value), UTC()) : SysTime.fromISOExtString(
-			value.replace(' ', 'T'));
-}
+SysTime parseTimestamp(string value)
+	=> value.length < 11 ? SysTime(Date.fromISOExtString(value), UTC())
+	: SysTime.fromISOExtString(
+		value.replace(' ', 'T'));
 
 unittest {
-	static string parse(in string value) {
-		return parseTimestamp(value).toISOString();
-	}
+	static string parse(string value)
+		=> parseTimestamp(value).toISOString();
 
 	enum {
 		canonical = "2001-12-15T02:59:43.1Z",

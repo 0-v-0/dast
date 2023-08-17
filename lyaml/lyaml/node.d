@@ -535,9 +535,7 @@ struct Node {
 		import std.math;
 		import std.algorithm.comparison : scmp = cmp;
 
-		static int cmp(T, U)(T a, U b) {
-			return a > b ? 1 : a < b ? -1 : 0;
-		}
+		static int cmp(T, U)(T a, U b) => a > b ? 1 : a < b ? -1 : 0;
 
 		// Compare validity: if both valid, we have to compare further.
 		const v1 = empty;

@@ -280,17 +280,15 @@ span`);
 }`, str);
 }
 
-string emmet(S)(S input, S indent = "") if (isSomeString!S) {
-	return zencode(indent.length ? extractTabs(input, indent) : input);
-}
+string emmet(S)(S input, S indent = "") if (isSomeString!S)
+	=> zencode(indent.length ? extractTabs(input, indent) : input);
 
 private string zencode(S)(S input) if (isSomeString!S) {
 	static string closeTag(string tag) {
 		enum noCloseTags = ctRegex!(
 				`^!|^(area|base|br|col|embed|frame|hr|img|input|link|meta|param|source|wbr)\b`, "i");
-		if (tag.length && !tag.matchFirst(noCloseTags)) {
+		if (tag.length && !tag.matchFirst(noCloseTags))
 			return "</" ~ tag ~ ">";
-		}
 		return "";
 	}
 

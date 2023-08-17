@@ -87,12 +87,11 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 	protected ubyte[] buf;
 
 	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
+		auto req = WSRequest(src, Unpacker!()(msg));
 		static if (multiThread)
-			queue.enqueue(SReq(cast(shared)src, cast(shared)Unpacker!()(msg)));
-		else {
-			auto req = WSRequest(src, Unpacker!()(msg));
+			queue.enqueue(cast(shared)req);
+		else
 			handleRequest(req);
-		}
 	}
 
 	static if (multiThread)

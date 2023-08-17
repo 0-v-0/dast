@@ -31,9 +31,8 @@ bool isAllowedChar(char c) =>
 	space, tab, vertical tab, form feed, carriage return, and linefeed
 	characters.
  +/
-bool isWhite(dchar c) @safe pure nothrow @nogc {
-	return c == ' ' || (c >= 0x09 && c <= 0x0D);
-}
+bool isWhite(dchar c) @safe pure nothrow @nogc
+	=> c == ' ' || (c >= 0x09 && c <= 0x0D);
 
 size_t search(string s, char c) {
 	size_t i;
@@ -493,6 +492,8 @@ version (WASI) {
 
 		auto app = appender!T;
 
+		
+
 		.data = [data];
 		renderImpl!getContent(app, tpl, maxDepth);
 		return app[];
@@ -513,6 +514,8 @@ unittest {
 	data["m.x"] = "a";
 	data["m.y"] = "foo";
 	data["m.n"] = "bar";
+
+	
 
 	.data = [data];
 	test("a $a $n $b $:b", "a 55 $n &lt; <");

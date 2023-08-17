@@ -5,7 +5,9 @@ import tame.meta;
 
 class Map(TKey, TValue) {
 nothrow:
-	this() { mutex = new Mutex; }
+	this() {
+		mutex = new Mutex;
+	}
 
 	ref auto opIndex(in TKey key) {
 		import std.traits : isArray;
@@ -52,9 +54,8 @@ nothrow:
 	TValue[TKey] data;
 	mixin Forward!"data";
 
-	auto opBinaryRight(string op : "in", R)(in R rhs) const {
-		return rhs in data;
-	}
+	auto opBinaryRight(string op : "in", R)(in R rhs) const
+		=> rhs in data;
 
 	protected Mutex mutex;
 }
