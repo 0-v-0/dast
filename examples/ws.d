@@ -1,4 +1,4 @@
-import std.experimental.logger;
+import std.logger;
 
 import dast.ws;
 

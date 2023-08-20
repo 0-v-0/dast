@@ -1,5 +1,5 @@
 import dast.async;
-import std.experimental.logger;
+import std.logger;
 import std.socket;
 import std.stdio;
 

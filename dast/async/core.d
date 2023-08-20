@@ -4,7 +4,7 @@ import std.socket;
 import std.exception;
 import dast.async.container;
 
-package import std.experimental.logger;
+package import std.logger;
 
 alias SimpleEventHandler = void delegate() nothrow;
 alias ErrorEventHandler = void delegate(string message);

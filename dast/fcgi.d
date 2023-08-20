@@ -359,7 +359,7 @@ class FCGIServer {
 	}
 
 	void mainLoop() {
-		import std.experimental.logger;
+		import std.logger;
 
 		scope req = new Request;
 		scope resp = new Response;

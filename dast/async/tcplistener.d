@@ -9,7 +9,7 @@ import dast.async.core,
 	core.time,
 	std.socket,
 	std.exception,
-	std.experimental.logger;
+	std.logger;
 // dfmt on
 
 alias AcceptEventHandler = void delegate(TcpListener sender, TcpStream stream);

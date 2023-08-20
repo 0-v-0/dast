@@ -6,7 +6,7 @@ import dast.async,
 	dast.http,
 	dast.ws.frame,
 	std.socket,
-	std.experimental.logger;
+	std.logger;
 import std.conv : text, to;
 
 alias

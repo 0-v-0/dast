@@ -174,7 +174,7 @@ class Server {
 	}
 
 	void mainLoop() {
-		import std.experimental.logger;
+		import std.logger;
 		import tame.ascii;
 
 		scope req = new Request;

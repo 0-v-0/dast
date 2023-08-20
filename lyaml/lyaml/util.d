@@ -6,7 +6,7 @@ auto toStr(T)(T x) {
 	static if (is(T == string))
 		return x;
 	else
-		return to!string(x);
+		return x.to!string;
 }
 
 // Position in a YAML stream, used for error messages.

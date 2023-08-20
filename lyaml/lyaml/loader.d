@@ -57,13 +57,13 @@ Node loadyml(ref string str, int n, uint ln) @safe {
 			switch (line[p]) {
 			case '#':
 				goto nextLine;
-			case ']':
-			case '|':
-			case '}':
-			case '>':
+			case ']',
+				'|',
+				'}',
+				'>':
 				throw new NodeException("Syntax error", mark);
-			case '[':
-			case '{':
+			case '[',
+				'{':
 				throw new NodeException("Flow style is not supported", mark);
 			case '-':
 				i = p + 1;

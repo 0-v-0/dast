@@ -21,7 +21,6 @@ enum NodeType {
 //
 // Params:  msg   = Error message.
 //          start = Start position of the node.
-//alias NodeException(string msg, Mark start, string file = __FILE__, size_t line = __LINE__) = YAMLException!("", "\nNode at: " ~ start.toString());
 class NodeException : YAMLException {
 	// Construct a NodeException.
 	//
@@ -53,8 +52,8 @@ struct Node {
 
 		bool empty() @trusted {
 			switch (type_) {
-			case NodeType.null_:
-			case NodeType.merge:
+			case NodeType.null_,
+				NodeType.merge:
 				return true;
 			case NodeType.sequence:
 				return children.length == 0;
@@ -97,9 +96,7 @@ struct Node {
 	}
 
 	this(T)(T value) @trusted if (isArray!T && !isSomeString!(OriginalType!T)) {
-		alias ET = Unqual!(ElementType!T);
-
-		static if (is(ElementT == Node)) {
+		static if (is(Unqual!(ElementType!T) == Node)) {
 			children = value;
 		} else {
 			children.reserve(value.length);
@@ -115,7 +112,6 @@ struct Node {
 	}
 
 	this(T)(T value) @trusted if (isAssociativeArray!T) {
-
 		static if (is(Unqual!T : Node[string]))
 			map = value;
 		else
@@ -166,8 +162,7 @@ struct Node {
 	}
 
 	this(K, V)(K[] keys, V[] values) @trusted
-	in (keys.length == values.length,
-		"Lengths of keys and values arrays to construct a YAML node from don't match") {
+	in (keys.length == values.length, "Lengths of keys and values arrays mismatch") {
 		foreach (i, k; keys)
 			map[k.toStr] = Node(values[i]);
 		type_ = NodeType.map;
@@ -582,8 +577,8 @@ struct Node {
 		switch (type_) {
 		case NodeType.null_:
 			return 0;
-		case NodeType.boolean:
-		case NodeType.integer:
+		case NodeType.boolean,
+			NodeType.integer:
 			return cmp(as!long, rhs.as!long);
 		case NodeType.decimal:
 			const r1 = as!double;
@@ -625,9 +620,9 @@ struct Node {
 		switch (type_) {
 		case NodeType.null_:
 			return 0;
-		case NodeType.boolean:
-		case NodeType.integer:
-		case NodeType.decimal:
+		case NodeType.boolean,
+			NodeType.integer,
+			NodeType.decimal:
 			return cast(hash_t)(~type_ ^ *cast(long*)&p);
 		case NodeType.timestamp:
 			return time.toHash();

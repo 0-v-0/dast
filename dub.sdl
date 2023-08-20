@@ -15,7 +15,7 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 	configuration "full" {
 		versions "HaveTimer"
 	}
@@ -35,7 +35,7 @@ subPackage {
 	sourceFiles "dast/fcgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 	dflags "-preview=in"
 }
 subPackage {
@@ -50,7 +50,7 @@ subPackage {
 	sourceFiles "dast/http1.d"
 	importPaths "."
 	dependency "dast:http" path="."
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 	dflags "-dip1008" "-preview=in"
 }
 subPackage {
@@ -72,14 +72,14 @@ subPackage {
 	sourceFiles "dast/util.d"
 	importPaths "."
 	dependency "database:util" version="*" optional=true
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 }
 subPackage {
 	name "uwsgi"
 	sourceFiles "dast/uwsgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 	dflags "-preview=in" "-dip1008"
 }
 subPackage {
@@ -89,7 +89,7 @@ subPackage {
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
-	dependency "tame" version="~>0.0.3"
+	dependency "tame" version="~>0.0.4"
 	configuration "full" {
 		subConfiguration "dast:async" "full"
 	}
@@ -103,7 +103,7 @@ subPackage {
 	importPaths "."
 	dflags "-dip1008"
 	dependency "tame:lockfree" version="*"
-	dependency "lmpl4d" version="~>0.0.8"
+	dependency "lmpl4d" version="~>0.0.9"
 	dependency "dast:ws" path="."
 }
 dependency ":config" path="."
