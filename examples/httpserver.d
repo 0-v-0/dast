@@ -20,7 +20,7 @@ void main() {
 	listener.bind(new InternetAddress("127.0.0.1", port));
 	listener.listen(128);
 	listener.onAccepted = (TcpListener sender, TcpStream client) {
-		client.onDataReceived = (in ubyte[] data) {
+		client.onReceived = (in ubyte[] data) {
 			debug writeln("received: ", cast(string)data);
 
 			enum writeData = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\nConnection: keep-alive\r\nContent-Type: text/plain" ~

@@ -5,11 +5,11 @@ version (linux):
 import dast.async.core,
 	dast.async.timer.common,
 	core.sys.posix.unistd,
+	core.sys.linux.timerfd,
 	core.time,
 	std.datetime,
 	std.exception,
 	std.socket;
-import core.sys.posix.time : itimerspec, CLOCK_MONOTONIC;
 // dfmt on
 
 abstract class TimerBase : TimerChannelBase {
@@ -38,28 +38,14 @@ abstract class TimerBase : TimerChannelBase {
 	}
 
 	bool readTimer(scope ReadCallback read) {
-		this.clearError();
+		clearError();
 		uint value;
 		core.sys.posix.unistd.read(this.handle, &value, 8);
-		this._readBuffer.data = value;
+		_readBuffer.data = value;
 		if (read)
-			read(this._readBuffer);
+			read(_readBuffer);
 		return false;
 	}
 
 	UintObject _readBuffer;
 }
-
-/**
-C APIs for timerfd
-*/
-enum {
-	TFD_TIMER_ABSTIME = 1 << 0,
-	TFD_CLOEXEC = 0x80000,
-	TFD_NONBLOCK = 0x800
-}
-
-extern (C):
-socket_t timerfd_create(int clockid, int flags) nothrow;
-int timerfd_settime(int fd, int flags, const itimerspec* new_value, itimerspec* old_value) nothrow;
-int timerfd_gettime(int fd, itimerspec* curr_value) nothrow;

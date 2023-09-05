@@ -19,27 +19,27 @@ class Request {
 	char[bufferLen] buffer = void;
 	Map params;
 
-	protected Socket ipcSock;
+	protected Socket sock;
 	size_t pos, stop;
 	int requestId;
 
-	@property auto socket() => ipcSock;
+	@property auto socket() => sock;
 
 	@property void socket(Socket socket) {
 		pos = 0;
 		stop = 0;
 		params.data.clear();
-		ipcSock = socket;
+		sock = socket;
 		fillBuffer();
 		parseParams();
 	}
 
 	protected bool fillBuffer() {
 		while (pos >= stop) {
-			auto readn = ipcSock.receive(buffer[pos .. $]);
+			auto readn = sock.receive(buffer[pos .. $]);
 			if (readn <= 0) {
-				if (ipcSock.isAlive)
-					ipcSock.close();
+				if (sock.isAlive)
+					sock.close();
 				return false;
 			}
 			stop += readn;
@@ -90,10 +90,10 @@ class Response {
 	}
 
 	int requestId = void;
-	protected Socket ipcSock = void;
+	protected Socket sock = void;
 
 	void initialize(Socket socket, int reqId) pure @nogc nothrow @safe {
-		ipcSock = socket;
+		sock = socket;
 		requestId = reqId;
 		headerSent = false;
 		head.clear();
@@ -127,16 +127,16 @@ class Response {
 			if (!head.length)
 				writeHeader("Content-Type: text/html");
 			head ~= "\r\n";
-			ipcSock.send(head.data);
+			sock.send(head.data);
 			head.clear();
 			headerSent = true;
 		}
-		ipcSock.send(s);
+		sock.send(s);
 	}
 
 	void finish() {
 		flush();
-		ipcSock.close();
+		sock.close();
 	}
 
 	protected void throwErr(string obj)(in char[]) {

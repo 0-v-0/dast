@@ -27,10 +27,10 @@ class TimerBase : TimerChannelBase {
 	}
 
 	bool readTimer(scope ReadCallback read) {
-		this.clearError();
-		this._readBuffer.data = 1;
+		clearError();
+		_readBuffer.data = 1;
 		if (read)
-			read(this._readBuffer);
+			read(_readBuffer);
 		return false;
 	}
 

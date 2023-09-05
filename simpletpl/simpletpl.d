@@ -401,7 +401,7 @@ version (WASI) {
 	render = renderImpl;
 
 	struct Context {
-		string[string] data;
+		const(char)[][string] data;
 		alias data this;
 
 		auto opIndex(const string key) {
@@ -410,13 +410,13 @@ version (WASI) {
 			return null;
 		}
 
-		void opIndexAssign(const string value, const string key) pure {
+		void opIndexAssign(const char[] value, const string key) pure {
 			data[key] = value;
 		}
 
 		auto opDispatch(string key)() => this[key];
 
-		auto opDispatch(string key)(const string value) => data[key] = value;
+		auto opDispatch(string key)(const char[] value) => data[key] = value;
 
 		void free() nothrow @nogc {
 			destroy!false(data);
@@ -462,7 +462,7 @@ version (WASI) {
 			key = key[1 .. $];
 
 		foreach_reverse (x; data)
-			if (auto p = cast(string)key in x) {
+			if (auto p = key in x) {
 				value = *p;
 				break;
 			}
@@ -491,9 +491,6 @@ version (WASI) {
 		import std.array;
 
 		auto app = appender!T;
-
-		
-
 		.data = [data];
 		renderImpl!getContent(app, tpl, maxDepth);
 		return app[];
@@ -514,8 +511,6 @@ unittest {
 	data["m.x"] = "a";
 	data["m.y"] = "foo";
 	data["m.n"] = "bar";
-
-	
 
 	.data = [data];
 	test("a $a $n $b $:b", "a 55 $n &lt; <");

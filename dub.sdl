@@ -40,9 +40,9 @@ subPackage {
 }
 subPackage {
 	name "http"
-	sourceFiles "dast/http.d"
+	sourcePaths "dast/http"
 	importPaths "."
-	dependency "dast:map" path="."
+	dependency "tame" version="~>0.0.4"
 	dflags "-preview=in"
 }
 subPackage {

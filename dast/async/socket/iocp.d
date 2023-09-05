@@ -35,13 +35,13 @@ abstract class ListenerBase : SocketChannelBase {
 		debug (Log)
 			tracef("client socket:accept=%s  inner socket=%s", handle, _clientSocket.handle);
 		debug (Log)
-			trace("AcceptEx is :  ", AcceptEx);
+			trace("AcceptEx is: ", AcceptEx);
 		int nRet = AcceptEx(handle, cast(SOCKET)_clientSocket.handle,
 			_buffer.ptr, 0, sockaddr_in.sizeof + 16, sockaddr_in.sizeof + 16,
 			&dwBytesReceived, &_iocp.overlapped);
 
 		debug (Log)
-			trace("do AcceptEx : the return is : ", nRet);
+			trace("do AcceptEx: the return is: ", nRet);
 		checkErro(nRet);
 	}
 
@@ -81,7 +81,7 @@ alias AcceptorBase = ListenerBase;
 
 /** TCP Client */
 abstract class StreamBase : SocketChannelBase {
-	DataReceivedHandler onDataReceived;
+	DataReceivedHandler onReceived;
 	DataWrittenHandler sentHandler;
 
 	protected this() {
@@ -186,8 +186,8 @@ abstract class StreamBase : SocketChannelBase {
 			// import std.stdio;
 			// writefln("length=%d, data: %(%02X %)", readLen, _readBuffer[0 .. readLen]);
 
-			if (onDataReceived)
-				onDataReceived(_readBuffer[0 .. readLen]);
+			if (onReceived)
+				onReceived(_readBuffer[0 .. readLen]);
 			debug (Log)
 				tracef("done with data reading...%d nbytes", readLen);
 
@@ -283,7 +283,7 @@ abstract class StreamBase : SocketChannelBase {
 		}
 
 		if (writeBuffer.popSize(nBytes)) {
-			if (_writeQueue.dequeue() is null)
+			if (!_writeQueue.dequeue())
 				warning("_writeQueue is empty!");
 
 			writeBuffer.doFinish();
@@ -326,124 +326,9 @@ abstract class StreamBase : SocketChannelBase {
 private:
 	const(ubyte)[] _readBuffer, sendDataBuffer;
 	StreamWriteBuffer* writeBuffer;
-
 	IocpContext _iocpread, _iocpwrite;
-
 	WSABUF _dataReadBuffer, _dataWriteBuffer;
-
 	bool _inWrite, _inRead;
-}
-
-/**
-UDP Socket
-*/
-abstract class DatagramSocketBase : SocketChannelBase {
-	/// Constructs a blocking IPv4 UDP Socket.
-	this(Selector loop, AddressFamily family = AddressFamily.INET) {
-		import std.array;
-
-		super(loop, WatcherType.UDP);
-		setFlag(WatchFlag.Read, true);
-		setFlag(WatchFlag.ETMode, false);
-
-		socket = new UdpSocket(family);
-		_readBuffer = new UdpDataObject;
-		_readBuffer.data = uninitializedArray!(ubyte[])(4096 * 2);
-
-		if (family == AddressFamily.INET)
-			_bindAddress = new InternetAddress(InternetAddress.PORT_ANY);
-		else if (family == AddressFamily.INET6)
-			_bindAddress = new Internet6Address(Internet6Address.PORT_ANY);
-		else
-			_bindAddress = new UnknownAddress;
-	}
-
-	final void bind(Address addr) {
-		if (_binded)
-			return;
-		_bindAddress = addr;
-		socket.bind(_bindAddress);
-		_binded = true;
-	}
-
-	@property @safe {
-		final bool isBind() => _binded;
-
-		Address bindAddr() => _bindAddress;
-	}
-
-	override void start() {
-		if (!_binded) {
-			socket.bind(_bindAddress);
-			_binded = true;
-		}
-	}
-
-	// abstract void doRead();
-
-	private UdpDataObject _readBuffer;
-	protected bool _binded;
-	protected Address _bindAddress;
-
-	version (Windows) {
-		mixin CheckIocpError;
-
-		void doRead() {
-			debug (Log)
-				trace("Receiving......");
-
-			_dataReadBuffer.len = cast(uint)_readBuffer.data.length;
-			_dataReadBuffer.buf = cast(char*)_readBuffer.data.ptr;
-			_iocpread.watcher = this;
-			_iocpread.operation = IocpOperation.read;
-			remoteAddrLen = cast(int)bindAddr.nameLen;
-
-			DWORD dwReceived;
-			DWORD dwFlags;
-
-			int nRet = WSARecvFrom(cast(SOCKET)handle, &_dataReadBuffer,
-				1, &dwReceived, &dwFlags, cast(SOCKADDR*)&remoteAddr, &remoteAddrLen,
-				&_iocpread.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
-			checkErro(nRet, SOCKET_ERROR);
-		}
-
-		Address buildAddress() {
-			Address tmpaddr;
-			if (remoteAddrLen == 32) {
-				sockaddr_in* addr = cast(sockaddr_in*)&remoteAddr;
-				tmpaddr = new InternetAddress(*addr);
-			} else {
-				sockaddr_in6* addr = cast(sockaddr_in6*)&remoteAddr;
-				tmpaddr = new Internet6Address(*addr);
-			}
-			return tmpaddr;
-		}
-
-		bool tryRead(scope ReadCallback read) {
-			clearError();
-			if (readLen == 0)
-				read(null);
-			else {
-				auto data = _readBuffer.data;
-				_readBuffer.data = data[0 .. readLen];
-				_readBuffer.addr = buildAddress();
-				scope (exit)
-					_readBuffer.data = data;
-				read(_readBuffer);
-				_readBuffer.data = data;
-				if (isRegistered)
-					doRead();
-			}
-			return false;
-		}
-
-		IocpContext _iocpread;
-		WSABUF _dataReadBuffer;
-
-		sockaddr remoteAddr;
-		int remoteAddrLen;
-	}
-
 }
 
 mixin template CheckIocpError() {
@@ -493,31 +378,24 @@ __gshared {
 }
 
 shared static this() {
-	auto listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	auto sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	scope (exit)
-		closesocket(listenSocket);
-	mixin(GET_FUNC_POINTER!("AcceptEx", "WSAID_ACCEPTEX"));
-	mixin(GET_FUNC_POINTER!("ConnectEx", "WSAID_CONNECTEX"));
-	/* mixin(GET_FUNC_POINTER("DisconnectEx", "WSAID_DISCONNECTEX"));
-	mixin(GET_FUNC_POINTER("GetAcceptexSockAddrs", "WSAID_GETACCEPTEXSOCKADDRS", ));
-	mixin(GET_FUNC_POINTER("TransmitFile", "WSAID_TRANSMITFILE", ));
-	mixin(GET_FUNC_POINTER("TransmitPackets", "WSAID_TRANSMITPACKETS"));
-	mixin(GET_FUNC_POINTER("WSARecvMsg", "WSAID_WSARECVMSG")); */
+		closesocket(sock);
+	sock.getFuncPointer!AcceptEx(WSAID_ACCEPTEX);
+	sock.getFuncPointer!ConnectEx(WSAID_CONNECTEX);
+	/* sock.getFuncPointer!DisconnectEx(WSAID_DISCONNECTEX);
+	sock.getFuncPointer!GetAcceptexSockAddrs(WSAID_GETACCEPTEXSOCKADDRS);
+	sock.getFuncPointer!TransmitFile(WSAID_TRANSMITFILE);
+	sock.getFuncPointer!TransmitPackets(WSAID_TRANSMITPACKETS);
+	sock.getFuncPointer!WSARecvMsg(WSAID_WSARECVMSG); */
 }
 
-private {
-	bool getFunctionPointer(FuncPointer)(SOCKET sock, ref FuncPointer pfn, GUID guid) {
-		DWORD dwBytesReturned;
-		if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
-				&pfn, pfn.sizeof, &dwBytesReturned, null, null) == SOCKET_ERROR) {
-			error("Get function failed with error:", GetLastError());
-			return false;
-		}
-		return true;
+private void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
+	DWORD dwBytesReturned;
+	if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
+			&pfn, pfn.sizeof, &dwBytesReturned, null, null) == SOCKET_ERROR) {
+		throw new ErrnoException("Get function failed", WSAGetLastError());
 	}
-
-	enum GET_FUNC_POINTER(string pft, string guid) =
-		"errnoEnforce(getFunctionPointer(listenSocket, " ~ pft ~ ", " ~ guid ~ "), \"get function error!\");";
 }
 
 enum : DWORD {
@@ -535,35 +413,9 @@ enum {
 	IOC_VENDOR = 0x18000000
 }
 
-enum _WSAIO(int x, int y) = IOC_VOID | x | y;
-
-enum _WSAIOR(int x, int y) = IOC_OUT | x | y;
-
-enum _WSAIOW(int x, int y) = IOC_IN | x | y;
-
 enum _WSAIORW(int x, int y) = IOC_INOUT | x | y;
 
-enum {
-	SIO_ASSOCIATE_HANDLE = _WSAIOW!(IOC_WS2, 1),
-	SIO_ENABLE_CIRCULAR_QUEUEING = _WSAIO!(IOC_WS2, 2),
-	SIO_FIND_ROUTE = _WSAIOR!(IOC_WS2, 3),
-	SIO_FLUSH = _WSAIO!(IOC_WS2, 4),
-	SIO_GET_BROADCAST_ADDRESS = _WSAIOR!(IOC_WS2, 5),
-	SIO_GET_EXTENSION_FUNCTION_POINTER = _WSAIORW!(IOC_WS2, 6),
-	SIO_GET_QOS = _WSAIORW!(IOC_WS2, 7),
-	SIO_GET_GROUP_QOS = _WSAIORW!(IOC_WS2, 8),
-	SIO_MULTIPOINT_LOOPBACK = _WSAIOW!(IOC_WS2, 9),
-	SIO_MULTICAST_SCOPE = _WSAIOW!(IOC_WS2, 10),
-	SIO_SET_QOS = _WSAIOW!(IOC_WS2, 11),
-	SIO_SET_GROUP_QOS = _WSAIOW!(IOC_WS2, 12),
-	SIO_TRANSLATE_HANDLE = _WSAIORW!(IOC_WS2, 13),
-	SIO_ROUTING_INTERFACE_QUERY = _WSAIORW!(IOC_WS2, 20),
-	SIO_ROUTING_INTERFACE_CHANGE = _WSAIOW!(IOC_WS2, 21),
-	SIO_ADDRESS_LIST_QUERY = _WSAIOR!(IOC_WS2, 22),
-	SIO_ADDRESS_LIST_CHANGE = _WSAIO!(IOC_WS2, 23),
-	SIO_QUERY_TARGET_PNP_HANDLE = _WSAIOR!(IOC_WS2, 24),
-	SIO_NSP_NOTIFY_CHANGE = _WSAIOW!(IOC_WS2, 25)
-}
+enum SIO_GET_EXTENSION_FUNCTION_POINTER = _WSAIORW!(IOC_WS2, 6);
 
 extern (Windows) nothrow @nogc:
 

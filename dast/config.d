@@ -17,12 +17,12 @@ Node readyml(string content, bool preprocess = PP) {
 			executePPParser(file);
 			auto edata = EvaluateData(file);
 			static foreach (s; [
-					"Windows", "Win32", "Win64", "linux", "OSX", "iOS", "TVOS",
-					"Posix", "Android", "Emscripten", "PlayStation",
-					"PlayStation4",
-					"Cygwin", "MinGW", "X86", "X86_64", "ARM", "AArch64",
-					"LittleEndian", "BigEndian", "D_SIMD", "D_AVX", "D_AVX2"
-				]) {
+				"Windows", "Win32", "Win64", "linux", "OSX", "iOS", "TVOS",
+				"Posix", "Android", "Emscripten", "PlayStation",
+				"PlayStation4",
+				"Cygwin", "MinGW", "X86", "X86_64", "ARM", "AArch64",
+				"LittleEndian", "BigEndian", "D_SIMD", "D_AVX", "D_AVX2"
+			]) {
 				mixin("version(", s, `) edata.defineValues[s] = "1";`);
 			}
 			executeEvaulator(edata);
@@ -33,7 +33,7 @@ Node readyml(string content, bool preprocess = PP) {
 	return loadyml(content);
 }
 
-void readcfg(alias s)(string path = null, bool preprocess = PP) {
+void readcfgEnv(alias s)(string path = null, bool preprocess = PP) {
 	import std.conv : to;
 	import std.file : read;
 	import std.process : environment;
@@ -60,5 +60,21 @@ void readcfg(alias s)(string path = null, bool preprocess = PP) {
 			writeln(e);
 		catch (Exception) {
 		}
+	}
+}
+
+void readcfg(alias s, S)(S path = null, bool preprocess = PP) {
+	import std.conv : to;
+	import std.file : read;
+	import dast.util;
+
+	Node root = Node(string[string].init);
+	if (path.length)
+		root = readyml(cast(string)read(path), preprocess);
+
+	foreach (i, ref f; s.tupleof) {
+		enum key = KeyName!(s.tupleof[i]);
+		if (key in root)
+			f = root[key].as!(typeof(f));
 	}
 }

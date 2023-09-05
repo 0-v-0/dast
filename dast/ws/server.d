@@ -127,7 +127,7 @@ class WebSocketServer : ListenerBase {
 					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
 
 				auto client = new TcpStream(_inLoop, socket, _bufferSize);
-				client.onDataReceived = (in ubyte[] data) {
+				client.onReceived = (in ubyte[] data) {
 					onReceive(WSClient(client), data);
 				};
 				client.onClosed = () { remove(WSClient(client).id); };

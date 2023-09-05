@@ -16,14 +16,11 @@ alias AcceptEventHandler = void delegate(TcpListener sender, TcpStream stream);
 alias PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket, size_t bufferSize);
 
 class TcpListener : ListenerBase {
+	import tame.meta;
+
 	private size_t _bufferSize = 4 * 1024;
 
-	ref auto opDispatch(string member, Args...)(auto ref Args args) {
-		static if (Args.length)
-			mixin("return _socket.", member, "(", args, ");");
-		else
-			mixin("return _socket.", member, ";");
-	}
+	mixin Forward!"_socket";
 
 	/// event handlers
 	AcceptEventHandler onAccepted;
@@ -64,11 +61,9 @@ class TcpListener : ListenerBase {
 					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
 
 				if (onAccepted) {
-					TcpStream stream = void;
-					if (onPeerCreating)
-						stream = onPeerCreating(this, socket, _bufferSize);
-					else
-						stream = new TcpStream(_inLoop, socket, _bufferSize);
+					auto stream = onPeerCreating ?
+						onPeerCreating(this, socket, _bufferSize) : new TcpStream(
+							_inLoop, socket, _bufferSize);
 
 					onAccepted(this, stream);
 					stream.start();

@@ -82,8 +82,8 @@ abstract class StreamBase : SocketChannelBase {
 			trace("read nbytes...", len);
 
 		if (len > 0) {
-			if (onDataReceived)
-				onDataReceived(_readBuffer[0 .. len]);
+			if (onReceived)
+				onReceived(_readBuffer[0 .. len]);
 
 			// It's prossible that more data are wainting for read in inner buffer.
 			if (len == _readBuffer.length)
@@ -239,76 +239,5 @@ abstract class StreamBase : SocketChannelBase {
 	* Warning: The received data is stored a inner buffer. For a data safe,
 	* you would make a copy of it.
 	*/
-	DataReceivedHandler onDataReceived;
-}
-
-/**
-UDP Socket
-*/
-abstract class DatagramSocketBase : SocketChannelBase {
-	this(Selector loop, AddressFamily family = AddressFamily.INET, int bufferSize = 4096 * 2) {
-		import std.array;
-
-		super(loop, WatcherType.UDP);
-		setFlag(WatchFlag.Read, true);
-		setFlag(WatchFlag.ETMode, false);
-
-		socket = new UdpSocket(family);
-		// _socket.blocking = false;
-		_readBuffer = new UdpDataObject;
-		_readBuffer.data = uninitializedArray!(ubyte[])(bufferSize);
-
-		if (family == AddressFamily.INET)
-			_bindAddress = new InternetAddress(InternetAddress.PORT_ANY);
-		else if (family == AddressFamily.INET6)
-			_bindAddress = new Internet6Address(Internet6Address.PORT_ANY);
-		else
-			_bindAddress = new UnknownAddress;
-	}
-
-	final void bind(Address addr) {
-		if (!_binded) {
-			_bindAddress = addr;
-			socket.bind(_bindAddress);
-			_binded = true;
-		}
-	}
-
-	final bool isBind() => _binded;
-
-	Address bindAddr() => _bindAddress;
-
-protected:
-	UdpDataObject _readBuffer;
-	bool _binded;
-	Address _bindAddress;
-
-	bool tryRead(scope ReadCallback read) {
-		scope Address createAddress() {
-			if (AddressFamily.INET == socket.addressFamily)
-				return new InternetAddress;
-			if (AddressFamily.INET6 == socket.addressFamily)
-				return new Internet6Address;
-			throw new AddressException(
-				"Unsupported addressFamily. It can only be AddressFamily.INET or AddressFamily.INET6");
-		}
-
-		_readBuffer.addr = createAddress();
-		auto data = _readBuffer.data;
-		scope (exit)
-			_readBuffer.data = data;
-		auto len = socket.receiveFrom(_readBuffer.data, _readBuffer.addr);
-		if (len > 0) {
-			_readBuffer.data = _readBuffer.data[0 .. len];
-			read(_readBuffer);
-		}
-		return false;
-	}
-
-public:
-	override void onWriteDone() {
-		// notified by kqueue selector when data writing done
-		debug (Log)
-			tracef("done with data writing");
-	}
+	DataReceivedHandler onReceived;
 }

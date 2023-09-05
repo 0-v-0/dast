@@ -1,4 +1,4 @@
-module dast.http1;
+module dast.http.server;
 
 // dfmt off
 import core.thread,
@@ -9,33 +9,32 @@ public import dast.http : HTTPRequest = Request, Status;
 
 class Request {
 	enum bufferLen = 4 << 10;
-	char[bufferLen] buffer = void;
+	ubyte[bufferLen] buffer = void;
 	HTTPRequest request;
-	alias request this;
 
-	protected Socket ipcSock;
+	protected Socket sock;
 	size_t stop;
 	int requestId;
 
-	@property auto params() => headers;
+	@property auto headers() => request.headers;
 
-	@property auto socket() => ipcSock;
+	@property auto socket() => sock;
 
 	@property void socket(Socket socket) {
 		static id = 0;
 		stop = 0;
-		params.data.clear();
-		ipcSock = socket;
+		headers.data.clear();
+		sock = socket;
 		if (fillBuffer())
 			requestId = id++;
 	}
 
 	protected bool fillBuffer() {
 		while (!request.tryParse(buffer[0 .. stop])) {
-			auto readn = ipcSock.receive(buffer[stop .. $]);
+			auto readn = sock.receive(buffer[stop .. $]);
 			if (readn <= 0) {
-				if (ipcSock.isAlive)
-					ipcSock.close();
+				if (sock.isAlive)
+					sock.close();
 				return false;
 			}
 			stop += readn;
@@ -63,10 +62,10 @@ class Response {
 	}
 
 	int requestId = void;
-	protected Socket ipcSock = void;
+	protected Socket sock = void;
 
 	void initialize(Socket socket, int reqId, bool keepConn) pure @nogc nothrow @safe {
-		ipcSock = socket;
+		sock = socket;
 		requestId = reqId;
 		headerSent = false;
 		keepConnection = keepConn;
@@ -101,7 +100,7 @@ class Response {
 			if (!head.length)
 				writeHeader("Content-Type: text/html");
 			head ~= "Transfer-Encoding: chunked\r\n\r\n";
-			ipcSock.send(head.data);
+			sock.send(head.data);
 			head.clear();
 			headerSent = true;
 		}
@@ -109,16 +108,16 @@ class Response {
 		auto p = intToHex(b.ptr, s.length);
 		*p = '\r';
 		*(p + 1) = '\n';
-		ipcSock.send(b[0 .. p - b.ptr + 2]);
-		ipcSock.send(s);
-		ipcSock.send("\r\n");
+		sock.send(b[0 .. p - b.ptr + 2]);
+		sock.send(s);
+		sock.send("\r\n");
 	}
 
 	void finish() {
 		flush();
-		ipcSock.send("0\r\n\r\n");
+		sock.send("0\r\n\r\n");
 		if (keepConnection)
-			ipcSock.close();
+			sock.close();
 	}
 
 	protected void throwErr(string obj)(in char[]) {
@@ -190,7 +189,7 @@ class Server {
 					break;
 				}
 			req.socket = sock;
-			resp.initialize(sock, req.requestId, icompare(req.params.connection, "close") == 0);
+			resp.initialize(sock, req.requestId, req.headers.connection == "close");
 			try
 				handler(req, resp);
 			catch (Exception e) {
@@ -199,14 +198,13 @@ class Server {
 				resp.buf.clear();
 				resp.writeHeader("HTTP/1.1 500 Internal Server Error");
 				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
-				resp << e.toString;
+				resp << e.toString();
 			}
 			resp.finish();
 		}
 	}
 
 	void start(ushort port = 3031, uint maxThread = 1) {
-
 		listener = new TcpSocket;
 		listener.bind(new InternetAddress("127.0.0.1", port));
 		listener.listen(128);

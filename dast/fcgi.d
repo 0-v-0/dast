@@ -112,7 +112,7 @@ class Request {
 	size_t contentLength;
 	Map params;
 
-	protected Socket ipcSock;
+	protected Socket sock;
 	// dfmt off
 	ubyte	paddingLength;
 	size_t	next,
@@ -122,11 +122,11 @@ class Request {
 	protected bool* ipcSockClosed;
 	// dfmt on
 
-	@property auto socket() => ipcSock;
+	@property auto socket() => sock;
 
 	ubyte initialize(Socket socket, bool* sockClosed) {
 		params.data.clear();
-		ipcSock = socket;
+		sock = socket;
 		ipcSockClosed = sockClosed;
 		next = 0;
 		stop = 0;
@@ -137,11 +137,11 @@ class Request {
 
 	protected bool fillBuffer() {
 		if (next == stop) {
-			auto readn = ipcSock.receive(buffer[next .. $]);
+			auto readn = sock.receive(buffer[next .. $]);
 			if (readn == Socket.ERROR)
 				return false;
 			if (readn == 0) {
-				ipcSock.close();
+				sock.close();
 				*ipcSockClosed = true;
 				return false;
 			}
@@ -249,10 +249,10 @@ class Response {
 
 	int requestId;
 	ubyte keepConnection;
-	protected Socket ipcSock;
+	protected Socket sock;
 
 	void initialize(Socket socket, bool* sockClosed, int reqId) pure @nogc nothrow @safe {
-		ipcSock = socket;
+		sock = socket;
 		ipcSockClosed = sockClosed;
 		requestId = reqId;
 		headerSent = false;
@@ -300,9 +300,9 @@ class Response {
 		EndRequestBody endBody;
 		buf ~= endHeader;
 		buf ~= endBody;
-		ipcSock.send(buf.data);
+		sock.send(buf.data);
 		if (!keepConnection) {
-			ipcSock.close();
+			sock.close();
 			*ipcSockClosed = true;
 		}
 	}
@@ -316,9 +316,9 @@ class Response {
 		alignLength = align8(contentLength);
 		auto header = Header(RequestType.Stdout, contentLength, requestId, cast(ubyte)(
 				alignLength - contentLength));
-		return cast(int)(ipcSock.send(
+		return cast(int)(sock.send(
 				(cast(char*)&header)[0 .. Header.sizeof]) +
-				ipcSock.send(str.ptr[0 .. alignLength]));
+				sock.send(str.ptr[0 .. alignLength]));
 	}
 }
 
@@ -330,7 +330,7 @@ class FCGIServer {
 	protected Handler handler;
 	bool running;
 	Socket listener;
-	Socket ipcSock;
+	Socket sock;
 	alias ipcSockClosed = running;
 	protected Tid mainTid;
 	Thread[] threads;
@@ -339,7 +339,7 @@ class FCGIServer {
 		if (ipcSockClosed)
 			synchronized (listener) {
 				try
-					ipcSock = listener.accept();
+					sock = listener.accept();
 				catch (SocketAcceptException)
 					return false;
 				ipcSockClosed = false;
@@ -365,8 +365,8 @@ class FCGIServer {
 		scope resp = new Response;
 
 		while (accept()) {
-			resp.keepConnection = req.initialize(ipcSock, &ipcSockClosed);
-			resp.initialize(ipcSock, &ipcSockClosed, req.requestId);
+			resp.keepConnection = req.initialize(sock, &ipcSockClosed);
+			resp.initialize(sock, &ipcSockClosed, req.requestId);
 			try
 				handler(req, resp);
 			catch (Exception e) {

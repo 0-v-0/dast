@@ -98,7 +98,7 @@ abstract class Channel {
 		next._priv = this;
 		if (_next)
 			_next._priv = next;
-		this._next = next;
+		_next = next;
 	}
 
 	void clear() nothrow {

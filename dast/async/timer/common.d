@@ -6,7 +6,7 @@ import std.exception;
 
 enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;
-enum CustomTimer_Next_Timeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
+enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
 alias UintObject = BaseTypeObject!uint;
 
@@ -194,12 +194,12 @@ unittest {
 	import core.thread;
 	import std.exception;
 
-	@trusted class TestWheelTimer : WheelTimer {
+	class TestWheelTimer : WheelTimer {
 		this() {
 			time = Clock.currTime;
 		}
 
-		override void onTimeout() nothrow {
+		override void onTimeout() nothrow @trusted {
 			collectException(writeln("\nname is ", name, " \tcutterTime is : ",
 					Clock.currTime.toSimpleString(), "\t new time is : ", time.toSimpleString()));
 		}

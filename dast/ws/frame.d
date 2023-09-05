@@ -253,10 +253,10 @@ unittest { // test some funky streaming
 }
 
 unittest { // test edge-case length=127
-	ubyte[] data;
+	ubyte[127] data = void;
 	for (size_t i = 0; i < 127; i++)
-		data ~= cast(ubyte)i;
-	auto f = Frame(true, Op.BINARY, false, State.done, [0, 0, 0, 0], data.length, data);
+		data[i] = cast(ubyte)i;
+	auto f = Frame(true, Op.BINARY, false, State.done, [0, 0, 0, 0], data.length, data[]);
 	auto _f = 3.parse(f.serialize);
 	assert(f == _f);
 }

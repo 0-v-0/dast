@@ -87,7 +87,7 @@ private void loop(shared TcpSocket listener, shared ReqHandler handler = null) {
 						bdy ~= tmp[0 .. nbytes];
 					}
 				}
-				if (handler !is null && s.isAlive) {
+				if (handler && s.isAlive) {
 					req.message = cast(string)bdy;
 					s.send(handler(req));
 					//if (auto p = "connection" in req.headers)
