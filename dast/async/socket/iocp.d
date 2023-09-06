@@ -203,7 +203,6 @@ abstract class StreamBase : SocketChannelBase {
 			debug (Log) {
 				warningf("undefined behavior on thread %d", getTid());
 			} else {
-				_error = true;
 				_erroString = "undefined behavior on thread";
 			}
 		}
@@ -341,7 +340,6 @@ mixin template CheckIocpError() {
 			tracef("erro=%d, dwLastError=%d", erro, dwLastError);
 
 		if (dwLastError != ERROR_IO_PENDING) {
-			_error = true;
 			_erroString = "AcceptEx failed with error: code=%d".format(dwLastError);
 		}
 	}
@@ -393,9 +391,8 @@ shared static this() {
 private void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
 	DWORD dwBytesReturned;
 	if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
-			&pfn, pfn.sizeof, &dwBytesReturned, null, null) == SOCKET_ERROR) {
+			&pfn, pfn.sizeof, &dwBytesReturned, null, null) == SOCKET_ERROR)
 		throw new ErrnoException("Get function failed", WSAGetLastError());
-	}
 }
 
 enum : DWORD {

@@ -211,16 +211,14 @@ protected:
 alias WriteBufferQueue = Queue!(StreamWriteBuffer*);
 
 package template OverrideErro() {
-	bool isError() => _error;
+	bool isError() => _erroString.length != 0;
 
 	string erroString() => _erroString;
 
 	void clearError() {
-		_error = false;
 		_erroString = "";
 	}
 
-	bool _error;
 	string _erroString;
 }
 
@@ -241,11 +239,6 @@ enum WatchFlag {
 
 	OneShot = 8,
 	ETMode = 16
-}
-
-final class UdpDataObject {
-	Address addr;
-	ubyte[] data;
 }
 
 final class BaseTypeObject(T) {

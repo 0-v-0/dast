@@ -92,7 +92,6 @@ abstract class StreamBase : SocketChannelBase {
 			// FIXME: Needing refactor or cleanup -@Administrator at 2018-5-8 16:06:13
 			// check more error status
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_error = true;
 				_erroString = cast(string)fromStringz(strerror(errno));
 			}
 
@@ -150,7 +149,6 @@ abstract class StreamBase : SocketChannelBase {
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
 				string msg = lastSocketError();
 				warningf("errno=%d, message: %s", errno, msg);
-				_error = true;
 				_erroString = msg;
 
 				errorOccurred(msg);
@@ -176,7 +174,6 @@ abstract class StreamBase : SocketChannelBase {
 				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
-				_error = true;
 				_erroString = lastSocketError();
 			}
 		}
@@ -200,7 +197,6 @@ abstract class StreamBase : SocketChannelBase {
 			// FIXME: Needing refactor or cleanup -@Administrator at 2018-5-8 16:07:38
 			// check more error status
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_error = true;
 				_erroString = lastSocketError();
 				warningf("errno=%d, message: %s", errno, _erroString);
 			}
@@ -209,7 +205,6 @@ abstract class StreamBase : SocketChannelBase {
 				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
-				_error = true;
 				_erroString = lastSocketError();
 			}
 		}

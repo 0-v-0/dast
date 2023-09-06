@@ -42,6 +42,7 @@ subPackage {
 	name "http"
 	sourcePaths "dast/http"
 	importPaths "."
+	dependency "httparsed" version="~>1.2.1"
 	dependency "tame" version="~>0.0.4"
 	dflags "-preview=in"
 }

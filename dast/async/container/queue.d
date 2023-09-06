@@ -1,7 +1,7 @@
 module dast.async.container.queue;
 
 struct Queue(T, bool check = false) if (is(typeof(null) : T)) {
-nothrow @safe:
+pure nothrow @safe:
 	@property T front() => _first;
 
 	@property bool empty() const => _first is null;
@@ -29,7 +29,7 @@ nothrow @safe:
 
 	void clear() {
 		T current = _first;
-		while (current !is null) {
+		while (current) {
 			_first = current.next;
 			current.next = null;
 			current = _first;

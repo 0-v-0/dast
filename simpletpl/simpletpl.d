@@ -463,7 +463,7 @@ version (WASI) {
 
 		foreach_reverse (x; data)
 			if (auto p = key in x) {
-				value = *p;
+				value = cast(string)*p;
 				break;
 			}
 		if (flag)
