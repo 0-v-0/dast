@@ -68,13 +68,14 @@ abstract class ListenerBase : SocketChannelBase {
 	}
 
 	override void onClose() {
-		// TODO: created by Administrator @ 2018-3-27 15:51:52
+		// TODO
 	}
 
-	private IocpContext _iocp;
-	private WSABUF _dataWriteBuffer;
-	private ubyte[] _buffer;
-	private Socket _clientSocket;
+private:
+	IocpContext _iocp;
+	WSABUF _dataWriteBuffer;
+	ubyte[] _buffer;
+	Socket _clientSocket;
 }
 
 alias AcceptorBase = ListenerBase;
@@ -165,7 +166,7 @@ abstract class StreamBase : SocketChannelBase {
 			if (dwSent != _dataWriteBuffer.len)
 				warningf("dwSent=%d, BufferLength=%d", dwSent, _dataWriteBuffer.len);
 		}
-		// FIXME: Needing refactor or cleanup -@Administrator at 2018-5-9 16:28:55
+		// FIXME: Needing refactor or cleanup
 		// The buffer may be full, so what can do here?
 		// checkErro(nRet, SOCKET_ERROR); // bug:
 
@@ -203,14 +204,12 @@ abstract class StreamBase : SocketChannelBase {
 			debug (Log) {
 				warningf("undefined behavior on thread %d", getTid());
 			} else {
-				_erroString = "undefined behavior on thread";
+				_error = "undefined behavior on thread";
 			}
 		}
 	}
 
-	// private ThreadID lastThreadID;
-
-	// TODO: created by Administrator @ 2018-4-18 10:15:20
+	// TODO
 	/// Send a big block of data
 	protected size_t tryWrite(in ubyte[] data) {
 		if (_isWritting) {
@@ -296,7 +295,7 @@ abstract class StreamBase : SocketChannelBase {
 		{
 			// debug(Log)
 			tracef("remaining nbytes: %d", sendDataBuffer.length - nBytes);
-			// FIXME: Needing refactor or cleanup -@Administrator at 2018-6-12 13:56:17
+			// FIXME: Needing refactor or cleanup
 			// sendDataBuffer corrupted
 			// const(ubyte)[] data = writeBuffer.data;
 			// tracef("%(%02X %)", data);
@@ -340,7 +339,7 @@ mixin template CheckIocpError() {
 			tracef("erro=%d, dwLastError=%d", erro, dwLastError);
 
 		if (dwLastError != ERROR_IO_PENDING) {
-			_erroString = "AcceptEx failed with error: code=%d".format(dwLastError);
+			_error = "AcceptEx failed with error: code=%d".format(dwLastError);
 		}
 	}
 }

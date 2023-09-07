@@ -54,7 +54,6 @@ abstract class StreamBase : SocketChannelBase {
 	// DataWrittenHandler sentHandler;
 
 	protected bool _isConnected; //if server side always true.
-	// alias UbyteArrayObject = BaseTypeObject!(ubyte[]);
 
 	protected this() {
 	}
@@ -72,10 +71,9 @@ abstract class StreamBase : SocketChannelBase {
 		setFlag(WatchFlag.ETMode, true);
 	}
 
-	/**
-	*/
+	///
 	protected bool tryRead() {
-		bool isDone = true;
+		bool done = true;
 		clearError();
 		ptrdiff_t len = socket.receive(cast(void[])_readBuffer);
 		debug (Log)
@@ -87,17 +85,17 @@ abstract class StreamBase : SocketChannelBase {
 
 			// It's prossible that more data are wainting for read in inner buffer.
 			if (len == _readBuffer.length)
-				isDone = false;
+				done = false;
 		} else if (len < 0) {
-			// FIXME: Needing refactor or cleanup -@Administrator at 2018-5-8 16:06:13
+			// FIXME: Needing refactor or cleanup
 			// check more error status
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_erroString = cast(string)fromStringz(strerror(errno));
+				_error = cast(string)fromStringz(strerror(errno));
 			}
 
 			debug (Log)
-				warningf("read error: isDone=%s, errno=%d, message=%s",
-					isDone, errno, cast(string)fromStringz(strerror(errno)));
+				warningf("read error: done=%s, errno=%d, message=%s",
+					done, errno, cast(string)fromStringz(strerror(errno)));
 		} else {
 			debug (Log)
 				warningf("connection broken: %s", _socket.remoteAddress);
@@ -108,7 +106,7 @@ abstract class StreamBase : SocketChannelBase {
 				close();
 		}
 
-		return isDone;
+		return done;
 	}
 
 	protected void onDisconnected() {
@@ -149,7 +147,7 @@ abstract class StreamBase : SocketChannelBase {
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
 				string msg = lastSocketError();
 				warningf("errno=%d, message: %s", errno, msg);
-				_erroString = msg;
+				_error = msg;
 
 				errorOccurred(msg);
 			} else {
@@ -174,7 +172,7 @@ abstract class StreamBase : SocketChannelBase {
 				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
-				_erroString = lastSocketError();
+				_error = lastSocketError();
 			}
 		}
 	}
@@ -194,18 +192,18 @@ abstract class StreamBase : SocketChannelBase {
 			debug (Log)
 				warningf("errno=%d, message: %s", errno, lastSocketError());
 
-			// FIXME: Needing refactor or cleanup -@Administrator at 2018-5-8 16:07:38
+			// FIXME: Needing refactor or cleanup
 			// check more error status
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_erroString = lastSocketError();
-				warningf("errno=%d, message: %s", errno, _erroString);
+				_error = lastSocketError();
+				warningf("errno=%d, message: %s", errno, _error);
 			}
 		} else {
 			debug (Log) {
 				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
-				_erroString = lastSocketError();
+				_error = lastSocketError();
 			}
 		}
 		return 0;

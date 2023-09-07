@@ -211,15 +211,15 @@ protected:
 alias WriteBufferQueue = Queue!(StreamWriteBuffer*);
 
 package template OverrideErro() {
-	bool isError() => _erroString.length != 0;
+	bool isError() => _error.length != 0;
 
-	string erroString() => _erroString;
+	string erroString() => _error;
 
 	void clearError() {
-		_erroString = "";
+		_error = "";
 	}
 
-	string _erroString;
+	string _error;
 }
 
 enum WatcherType : ubyte {

@@ -53,7 +53,7 @@ class SelectorBase : Selector {
 	}
 
 	override bool unregister(Channel watcher) {
-		// FIXME: Needing refactor or cleanup -@Administrator at 8/28/2018, 3:28:18 PM
+		// FIXME: Needing refactor or cleanup
 		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
 		//tracef("unregister (fd=%d)", watcher.handle);
 
@@ -158,7 +158,8 @@ class SelectorBase : Selector {
 	void dispose() {
 	}
 
-	private void onSocketRead(Channel wt, size_t len) {
+private:
+	void onSocketRead(Channel wt, size_t len) {
 		debug if (!wt)
 			return warning("channel is null");
 
@@ -177,7 +178,7 @@ class SelectorBase : Selector {
 		wt.onRead();
 	}
 
-	private void onSocketWrite(Channel wt, size_t len) {
+	void onSocketWrite(Channel wt, size_t len) {
 		debug if (wt is null) {
 			warning("channel is null");
 			return;
@@ -190,7 +191,6 @@ class SelectorBase : Selector {
 		client.onWriteDone(len); // Notify the client about how many bytes actually sent.
 	}
 
-private:
 	bool running;
 	HANDLE _iocpHandle;
 	EventChannel _event;

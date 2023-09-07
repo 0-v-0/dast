@@ -17,6 +17,7 @@ struct WSRequest {
 	WSClient src;
 	Unpacker!() unpacker;
 	Packer!() packer;
+	ubyte[] buf;
 	alias unpacker this;
 
 	auto send(T...)(T data) => packer.pack(data);
@@ -84,7 +85,6 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 			}
 		}
 	}
-	protected ubyte[] buf;
 
 	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
 		auto req = WSRequest(src, Unpacker!()(msg));
@@ -106,15 +106,15 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 
 	void handleRequest(ref WSRequest req) nothrow {
 		auto unpacker = &req.unpacker;
-		req.packer = packer(buf);
+		req.packer = packer(req.buf);
 		uint id = void;
 		scope (exit)
-			buf.length = 0;
+			req.buf.length = 0;
 		try
-			req.send(id = unpacker.unpack!uint);
+			req.send(id = unpacker.unpack!uint, null);
 		catch (Exception e) {
 			try
-				req.src.send(e.toString);
+				req.src.send(e.toString());
 			catch (Exception) {
 			}
 			return;
@@ -161,7 +161,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 				throw new Exception("Unknown action \"" ~ action ~ "\"");
 			}
 		} catch (Exception e) {
-			buf.length = 0;
+			req.buf.length = 0;
 			req.send(id, e.msg);
 		}
 		req.src.send(req.packer[]);

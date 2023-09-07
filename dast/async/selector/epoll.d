@@ -37,8 +37,6 @@ class SelectorBase : Selector {
 		close(_epollFD);
 	}
 
-	private bool isDisposed;
-
 	override bool register(Channel watcher)
 	in (watcher) {
 		version (HaveTimer)
@@ -140,25 +138,26 @@ protected:
 
 	bool isWrite(uint events) nothrow => (events & EPOLLOUT) != 0;
 
-	static epoll_event buildEpollEvent(Channel watch) {
-		epoll_event ev;
-		ev.data.ptr = cast(void*)watch;
-		ev.events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
-		if (watch.flag(WatchFlag.Read))
-			ev.events |= EPOLLIN;
-		if (watch.flag(WatchFlag.Write))
-			ev.events |= EPOLLOUT;
-		if (watch.flag(WatchFlag.OneShot))
-			ev.events |= EPOLLONESHOT;
-		if (watch.flag(WatchFlag.ETMode))
-			ev.events |= EPOLLET;
-		return ev;
-	}
-
 private:
+	bool isDisposed;
 	bool running;
 	int _epollFD;
 	EventChannel _event;
+}
+
+epoll_event buildEpollEvent(Channel watch) {
+	epoll_event ev;
+	ev.data.ptr = cast(void*)watch;
+	ev.events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
+	if (watch.flag(WatchFlag.Read))
+		ev.events |= EPOLLIN;
+	if (watch.flag(WatchFlag.Write))
+		ev.events |= EPOLLOUT;
+	if (watch.flag(WatchFlag.OneShot))
+		ev.events |= EPOLLONESHOT;
+	if (watch.flag(WatchFlag.ETMode))
+		ev.events |= EPOLLET;
+	return ev;
 }
 
 class EpollEventChannel : EventChannel {
