@@ -27,7 +27,7 @@ struct WSClient {
 			import std.string : representation;
 
 			auto bytes = msg.representation;
-			auto frame = Frame(true, Op.TEXT, false, State.done, [0, 0, 0, 0], msg.length, bytes);
+			auto frame = Frame(true, Op.TEXT, false, State.done, [0, 0, 0, 0], bytes.length, bytes);
 		} else {
 			alias bytes = msg;
 			auto frame = Frame(true, Op.BINARY, false, State.done, [0, 0, 0, 0], msg.length, msg);

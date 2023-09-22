@@ -4,13 +4,13 @@ struct Map {
 	string[string] data;
 	alias data this;
 @safe nothrow:
-	auto opIndex(in string key) const {
+	auto opIndex(in char[] key) const {
 		if (auto p = key in data)
 			return *p;
 		return null;
 	}
 
-	void opIndexAssign(in string value, in string key) pure {
+	void opIndexAssign(in string value, in char[] key) pure {
 		data[key] = value;
 	}
 

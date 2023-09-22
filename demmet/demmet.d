@@ -186,7 +186,7 @@ enum {
 public:
 
 // two fns for counting single line nest tokens (.a>.b^.c)
-int countChar(in string input, char c) nothrow {
+int countChar(in char[] input, char c) nothrow {
 	int t;
 	for (size_t n; n < input.length; n++)
 		if (input[n] == c)
@@ -203,7 +203,7 @@ int countTokens(string str, char c) {
 	return str.replaceAll(re1, "").replaceAll(re2, "").replaceAll(re3, "").countChar(c);
 }
 
-int getTabLevel(string e, string indent = "") {
+int getTabLevel(string e, in char[] indent = "") {
 	int i;
 	if (indent.length)
 		e = e.replace(indent, "\t");
@@ -213,9 +213,9 @@ int getTabLevel(string e, string indent = "") {
 }
 
 // make `^>+` out of tabs (normally emmet does nesting like ".a>.b" and unnesting like ".b^.a_sibling", now we can use tabs)
-string extractTabs(string input, string indent = "") {
+string extractTabs(string input, in char[] indent = "") {
 	int r = -1, l;
-	auto res = appender!(char[]);
+	auto res = appender!string;
 	for (size_t i; i < input.length;) {
 		size_t j = i;
 		loop: do {
@@ -262,7 +262,7 @@ string extractTabs(string input, string indent = "") {
 		}
 		res ~= str;
 	}
-	return cast(string)res[];
+	return res[];
 }
 
 unittest {
@@ -280,11 +280,11 @@ span`);
 }`, str);
 }
 
-string emmet(S)(S input, S indent = "") if (isSomeString!S)
+string emmet(S : const(char)[])(S input, S indent = "")
 	=> zencode(indent.length ? extractTabs(input, indent) : input);
 
-private string zencode(S)(S input) if (isSomeString!S) {
-	static string closeTag(string tag) {
+private string zencode(S : const(char)[])(S input) {
+	static closeTag(string tag) {
 		enum noCloseTags = ctRegex!(
 				`^!|^(area|base|br|col|embed|frame|hr|img|input|link|meta|param|source|wbr)\b`, "i");
 		if (tag.length && !tag.matchFirst(noCloseTags))

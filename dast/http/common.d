@@ -13,25 +13,22 @@ enum Status {
 }
 
 struct Headers {
-	string[string] data;
+	const(char)[][const(char)[]] data;
 	alias data this;
 
-	auto opIndex(in string key) const {
+	auto opIndex(in char[] key) const {
 		if (auto p = key in data)
 			return *p;
 		return null;
 	}
 
-	void opIndexAssign(in string value, in string key) pure @trusted nothrow {
-		import core.stdc.stdlib;
-
-		auto s = toLower((cast(char*)alloca(key.length))[0 .. key.length]);
-		data[s.idup] = value;
+	void opIndexAssign(in char[] value, in char[] key) pure @trusted nothrow {
+		data[cast(string)toLower(key.dup)] = value;
 	}
 
 	auto opDispatch(string key)() const => this[key];
 
-	auto opDispatch(string key)(string value) => data[key] = value;
+	auto opDispatch(string key)(in char[] value) => data[key] = value;
 }
 
 struct Request {
@@ -39,13 +36,17 @@ struct Request {
 	Headers headers;
 	const(char)[] message;
 
-@safe pure nothrow @nogc:
-	void onMethod(const char[] m) {
+@safe pure nothrow:
+	void onMethod(const char[] m) @nogc {
 		method = m;
 	}
 
-	void onUri(const char[] uri) {
+	void onUri(const char[] uri) @nogc {
 		path = uri;
+	}
+
+	void onHeader(const char[] name, const char[] value) {
+		headers[name] = value;
 	}
 
 	bool tryParse(const ubyte[] data) nothrow {

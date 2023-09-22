@@ -139,7 +139,7 @@ Node loadyml(ref string str, int n, uint ln) @safe {
 
 private:
 
-int getTabLevel(string line, uint ln, ref uint p) @safe pure {
+int getTabLevel(in char[] line, uint ln, ref uint p) @safe pure {
 	int i;
 	while (i < line.length && line[i] == ' ')
 		++i;
@@ -239,7 +239,7 @@ Node parseValue(ref string str, ref uint ln, ref uint col, uint level = 0) @safe
 	assert(n.as!string == "x   foo bar\n");
 }
 
-public auto createNode(string str) @trusted {
+public auto createNode(in char[] str) @trusted {
 	{
 		bool val;
 		if (str.length > 3 && str.length < 6 && tryParse(str, val))
@@ -258,7 +258,7 @@ public auto createNode(string str) @trusted {
 	return Node(str);
 }
 
-auto peekLine(in string s) {
+auto peekLine(in char[] s) {
 	auto i = s.indexOf('\n');
 	return i < 0 ? s : s[0 .. i + 1];
 }
@@ -343,7 +343,7 @@ version (unittest) {
 	bool eq(double a, double b, double epsilon = 1e-4)
 		=> a >= b - epsilon && a <= b + epsilon;
 
-	void test(T)(in string s, in T expected) {
+	void test(T)(in char[] s, in T expected) {
 		T result;
 		assert(tryParse(s, result) && result == expected);
 	}
@@ -381,7 +381,7 @@ ulong convert(T)(const(T[]) digits, uint radix = 10, size_t* ate = null) {
 	return value;
 }
 
-auto tryParse(in string str, out bool result) {
+auto tryParse(in char[] str, out bool result) {
 
 	if (icompare(str, "true") == 0) {
 		result = true;
@@ -392,7 +392,7 @@ auto tryParse(in string str, out bool result) {
 	return false;
 }
 
-auto tryParse(string value, out long result) {
+auto tryParse(scope const(char)[] value, out long result) {
 	import std.algorithm;
 
 	if (!value.length) {
@@ -452,10 +452,10 @@ unittest {
 	test("-0b1", -1L);
 }
 
-auto tryParse(in string str, out double result) @trusted {
+auto tryParse(in char[] str, out double result) @trusted {
 	import std.algorithm;
 
-	string value = str.replace("_", "");
+	auto value = str.replace("_", "");
 	if (value.length) {
 		const c = value[0];
 		result = c != '-' ? 1.0 : -1.0;
@@ -494,7 +494,7 @@ err:
 }
 
 unittest {
-	static void test(in string s, in double expected = 685230.15) {
+	static void test(in char[] s, double expected = 685230.15) {
 		double result;
 		assert(tryParse(s, result));
 		assert(eq(result, expected));
@@ -509,13 +509,13 @@ unittest {
 	assert(tryParse(".NaN", result) && result != result);
 }
 
-SysTime parseTimestamp(string value)
+SysTime parseTimestamp(in char[] value)
 	=> value.length < 11 ? SysTime(Date.fromISOExtString(value), UTC())
 	: SysTime.fromISOExtString(
 		value.replace(' ', 'T'));
 
 unittest {
-	static string parse(string value)
+	static string parse(in char[] value)
 		=> parseTimestamp(value).toISOString();
 
 	enum {

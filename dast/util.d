@@ -116,43 +116,54 @@ version (Have_database_util) {
 		static if (is(typeof(KeyName) == void))
 			enum KeyName = defaultName;
 	}
+
+	alias SQLName = KeyName;
 }
 
-template getSymbols(alias symbol, alias attr) {
-	import std.meta, std.traits;
+private alias getAttrs(alias symbol, string name) =
+	__traits(getAttributes, __traits(getMember, symbol, name));
 
-	alias getAttrs(alias name) = __traits(getAttributes, __traits(getMember, symbol, name));
-	template hasAttr(alias name) {
-		static if (__traits(compiles, getAttrs!name))
-			static foreach (a; getAttrs!name) {
-				static if (__traits(isSame, a, attr))
-					enum hasAttr = true;
-				else static if (is(typeof(a))) {
-					static if (__traits(isTemplate, attr)) {
-						static if (isInstanceOf!(attr, typeof(a)))
-							enum hasAttr = true;
-					} else static if (is(typeof(a) == attr))
-						enum hasAttr = true;
+template getSymbols(alias attr, symbols...) {
+	import std.meta;
+
+	bool hasAttr(alias symbol, string name)() {
+		static if (is(typeof(getAttrs!(symbol, name))))
+			foreach (a; getAttrs!(symbol, name)) {
+				static if (__traits(isSame, a, attr)) {
+					if (__ctfe)
+						return true;
+				} else static if (__traits(isTemplate, attr)) {
+					if (__ctfe && is(typeof(a) == attr!A, A...))
+						return true;
+				} else {
+					if (__ctfe && is(typeof(a) == attr))
+						return true;
 				}
 			}
-		static if (is(typeof(hasAttr) == void))
-			enum hasAttr = false;
+		return false;
 	}
 
 	alias getSymbols = AliasSeq!();
-	static foreach (name; __traits(derivedMembers, symbol))
-		static if (hasAttr!name)
-			getSymbols = AliasSeq!(getSymbols, __traits(getMember, symbol, name));
+	static foreach (symbol; symbols) {
+		static foreach (name; __traits(derivedMembers, symbol))
+			static if (hasAttr!(symbol, name))
+				getSymbols = AliasSeq!(getSymbols, __traits(getMember, symbol, name));
+	}
 }
 
 enum isStruct(T) = is(T == struct);
 
-alias ExceptionCtors = std.exception.basicExceptionCtors;
+/// Get all structs with @as or @snakeCase
+template getTables(T...) {
+	import std.meta;
+
+	alias getTables = Filter!(isStruct, getSymbols!(as, T), getSymbols!(snakeCase, T));
+}
 
 size_t intToStr(char* buf, size_t value) pure @nogc nothrow @trusted {
 	char* p = buf;
 	for (;;) {
-		*(p++) = value % 10 ^ '0';
+		*p++ = value % 10 ^ '0';
 		if (value < 10)
 			break;
 		value /= 10;

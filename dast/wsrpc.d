@@ -36,8 +36,8 @@ struct WSRequest {
 		packer.buf.length = 0;
 	}
 
-	bool call(alias fn, Args...)(auto ref const Args args) if (isCallable!fn) {
-		static if (Args.length)
+	bool call(alias fn, A...)(auto ref const A args) if (isCallable!fn) {
+		static if (A.length)
 			send(args);
 		reverse();
 		fn(this);
