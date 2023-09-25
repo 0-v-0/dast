@@ -31,7 +31,7 @@ void main() {
 				// client.close(); // comment out for keep-alive
 			});
 		};
-		client.onClosed = () {
+		client.onClosed = {
 			debug writeln("The connection is closed!");
 		};
 		client.onError = (string msg) { writeln("Error: ", msg); };

@@ -1,7 +1,5 @@
 module dast.http.common;
 
-import tame.ascii;
-
 enum Status {
 	OK = "200 OK",
 	NoContent = "204 No Content",
@@ -23,6 +21,8 @@ struct Headers {
 	}
 
 	void opIndexAssign(in char[] value, in char[] key) pure @trusted nothrow {
+		import tame.ascii;
+
 		data[cast(string)toLower(key.dup)] = value;
 	}
 

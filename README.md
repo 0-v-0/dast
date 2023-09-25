@@ -9,7 +9,6 @@ A collection of modules mainly about server-side code
 | dast.fcgi   | FastCGI server                                                                      |
 | dast.http   | Common HTTP components                                                              |
 | dast.http1  | A simple HTTP/1.1 server                                                            |
-| dast.lshttp | A lightweight & simple HTTP server for static files                                 |
 | dast.map    | A map container                                                                     |
 | dast.uwsgi  | A uwsgi server                                                                      |
 | dast.util   | utility functions                                                                   |

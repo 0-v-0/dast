@@ -55,14 +55,6 @@ subPackage {
 	dflags "-dip1008" "-preview=in"
 }
 subPackage {
-	name "lshttp"
-	description "A lightweight & simple HTTP server for static files."
-	sourceFiles "dast/lshttp.d"
-	importPaths "."
-	dependency "datefmt-redthing1" version="~>1.0.6"
-	dependency "dast:ws" path="."
-}
-subPackage {
 	name "map"
 	sourceFiles "dast/map.d"
 	importPaths "."

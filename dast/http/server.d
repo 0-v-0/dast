@@ -1,10 +1,8 @@
 module dast.http.server;
 
-// dfmt off
 import core.thread,
-	std.array,
-	std.socket;
-// dfmt on
+std.array,
+std.socket;
 public import dast.http : HTTPRequest = Request, Status;
 
 class Request {
@@ -145,13 +143,14 @@ private char* intToHex(char* buf, size_t value) {
 unittest {
 	char[16] buf = void;
 	auto str = buf[];
-	assert(intToHex(buf.ptr, 0) - buf.ptr == 1);
+	auto p = buf.ptr;
+	assert(intToHex(p, 0) - p == 1);
 	assert(str[0 .. 1] == "0", str);
-	assert(intToHex(buf.ptr, 0xff) - buf.ptr == 2);
+	assert(intToHex(p, 0xff) - p == 2);
 	assert(str[0 .. 2] == "ff", str);
-	assert(intToHex(buf.ptr, 0x12345678) - buf.ptr == 8, str);
+	assert(intToHex(p, 0x12345678) - p == 8, str);
 	assert(str[0 .. 8] == "12345678", str);
-	assert(intToHex(buf.ptr, size_t.max) - buf.ptr == 16, str);
+	assert(intToHex(p, size_t.max) - p == 16, str);
 	assert(str == "ffffffffffffffff", str);
 }
 

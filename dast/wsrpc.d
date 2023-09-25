@@ -1,12 +1,9 @@
 module dast.wsrpc;
-// dfmt off
-import
-	core.thread,
-	lmpl4d,
-	lockfree.queue,
-	dast.ws.server;
-// dfmt on
-import std.traits : isCallable;
+import core.thread,
+lmpl4d,
+lockfree.queue,
+dast.ws.server,
+std.traits;
 public import dast.ws.server : PeerID, WSClient;
 
 struct Action {
@@ -20,7 +17,7 @@ struct WSRequest {
 	ubyte[] buf;
 	alias unpacker this;
 
-	auto send(T...)(T data) => packer.pack(data);
+	auto send(T...)(auto ref T data) => packer.pack(data);
 
 	auto read(T)() => unpacker.unpack!T;
 
@@ -48,12 +45,11 @@ struct WSRequest {
 
 /// get all functions with @Action
 template getActions(T...) {
-	import std.meta, std.traits;
+	import std.meta;
 
-	static if (T.length > 1)
-		alias getActions = AliasSeq!(getActions!(T[0]), getActions!(T[1 .. $]));
-	else
-		alias getActions = Filter!(isCallable, getSymbolsByUDA!(T, Action));
+	alias getActions = AliasSeq!();
+	static foreach (f; T)
+		getActions = AliasSeq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
 }
 
 package alias
@@ -87,7 +83,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 	}
 
 	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
-		auto req = WSRequest(src, Unpacker!()(msg));
+		auto req = WSRequest(src, unpacker(msg));
 		static if (multiThread)
 			queue.enqueue(cast(shared)req);
 		else
@@ -138,7 +134,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 						else {
 							static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
 								static assert(ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_,
-								"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
+									"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
 								static if (arity!f == 1)
 									f(req);
 								else

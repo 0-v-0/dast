@@ -48,18 +48,17 @@ class WebSocketServer : ListenerBase {
 
 	mixin Forward!"_socket";
 
-	private size_t _bufferSize;
 	protected Map!(PeerID, Frame[]) map;
 	Map!(PeerID, WSClient) clients;
 	ReqHandler handler;
-	size_t maxConnections = 1000;
+	ServerSettings settings;
 
-	this(AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
+	this(AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		this(new EventLoop, family, bufferSize);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
-		_bufferSize = bufferSize;
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
+		settings.bufferSize = bufferSize;
 		version (Windows)
 			super(loop, family, bufferSize);
 		else
@@ -69,14 +68,14 @@ class WebSocketServer : ListenerBase {
 	}
 
 	// dfmt off
-	void onOpen(WSClient, Request) nothrow {}
+	void onOpen(WSClient, in Request) nothrow {}
 	void onClose(WSClient) nothrow {}
 	void onTextMessage(WSClient, string) nothrow {}
 	void onBinaryMessage(WSClient, const(ubyte)[]) nothrow {}
 
 	void add(TcpStream client) nothrow {
-		if (clients.length > maxConnections) {
-			try warningf("Maximum number of connections reached (%u)", maxConnections); catch(Exception) {}
+		if (clients.length > settings.maxConnections) {
+			try warningf("Maximum number of connections reached (%u)", settings.maxConnections); catch(Exception) {}
 			client.close();
 		} else
 			clients[WSClient(client).id] = WSClient(client);
@@ -96,12 +95,12 @@ class WebSocketServer : ListenerBase {
 
 	// dfmt on
 	void run(ushort port) {
-		this.reusePort = true;
+		this.reusePort = settings.reusePort;
 		socket.bind(new InternetAddress("127.0.0.1", port));
 		socket.listen(128);
 
 		infof("Listening on port: %u", port);
-		infof("Maximum allowed connections: %u", maxConnections);
+		infof("Maximum allowed connections: %u", settings.maxConnections);
 		start();
 		(cast(EventLoop)_inLoop).run();
 	}
@@ -122,15 +121,15 @@ class WebSocketServer : ListenerBase {
 			debug (Log)
 				trace("listening...");
 			//canRead =
-			onAccept((Socket socket) {
+			onAccept((socket) {
 				debug (Log)
 					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
 
-				auto client = new TcpStream(_inLoop, socket, _bufferSize);
+				auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
 				client.onReceived = (in ubyte[] data) {
 					onReceive(WSClient(client), data);
 				};
-				client.onClosed = () { remove(WSClient(client).id); };
+				client.onClosed = { remove(WSClient(client).id); };
 				client.start();
 			});
 
@@ -148,7 +147,7 @@ class WebSocketServer : ListenerBase {
 		import tame.base64 : encode;
 
 		enum MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
-			KEY = "Sec-WebSocket-Key".toLower,
+			KEY = "Sec-WebSocket-Key".toLower(),
 			KEY_MAXLEN = 192 - MAGIC.length;
 		const(ubyte)[] data = void;
 		const id = client.id;
@@ -198,7 +197,7 @@ class WebSocketServer : ListenerBase {
 	}
 
 private nothrow:
-	void onReceive(WSClient client, const scope ubyte[] data) {
+	void onReceive(WSClient client, in ubyte[] data) {
 		import std.algorithm : swap;
 
 		try
