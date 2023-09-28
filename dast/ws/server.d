@@ -7,7 +7,7 @@ import dast.async,
 	dast.ws.frame,
 	std.socket,
 	std.logger;
-import std.conv : text, to;
+import std.conv : text;
 
 alias
 	PeerID = int,
@@ -23,19 +23,19 @@ struct WSClient {
 	void send(T)(in T msg) {
 		import std.traits;
 
-		static if (isSomeString!T) {
+		static if (is(T : const(char)[])) {
 			import std.string : representation;
 
 			auto bytes = msg.representation;
-			auto frame = Frame(true, Op.TEXT, false, State.done, [0, 0, 0, 0], bytes.length, bytes);
+			enum op = Op.TEXT;
 		} else {
 			alias bytes = msg;
-			auto frame = Frame(true, Op.BINARY, false, State.done, [0, 0, 0, 0], msg.length, msg);
+			enum op = Op.BINARY;
 		}
-		auto data = frame.serialize;
+		auto data = Frame(true, op, false, State.done, [0, 0, 0, 0], bytes.length, bytes).serialize;
 		try {
-			tracef("Sending %u bytes to #%d in one frame of %u bytes long", bytes.length, id, data
-					.length);
+			tracef("Sending %u bytes to #%d in one frame of %u bytes long",
+				bytes.length, id, data.length);
 			return client.write(data);
 		} catch (Exception) {
 		}
@@ -182,7 +182,7 @@ class WebSocketServer : ListenerBase {
 					"Connection: Upgrade\r\n" ~
 					"Sec-WebSocket-Accept: " ~ encode(
 						sha1Of(buf[0 .. len + MAGIC.length]), buf) ~
-				"\r\n\r\n");
+					"\r\n\r\n");
 		} catch (Exception)
 			return false;
 		if (map[id])

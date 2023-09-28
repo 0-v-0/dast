@@ -34,7 +34,6 @@ class NodeException : YAMLException {
 
 struct Node {
 	import std.conv : to;
-	import std.meta : AliasSeq;
 	import std.datetime;
 	import std.exception;
 	import std.range.primitives;
@@ -65,7 +64,7 @@ struct Node {
 		}
 	}
 
-	this(T)(T) if (is(Unqual!T == typeof(null))) {
+	this(typeof(null)) {
 		type_ = NodeType.null_;
 	}
 
@@ -81,7 +80,7 @@ struct Node {
 		*cast(T*)&p = value;
 	}
 
-	this(T)(in T value) @trusted if (isSomeString!(OriginalType!T)) {
+	this(T : const(char)[])(in T value) @trusted {
 		type_ = NodeType.string;
 		*cast(T*)&p = value;
 	}
@@ -95,7 +94,7 @@ struct Node {
 		auto Time = Node(SysTime(DateTime(2005, 6, 15, 20, 0, 0), UTC()));
 	}
 
-	this(T)(T value) @trusted if (isArray!T && !isSomeString!(OriginalType!T)) {
+	this(T)(T value) @trusted if (isArray!T && !is(T : const(char)[])) {
 		static if (is(Unqual!(ElementType!T) == Node)) {
 			children = value;
 		} else {
@@ -139,13 +138,13 @@ struct Node {
 			assert(node.type == NodeType.integer);
 			assert(node.as!int == 42 && node.as!float == 42.0f && node.as!string == "42");
 
-			auto node2 = Node("string");
-			assert(node2.as!string == "string");
+			auto node2 = Node("foo");
+			assert(node2.as!string == "foo");
 		}
 
 		unittest {
 			with (Node([1, 2, 3])) {
-				assert(type_ == NodeType.sequence);
+				assert(type_ == NodeType.sequence, to!string(type_));
 				assert(length == 3);
 				assert(opIndex(2).as!int == 3);
 			}
@@ -170,7 +169,7 @@ struct Node {
 
 	alias as = get;
 
-	T get(T)() const if (is(Unqual!T == enum)) => cast(T)get!(OriginalType!T);
+	T get(T)() const if (is(T == enum)) => cast(T)get!(OriginalType!T);
 
 	T get(T)() @trusted const if (isScalarType!T && !is(T == enum)) {
 		if (type_ == NodeType.boolean)
@@ -184,7 +183,7 @@ struct Node {
 		throw new NodeException(format("Cannot convert %s to " ~ T.stringof, type_), mark_);
 	}
 
-	T get(T)() @trusted const if (isSomeString!(OriginalType!T)) {
+	T get(T : const(char)[])() @trusted const if (!is(T == enum)) {
 		if (type_ == NodeType.string)
 			return *cast(T*)&p;
 
@@ -222,7 +221,7 @@ struct Node {
 		assert(node2.get!(immutable double) == 42.0);
 	}
 
-	T get(T)() const if (is(Unqual!T == SysTime)) {
+	T get(T : const SysTime)() const {
 		if (type_ != NodeType.timestamp)
 			throw new NodeException("Cannot convert %s to timestamp".format(type_), mark_);
 		return time;

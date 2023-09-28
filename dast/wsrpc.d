@@ -52,7 +52,7 @@ template getActions(T...) {
 		getActions = AliasSeq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
 }
 
-package alias
+private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 

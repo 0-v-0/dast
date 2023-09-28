@@ -1,6 +1,5 @@
 module dast.config;
 
-import std.meta : AliasSeq;
 import lyaml;
 
 version (Have_ctfepp)
