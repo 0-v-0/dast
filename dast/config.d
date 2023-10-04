@@ -1,6 +1,7 @@
 module dast.config;
 
-import lyaml;
+import lyaml,
+std.conv : to;
 
 version (Have_ctfepp)
 	private enum PP = true;
@@ -33,7 +34,6 @@ Node readyml(string content, bool preprocess = PP) {
 }
 
 void readcfgEnv(alias s)(string path = null, bool preprocess = PP) {
-	import std.conv : to;
 	import std.file : read;
 	import std.process : environment;
 	import dast.util;
@@ -63,7 +63,6 @@ void readcfgEnv(alias s)(string path = null, bool preprocess = PP) {
 }
 
 void readcfg(alias s, S)(S path = null, bool preprocess = PP) {
-	import std.conv : to;
 	import std.file : read;
 	import dast.util;
 

@@ -6,11 +6,9 @@ import core.sys.windows.windows,
 	core.sys.windows.winsock2,
 	core.sys.windows.mswsock,
 	dast.async.core,
-	std.format,
-	std.conv,
-	std.socket,
 	std.exception,
-	std.process;
+	std.socket,
+	std.format : format;
 // dfmt on
 
 /** TCP Server */
@@ -83,7 +81,6 @@ alias AcceptorBase = ListenerBase;
 /** TCP Client */
 abstract class StreamBase : SocketChannelBase {
 	DataReceivedHandler onReceived;
-	DataWrittenHandler sentHandler;
 
 	protected this() {
 	}

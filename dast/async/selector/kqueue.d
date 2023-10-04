@@ -17,8 +17,8 @@ import core.time,
 	std.exception,
 	std.socket,
 	std.string;
-version (HaveTimer) import dast.async.timer.kqueue;
 // dfmt on
+version (HaveTimer) import dast.async.timer.kqueue;
 
 class SelectorBase : Selector {
 	this() {

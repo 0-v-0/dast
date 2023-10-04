@@ -6,8 +6,8 @@ import dast.async,
 	dast.http,
 	dast.ws.frame,
 	std.socket,
-	std.logger;
-import std.conv : text;
+	std.logger,
+	std.conv : text;
 
 alias
 	PeerID = int,
@@ -21,11 +21,10 @@ struct WSClient {
 	@property auto id() => cast(int)handle;
 
 	void send(T)(in T msg) {
-		import std.traits;
+		import std.traits,
+		std.string : representation;
 
 		static if (is(T : const(char)[])) {
-			import std.string : representation;
-
 			auto bytes = msg.representation;
 			enum op = Op.TEXT;
 		} else {

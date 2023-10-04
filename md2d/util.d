@@ -85,7 +85,7 @@ unittest {
 	Checks if all characters in 'str' are contained in 'chars'.
  +/
 bool allOf(S)(S str, S chars) {
-	foreach (dchar ch; str)
+	foreach (ch; str)
 		if (!chars.canFind(ch))
 			return false;
 	return true;

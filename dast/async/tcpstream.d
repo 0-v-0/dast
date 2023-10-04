@@ -47,11 +47,8 @@ class TcpStream : StreamBase {
 			return;
 
 		try {
-			scope Address a = void;
-			if (socket.addressFamily == AddressFamily.INET6)
-				a = new Internet6Address(0);
-			else
-				a = new InternetAddress(0);
+			scope Address a = socket.addressFamily == AddressFamily.INET6 ?
+				new Internet6Address(0) : new InternetAddress(0);
 			socket.bind(a);
 			doConnect(addr);
 			start();

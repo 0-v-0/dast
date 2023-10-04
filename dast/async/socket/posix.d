@@ -5,13 +5,11 @@ version(Posix):
 import core.stdc.errno,
 	core.stdc.string,
 	dast.async.core,
-	std.conv,
 	std.exception,
 	std.format,
-	std.process,
 	std.socket,
-	std.string;
-import core.sys.posix.sys.socket : accept;
+	std.string,
+	core.sys.posix.sys.socket : accept;
 // dfmt on
 
 /**
@@ -51,7 +49,6 @@ TCP Client
 */
 abstract class StreamBase : SocketChannelBase {
 	SimpleEventHandler disconnectionHandler;
-	// DataWrittenHandler sentHandler;
 
 	protected bool _isConnected; //if server side always true.
 

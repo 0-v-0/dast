@@ -221,7 +221,7 @@ struct Node {
 		assert(node2.get!(immutable double) == 42.0);
 	}
 
-	T get(T : const SysTime)() const {
+	T get(T : SysTime)() const {
 		if (type_ != NodeType.timestamp)
 			throw new NodeException("Cannot convert %s to timestamp".format(type_), mark_);
 		return time;

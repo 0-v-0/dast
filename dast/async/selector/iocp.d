@@ -5,10 +5,9 @@ version (Windows):
 import core.sys.windows.windows,
 	dast.async.socket,
 	dast.async.core,
-	dast.async.socket.iocp,
-	std.conv;
-version (HaveTimer) import dast.async.timer;
+	dast.async.socket.iocp;
 // dfmt on
+version (HaveTimer) import dast.async.timer;
 
 class SelectorBase : Selector {
 	this() {

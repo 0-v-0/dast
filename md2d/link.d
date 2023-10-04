@@ -1,12 +1,9 @@
 module md2d.link;
 
-// dfmt off
-import
-	md2d.util,
-	std.array,
-	std.ascii,
-	std.string;
-// dfmt on
+import md2d.util,
+std.array,
+std.ascii,
+std.string;
 
 struct LinkRef {
 	string id, url, title;

@@ -11,12 +11,12 @@ import dast.async.core,
 	core.sys.linux.sys.eventfd,
 	core.sys.posix.netinet.tcp,
 	core.sys.posix.netinet.in_,
-	core.sys.posix.unistd;
-version (HaveTimer) import dast.async.timer;
-import std.exception,
+	core.sys.posix.unistd,
+	std.exception,
 	std.socket,
 	std.string;
 // dfmt on
+version (HaveTimer) import dast.async.timer;
 
 class SelectorBase : Selector {
 	this() {
