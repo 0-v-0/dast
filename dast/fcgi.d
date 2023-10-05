@@ -7,7 +7,7 @@ import
 	std.socket,
 	std.string;
 
-T align8(T : ulong)(T n) => (n + 7) & ~7;
+size_t align8(size_t n) => (n + 7) & ~7;
 
 size_t intToStr(char* buf, size_t value) {
 	char* p = buf;

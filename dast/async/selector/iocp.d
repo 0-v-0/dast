@@ -1,12 +1,9 @@
 module dast.async.selector.iocp;
 
-// dfmt off
-version (Windows):
-import core.sys.windows.windows,
-	dast.async.socket,
-	dast.async.core,
-	dast.async.socket.iocp;
-// dfmt on
+version (Windows)  : import core.sys.windows.windows,
+dast.async.socket,
+dast.async.core,
+dast.async.socket.iocp;
 version (HaveTimer) import dast.async.timer;
 
 class SelectorBase : Selector {

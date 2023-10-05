@@ -1,16 +1,13 @@
 module dast.async.timer.epoll;
 
-// dfmt off
-version (linux):
-import dast.async.core,
-	dast.async.timer.common,
-	core.sys.posix.unistd,
-	core.sys.linux.timerfd,
-	core.time,
-	std.datetime,
-	std.exception,
-	std.socket;
-// dfmt on
+version (linux)  : import dast.async.core,
+dast.async.timer.common,
+core.sys.posix.unistd,
+core.sys.linux.timerfd,
+core.time,
+std.datetime,
+std.exception,
+std.socket;
 
 abstract class TimerBase : TimerChannelBase {
 	this(Selector loop) {

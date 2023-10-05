@@ -1,7 +1,6 @@
 module dast.async.core;
 
 import std.socket;
-import std.exception;
 import dast.async.container;
 
 package import std.logger;
@@ -14,7 +13,6 @@ alias DataReceivedHandler = void delegate(in ubyte[] data);
 alias DataWrittenHandler = void delegate(in void[] data, size_t size);
 alias AcceptHandler = void delegate(Socket socket);
 alias ConnectionHandler = void delegate(bool isSucceeded);
-alias UDPReadCallback = void delegate(in ubyte[] data, Address addr);
 alias AcceptCallback = void delegate(Selector loop, Socket socket);
 
 interface Selector {

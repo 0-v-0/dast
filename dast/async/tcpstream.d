@@ -1,14 +1,11 @@
 module dast.async.tcpstream;
 
-// dfmt off
 import dast.async.core,
-	dast.async.selector,
-	dast.async.socket,
-	core.time,
-	std.format,
-	std.exception,
-	std.socket;
-// dfmt on
+dast.async.selector,
+dast.async.socket,
+core.time,
+std.format,
+std.socket;
 
 class TcpStream : StreamBase {
 	ref auto opDispatch(string member, A...)(auto ref A args) {
@@ -118,7 +115,7 @@ protected:
 
 		if (isError) {
 			auto msg = "Socket error on write: fd=%d, message=%s".format(handle, erroString);
-			errorf(msg);
+			error(msg);
 			errorOccurred(msg);
 		}
 	}
@@ -164,10 +161,10 @@ protected:
 			}
 
 			clearError();
-			size_t nBytes = tryWrite(data);
-			if (nBytes > 0 && writeBuffer.popSize(nBytes)) {
+			size_t len = tryWrite(data);
+			if (len > 0 && writeBuffer.popSize(len)) {
 				debug (Log)
-					trace("finishing data writing...nBytes", nBytes);
+					trace("finishing data writing ", len, " bytes");
 				_writeQueue.dequeue().doFinish();
 			}
 

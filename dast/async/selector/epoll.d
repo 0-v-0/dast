@@ -1,21 +1,19 @@
 module dast.async.selector.epoll;
 
-// dfmt off
-version(linux):
-import dast.async.core,
-	dast.async.socket,
-	core.time,
-	core.stdc.string,
-	core.stdc.errno,
-	core.sys.linux.epoll,
-	core.sys.linux.sys.eventfd,
-	core.sys.posix.netinet.tcp,
-	core.sys.posix.netinet.in_,
-	core.sys.posix.unistd,
-	std.exception,
-	std.socket,
-	std.string;
-// dfmt on
+version (linux)  : import dast.async.core,
+dast.async.socket,
+core.time,
+core.stdc.string,
+core.stdc.errno,
+core.sys.linux.epoll,
+core.sys.linux.sys.eventfd,
+core.sys.posix.netinet.tcp,
+core.sys.posix.netinet.in_,
+core.sys.posix.unistd,
+std.exception,
+std.socket,
+std.string;
+
 version (HaveTimer) import dast.async.timer;
 
 class SelectorBase : Selector {
@@ -131,12 +129,12 @@ class SelectorBase : Selector {
 		running = false;
 	}
 
-protected:
-	bool isErro(uint events) nothrow => (events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) != 0;
+protected @property nothrow:
+	bool isErro(uint events) => (events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) != 0;
 
-	bool isRead(uint events) nothrow => (events & EPOLLIN) != 0;
+	bool isRead(uint events) => (events & EPOLLIN) != 0;
 
-	bool isWrite(uint events) nothrow => (events & EPOLLOUT) != 0;
+	bool isWrite(uint events) => (events & EPOLLOUT) != 0;
 
 private:
 	bool isDisposed;
@@ -179,13 +177,13 @@ class EpollEventChannel : EventChannel {
 	}
 
 	override void onRead() {
-		readEvent((Object obj) {});
+		readEvent();
 		super.onRead();
 	}
 
-	bool readEvent(scope ReadCallback read) {
+	bool readEvent(scope ReadCallback read = null) {
 		clearError();
-		ulong value;
+		ulong value = void;
 		core.sys.posix.unistd.read(handle, &value, value.sizeof);
 		_readBuffer.data = value;
 		if (read)

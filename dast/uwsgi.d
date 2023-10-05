@@ -1,11 +1,9 @@
 module dast.uwsgi;
 
-// dfmt off
 import core.thread,
-	dast.map,
-	std.array,
-	std.socket;
-// dfmt on
+dast.map,
+std.array,
+std.socket;
 
 struct Header {
 align(1):
@@ -23,7 +21,7 @@ class Request {
 	size_t pos, stop;
 	int requestId;
 
-	@property auto socket() => sock;
+	@property socket() => sock;
 
 	@property void socket(Socket socket) {
 		pos = 0;

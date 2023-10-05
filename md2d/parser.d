@@ -12,13 +12,13 @@ import std.algorithm : canFind, countUntil, min;
 import std.ascii : isAlpha, isWhite;
 
 struct MarkdownSettings {
-	/// Controls the capabilities of the parser.
+	/// Controls the capabilities of the parser
 	MarkdownFlags flags = MarkdownFlags.githubInspired;
 
-	/// Heading tags will start at this level.
+	/// Heading tags will start at this level
 	size_t headingBaseLevel = 1;
 	/+
-	/// Called for every link/image URL to perform arbitrary transformations.
+	/// Called for every link/image URL to perform arbitrary transformations
 	string delegate(string url_or_path, bool is_image) urlFilter;
 
 	/++ An optional delegate to post-process code blocks and inline code.
@@ -202,14 +202,14 @@ struct Block {
 	Block[] blocks;
 	size_t headerLevel;
 
-	// A human-readable toString for debugging.
+	// A human-readable toString for debugging
 	string toString() {
 		auto app = appender!string;
 		toStringNested(app);
 		return app[];
 	}
 
-	// toString implementation; capable of indenting nested blocks.
+	// toString implementation; capable of indenting nested blocks
 	void toStringNested(R)(ref R appender, uint depth = 0) {
 		import std.format;
 

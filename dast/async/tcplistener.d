@@ -1,19 +1,16 @@
 module dast.async.tcplistener;
 
-// dfmt off
 import dast.async.core,
-	dast.async.eventloop,
-	dast.async.selector,
-	dast.async.socket,
-	dast.async.tcpstream,
-	core.time,
-	std.socket,
-	std.exception,
-	std.logger;
-// dfmt on
+dast.async.eventloop,
+dast.async.selector,
+dast.async.socket,
+dast.async.tcpstream,
+core.time,
+std.socket,
+std.logger;
 
-alias AcceptEventHandler = void delegate(TcpListener sender, TcpStream stream);
-alias PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket, size_t bufferSize);
+alias AcceptEventHandler = void delegate(TcpListener sender, TcpStream stream),
+PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket);
 
 class TcpListener : ListenerBase {
 	import tame.meta;
@@ -22,7 +19,6 @@ class TcpListener : ListenerBase {
 
 	mixin Forward!"_socket";
 
-	/// event handlers
 	AcceptEventHandler onAccepted;
 	SimpleEventHandler onClosed;
 	PeerCreateHandler onPeerCreating;
@@ -62,8 +58,7 @@ class TcpListener : ListenerBase {
 
 				if (onAccepted) {
 					auto stream = onPeerCreating ?
-						onPeerCreating(this, socket, _bufferSize) : new TcpStream(
-							_inLoop, socket, _bufferSize);
+						onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, _bufferSize);
 
 					onAccepted(this, stream);
 					stream.start();

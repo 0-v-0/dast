@@ -8,8 +8,6 @@ enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;
 enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
-alias UintObject = BaseTypeObject!uint;
-
 interface ITimer {
 	///
 	bool isActive();
@@ -46,7 +44,7 @@ class TimingWheel {
 	/**
 		constructor
 		Params:
-			wheelSize = the Wheel's element router.
+			wheelSize = the Wheel's element router
 	*/
 	this(uint wheelSize) {
 		if (wheelSize == 0)
@@ -59,7 +57,7 @@ class TimingWheel {
 	/**
 		add a Timer into the Wheel
 		Params:
-			tm = the timer.
+			tm = the timer
 	*/
 	pragma(inline) void addNewTimer(WheelTimer tm, size_t wheel = 0) {
 		size_t index;
@@ -74,7 +72,7 @@ class TimingWheel {
 		if (timer._next)
 			timer._next._prev = tm;
 		timer._next = tm;
-		tm._manger = this;
+		tm._tw = this;
 	}
 
 	/**
@@ -82,7 +80,7 @@ class TimingWheel {
 		Params:
 			size = forward's element size;
 		Notes:
-			all forward's element will timeout.
+			all forward's element will timeout
 	*/
 	void prevWheel(uint size = 1) {
 		if (size == 0)
@@ -100,26 +98,26 @@ protected:
 		return (_now + next) % _list.length;
 	}
 
-	/// get the index which is farthest with current index.
+	/// get the index which is farthest with current index
 	size_t getPrev() const => (_now ? _now : _list.length) - 1;
-	/// go forward a element,and return the element.
+	/// go forward a element,and return the element
 	pragma(inline) NullWheelTimer doNext() {
 		++_now;
 		if (_now == _list.length)
 			_now = 0;
 		return _list[_now];
 	}
-	/// rest a timer.
+	/// rest a timer
 	pragma(inline) void rest(WheelTimer tm, size_t next) {
 		remove(tm);
 		addNewTimer(tm, next);
 	}
-	/// remove the timer.
+	/// remove the timer
 	pragma(inline) void remove(WheelTimer tm) {
 		tm._prev._next = tm._next;
 		if (tm._next)
 			tm._next._prev = tm._prev;
-		tm._manger = null;
+		tm._tw = null;
 		tm._next = null;
 		tm._prev = null;
 	}
@@ -130,48 +128,44 @@ private:
 }
 
 /**
-	The timer parent's class.
+	The timer parent's class
 */
 abstract class WheelTimer {
 	~this() {
 		stop();
 	}
 	/**
-		the function will be called when the timer timeout.
+		the function will be called when the timer timeout
 	*/
 	void onTimeout();
 
-	/// rest the timer.
-	pragma(inline) final void rest(size_t next = 0) {
-		if (_manger) {
-			_manger.rest(this, next);
+	pragma(inline, true) final {
+		/// rest the timer
+		void rest(size_t next = 0) {
+			if (_tw) {
+				_tw.rest(this, next);
+			}
 		}
-	}
 
-	/// stop the time, it will remove from Wheel.
-	pragma(inline) final void stop() {
-		if (_manger)
-			_manger.remove(this);
-	}
+		/// stop the time, it will remove from Wheel
+		void stop() {
+			if (_tw)
+				_tw.remove(this);
+		}
 
-	/// the time is active.
-	pragma(inline, true) final bool isActive() const => _manger !is null;
-
-	/// get the timer only run once.
-	pragma(inline, true) final @property oneShop() => _oneShop;
-	/// set the timer only run once.
-	pragma(inline) final @property oneShop(bool one) {
-		_oneShop = one;
+		/// the time is active
+		@property isActive() const => _tw !is null;
 	}
+	/// whether the timer only run once
+	bool oneShop;
 
 private:
 	WheelTimer _next;
 	WheelTimer _prev;
-	TimingWheel _manger;
-	bool _oneShop;
+	TimingWheel _tw;
 }
 
-/// the Header Timer in the wheel.
+/// the Header Timer in the wheel
 class NullWheelTimer : WheelTimer {
 	override void onTimeout() {
 		WheelTimer tm = _next;
@@ -307,7 +301,7 @@ abstract class TimerChannelBase : Channel, ITimer {
 		return this;
 	}
 
-	/// The handler will be handled in another thread.
+	/// The handler will be handled in another thread
 	ITimer onTick(TickedEventHandler handler) pure {
 		ticked = handler;
 		return this;
@@ -362,10 +356,6 @@ protected:
 alias TimeoutHandler = void delegate(Object sender);
 
 class KissWheelTimer : WheelTimer {
-	this() {
-		// time = Clock.currTime;
-	}
-
 	// override void onTimeout() nothrow
 	// {
 	//     collectException(trace("\nname is ", name, " \tcutterTime is : ",

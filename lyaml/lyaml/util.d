@@ -31,9 +31,9 @@ struct Mark {
 	}
 
 package:
-	/// Line number.
+	/// Line number
 	ushort line_;
-	/// Column number.
+	/// Column number
 	ushort column_;
 }
 
@@ -49,7 +49,7 @@ auto strhash(string s) {
 @safe pure nothrow @nogc:
 // dfmt off
 
-/// Convert a YAML escape to a dchar.
+/// Convert a YAML escape to a dchar
 dchar fromEscape(dchar escape) {
 	switch(escape)
 	{

@@ -1,18 +1,16 @@
 module dast.ws.server;
 
-// dfmt off
 import dast.async,
-	dast.async.socket,
-	dast.http,
-	dast.ws.frame,
-	std.socket,
-	std.logger,
-	std.conv : text;
+dast.async.socket,
+dast.http,
+dast.ws.frame,
+std.socket,
+std.logger,
+std.conv : text;
 
 alias
-	PeerID = int,
-	ReqHandler = void function(WebSocketServer, WSClient, in Request);
-// dfmt on
+PeerID = int,
+ReqHandler = void function(WebSocketServer, WSClient, in Request);
 
 struct WSClient {
 	TcpStream client;

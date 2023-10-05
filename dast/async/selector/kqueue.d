@@ -2,22 +2,19 @@ module dast.async.selector.kqueue;
 
 import dast.async.core;
 
-// dfmt off
-version(Kqueue):
-import core.time,
-	core.stdc.string,
-	core.stdc.errno,
-	core.sys.darwin.sys.event,
-	core.sys.posix.signal,
-	core.sys.posix.netinet.tcp,
-	core.sys.posix.netinet.in_,
-	core.sys.posix.unistd,
-	core.sys.posix.time,
-	dast.async.core,
-	std.exception,
-	std.socket,
-	std.string;
-// dfmt on
+version (Kqueue)  : import core.time,
+core.stdc.string,
+core.stdc.errno,
+core.sys.darwin.sys.event,
+core.sys.posix.signal,
+core.sys.posix.netinet.tcp,
+core.sys.posix.netinet.in_,
+core.sys.posix.unistd,
+core.sys.posix.time,
+dast.async.core,
+std.socket,
+std.string;
+
 version (HaveTimer) import dast.async.timer.kqueue;
 
 class SelectorBase : Selector {
@@ -127,7 +124,6 @@ class SelectorBase : Selector {
 	//     return true;
 	// }
 
-	// while(true)
 	void onLoop(scope void delegate() weak) {
 		running = true;
 		auto tspec = timespec(1, 1000 * 10);

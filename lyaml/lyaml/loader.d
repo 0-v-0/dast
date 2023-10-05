@@ -1,4 +1,4 @@
-/// Class used to load YAML documents.
+/// Class used to load YAML documents
 module lyaml.loader;
 
 import lyaml.node;
@@ -10,9 +10,9 @@ import std.string;
 import tame.ascii;
 import std.format : format;
 
-/// Base class for all exceptions thrown by D:YAML.
+/// Base class for all exceptions thrown by D:YAML
 class YAMLException : Exception {
-	/// Construct a YAMLException with specified message and position where it was thrown.
+	/// Construct a YAMLException with specified message and position where it was thrown
 	this(string msg, string file = __FILE__, size_t line = __LINE__) @safe pure nothrow @nogc {
 		super(msg, file, line);
 	}
@@ -298,7 +298,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 				app ~= c;
 			continue;
 		}
-		// 'Normal' escape sequence.
+		// 'Normal' escape sequence
 		auto ch = fromEscape(c);
 		if (ch != '\uFFFF') {
 			app ~= ch;
@@ -311,7 +311,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 		if (ch != 'x' && ch != 'u')
 			throw new NodeException("Invalid escape '\\%s'".format(c), Mark(ln, col));
 
-		// Unicode char written in hexadecimal in an escape sequence.
+		// Unicode char written in hexadecimal in an escape sequence
 		const hexLen = escapeHexLength(c);
 		auto hex = str[0 .. hexLen];
 		foreach (dchar hexDigit; hex) {
@@ -410,20 +410,16 @@ auto tryParse(scope const(char)[] value, out long result) {
 	}
 
 	size_t len, eaten;
-	//Binary.
-	if (value.startsWith("0b")) {
+	if (value.startsWith("0b")) { // Binary
 		result *= cast(long)convert(value[2 .. $], 2, &eaten);
 		len = eaten + 2;
-	}  //Hexadecimal.
-	else if (value.startsWith("0x")) {
+	} else if (value.startsWith("0x")) { // Hexadecimal
 		result *= cast(long)convert(value[2 .. $], 16, &eaten);
 		len = eaten + 2;
-	}  //Octal or zero
-	else if (value[0] == '0') {
+	} else if (value[0] == '0') { // Octal or zero
 		result *= cast(long)convert(value, 8, &eaten);
 		len = eaten;
-	}  //Sexagesimal.
-	else if (value.indexOf(':') >= 0) {
+	} else if (value.canFind(':')) { // Sexagesimal
 		long val;
 		long base = 1;
 		foreach_reverse (digit; value.splitter(':')) {
@@ -433,7 +429,7 @@ auto tryParse(scope const(char)[] value, out long result) {
 		}
 		result *= val;
 		--len;
-	}  //Decimal.
+	}  //Decimal
 	else {
 		result *= cast(long)convert(value, 10, &eaten);
 		len = eaten;
@@ -479,8 +475,7 @@ auto tryParse(in char[] str, out double result) @trusted {
 				base *= 60.0;
 			}
 			result *= val;
-		}  //Plain floating point.
-		else {
+		} else { // Plain floating point
 			if (sscanf(value.toStringz, "%lf", &n) != 1)
 				goto err;
 			result *= n;

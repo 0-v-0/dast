@@ -241,11 +241,11 @@ abstract class StreamBase : SocketChannelBase {
 		writeBuffer = _writeQueue.front;
 		auto data = writeBuffer.data;
 		setWriteBuffer(data);
-		size_t nBytes = doWrite();
+		size_t len = doWrite();
 
-		if (nBytes < data.length) { // to fix the corrupted data
+		if (len < data.length) { // to fix the corrupted data
 			debug (Log)
-				warningf("remaining data: %d / %d ", data.length - nBytes, data.length);
+				warningf("remaining data: %d / %d ", data.length - len, data.length);
 			sendDataBuffer = data.dup;
 		}
 	}
@@ -267,9 +267,9 @@ abstract class StreamBase : SocketChannelBase {
 	 * Called by selector after data sent
 	 * Note: It's only for IOCP selector:
 	*/
-	void onWriteDone(size_t nBytes) {
+	void onWriteDone(size_t len) {
 		debug (Log)
-			tracef("finishing data writting %d nbytes) ", nBytes);
+			tracef("finishing data writting %d nbytes) ", len);
 		if (isWriteCancelling) {
 			_isWritting = false;
 			isWriteCancelling = false;
@@ -277,7 +277,7 @@ abstract class StreamBase : SocketChannelBase {
 			return;
 		}
 
-		if (writeBuffer.popSize(nBytes)) {
+		if (writeBuffer.popSize(len)) {
 			if (!_writeQueue.dequeue())
 				warning("_writeQueue is empty!");
 
@@ -285,20 +285,20 @@ abstract class StreamBase : SocketChannelBase {
 			_isWritting = false;
 
 			debug (Log)
-				tracef("done with data writting %d nbytes) ", nBytes);
+				tracef("done with data writting %d nbytes) ", len);
 
 			tryWrite();
-		} else // if (sendDataBuffer.length > nBytes)
+		} else // if (sendDataBuffer.length > len)
 		{
 			// debug(Log)
-			tracef("remaining nbytes: %d", sendDataBuffer.length - nBytes);
+			tracef("remaining nbytes: %d", sendDataBuffer.length - len);
 			// FIXME: Needing refactor or cleanup
 			// sendDataBuffer corrupted
 			// const(ubyte)[] data = writeBuffer.data;
 			// tracef("%(%02X %)", data);
 			// tracef("%(%02X %)", sendDataBuffer);
-			setWriteBuffer(sendDataBuffer[nBytes .. $]); // send remaining
-			nBytes = doWrite();
+			setWriteBuffer(sendDataBuffer[len .. $]); // send remaining
+			len = doWrite();
 		}
 	}
 
@@ -313,7 +313,7 @@ abstract class StreamBase : SocketChannelBase {
 			disconnectionHandler();
 	}
 
-	bool _isConnected; //if server side always true.
+	bool _isConnected; // if server side always true
 	SimpleEventHandler disconnectionHandler;
 
 	protected WriteBufferQueue _writeQueue;

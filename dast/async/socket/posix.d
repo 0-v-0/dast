@@ -1,16 +1,13 @@
 module dast.async.socket.posix;
 
-// dfmt off
-version(Posix):
-import core.stdc.errno,
-	core.stdc.string,
-	dast.async.core,
-	std.exception,
-	std.format,
-	std.socket,
-	std.string,
-	core.sys.posix.sys.socket : accept;
-// dfmt on
+version (Posix)  : import core.stdc.errno,
+core.stdc.string,
+dast.async.core,
+std.exception,
+std.format,
+std.socket,
+std.string,
+core.sys.posix.sys.socket : accept;
 
 /**
 TCP Server
@@ -119,28 +116,28 @@ abstract class StreamBase : SocketChannelBase {
 
 	/**
 	Warning: It will try the best to write all the data.
-	// TODO: create a examlple for test
+		TODO: create a example for test
 	*/
 	protected void tryWriteAll(in ubyte[] data) {
-		const nBytes = socket.send(data);
+		const len = socket.send(data);
 		// debug(Log)
-		tracef("actually sent bytes: %d / %d", nBytes, data.length);
+		tracef("actually sent bytes: %d / %d", len, data.length);
 
-		if (nBytes > 0) {
-			if (canWriteAgain && nBytes < data.length) //  && writeRetries < writeRetryLimit
+		if (len > 0) {
+			if (canWriteAgain && len < data.length) //  && writeRetries < writeRetryLimit
 			{
 				// debug(Log)
 				writeRetries++;
 				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
-					writeRetries, nBytes, data.length - nBytes, data.length);
+					writeRetries, len, data.length - len, data.length);
 				if (writeRetries > writeRetryLimit)
 					warning("You are writting a Big block of data!!!");
 
-				tryWriteAll(data[nBytes .. $]);
+				tryWriteAll(data[len .. $]);
 			} else
 				writeRetries = 0;
 
-		} else if (nBytes == Socket.ERROR) {
+		} else if (len == Socket.ERROR) {
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
 				string msg = lastSocketError();
 				warningf("errno=%d, message: %s", errno, msg);
@@ -156,7 +153,7 @@ abstract class StreamBase : SocketChannelBase {
 
 					writeRetries++;
 					tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
-						writeRetries, nBytes, data.length - nBytes, data.length);
+						writeRetries, len, data.length - len, data.length);
 					if (writeRetries > writeRetryLimit)
 						warning("You are writting a Big block of data!!!");
 					warning("Wait for a 100 msecs to try again");
@@ -166,7 +163,7 @@ abstract class StreamBase : SocketChannelBase {
 			}
 		} else {
 			debug (Log) {
-				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
+				warningf("len=%d, message: %s", len, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
 				_error = lastSocketError();
@@ -178,14 +175,14 @@ abstract class StreamBase : SocketChannelBase {
 	Try to write a block of data.
 	*/
 	protected size_t tryWrite(in ubyte[] data) {
-		const nBytes = socket.send(data);
+		const len = socket.send(data);
 		debug (Log)
-			tracef("actually sent bytes: %d / %d", nBytes, data.length);
+			tracef("actually sent bytes: %d / %d", len, data.length);
 
-		if (nBytes > 0)
-			return nBytes;
+		if (len > 0)
+			return len;
 
-		if (nBytes == Socket.ERROR) {
+		if (len == Socket.ERROR) {
 			debug (Log)
 				warningf("errno=%d, message: %s", errno, lastSocketError());
 
@@ -197,7 +194,7 @@ abstract class StreamBase : SocketChannelBase {
 			}
 		} else {
 			debug (Log) {
-				warningf("nBytes=%d, message: %s", nBytes, lastSocketError());
+				warningf("len=%d, message: %s", len, lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
 				_error = lastSocketError();
