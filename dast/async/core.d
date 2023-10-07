@@ -6,7 +6,7 @@ import dast.async.container;
 package import std.logger;
 
 alias SimpleEventHandler = void delegate() nothrow;
-alias ErrorEventHandler = void delegate(string message);
+alias ErrorEventHandler = void delegate(in char[] msg);
 alias TickedEventHandler = void delegate(Object sender);
 alias ReadCallback = void delegate(Object obj);
 alias DataReceivedHandler = void delegate(in ubyte[] data);
@@ -63,7 +63,7 @@ abstract class Channel {
 		clear();
 	}
 
-	protected void errorOccurred(string msg) {
+	protected void errorOccurred(in char[] msg) {
 		if (onError)
 			onError(msg);
 	}
@@ -144,7 +144,7 @@ struct StreamWriteBuffer {
 		_sentHandler = handler;
 	}
 
-	@property auto data() const => cast(const(ubyte)[])_data[_site .. $];
+	@property data() const => cast(const(ubyte)[])_data[_site .. $];
 
 	/// add send offset and return is empty
 	bool popSize(size_t size) {
@@ -211,13 +211,13 @@ alias WriteBufferQueue = Queue!(StreamWriteBuffer*);
 package template OverrideErro() {
 	bool isError() => _error.length != 0;
 
-	string erroString() => _error;
+	string erroString() => cast(string)_error;
 
 	void clearError() {
 		_error = "";
 	}
 
-	string _error;
+	const(char)[] _error;
 }
 
 enum WatcherType : ubyte {

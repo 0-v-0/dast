@@ -1,15 +1,12 @@
 module dast.async.socket.iocp;
 
-// dfmt off
-version (Windows):
-import core.sys.windows.windows,
-	core.sys.windows.winsock2,
-	core.sys.windows.mswsock,
-	dast.async.core,
-	std.exception,
-	std.socket,
-	std.format : format;
-// dfmt on
+version (Windows)  : import core.sys.windows.windows,
+core.sys.windows.winsock2,
+core.sys.windows.mswsock,
+dast.async.core,
+std.exception,
+std.socket,
+std.conv : text;
 
 /** TCP Server */
 abstract class ListenerBase : SocketChannelBase {
@@ -335,9 +332,8 @@ mixin template CheckIocpError() {
 		debug (Log)
 			tracef("erro=%d, dwLastError=%d", erro, dwLastError);
 
-		if (dwLastError != ERROR_IO_PENDING) {
-			_error = "AcceptEx failed with error: code=%d".format(dwLastError);
-		}
+		if (dwLastError != ERROR_IO_PENDING)
+			_error = text("AcceptEx failed with error: code=",dwLastError);
 	}
 }
 

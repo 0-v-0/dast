@@ -293,7 +293,7 @@ struct Node {
 		}
 	}
 
-	//@property auto opDispatch(string s)() => opIndex(s);
+	//@property opDispatch(string s)() => opIndex(s);
 
 	///
 	unittest {

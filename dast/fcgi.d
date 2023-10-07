@@ -122,7 +122,7 @@ class Request {
 	protected bool* ipcSockClosed;
 	// dfmt on
 
-	@property auto socket() => sock;
+	@property socket() => sock;
 
 	ubyte initialize(Socket socket, bool* sockClosed) {
 		params.data.clear();

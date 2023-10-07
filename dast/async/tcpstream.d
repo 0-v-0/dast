@@ -4,8 +4,8 @@ import dast.async.core,
 dast.async.selector,
 dast.async.socket,
 core.time,
-std.format,
-std.socket;
+std.socket,
+std.conv : text;
 
 class TcpStream : StreamBase {
 	ref auto opDispatch(string member, A...)(auto ref A args) {
@@ -69,7 +69,7 @@ class TcpStream : StreamBase {
 		connect(addr);
 	}
 
-	@property auto isConnected() const => _isConnected;
+	@property isConnected() const => _isConnected;
 
 	override void start() {
 		if (_isRegistered)
@@ -114,7 +114,7 @@ protected:
 			doRead();
 
 		if (isError) {
-			auto msg = "Socket error on write: fd=%d, message=%s".format(handle, erroString);
+			auto msg = text("Socket error on write: fd=", handle, ", message=", erroString);
 			error(msg);
 			errorOccurred(msg);
 		}
@@ -169,7 +169,7 @@ protected:
 			}
 
 			if (isError) {
-				auto msg = "Socket error on write: fd=%d, message=%s".format(handle, erroString);
+				auto msg = text("Socket error on write: fd=", handle, ", message=", erroString);
 				errorOccurred(msg);
 				error(msg);
 				break;

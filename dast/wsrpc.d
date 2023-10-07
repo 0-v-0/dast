@@ -23,7 +23,7 @@ struct WSRequest {
 
 	auto read(T...)(auto ref T data) => unpacker.unpack(data);
 
-	@property auto OK() {
+	@property OK() {
 		string err;
 		return read(err) || err == "";
 	}

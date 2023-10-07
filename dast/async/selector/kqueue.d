@@ -52,14 +52,14 @@ class SelectorBase : Selector {
 				read |= EV_CLEAR;
 				write |= EV_CLEAR;
 			}
-			EV_SET(&(ev[0]), fd, EVFILT_READ, read, 0, 0, cast(void*)watcher);
-			EV_SET(&(ev[1]), fd, EVFILT_WRITE, write, 0, 0, cast(void*)watcher);
+			EV_SET(&ev[0], fd, EVFILT_READ, read, 0, 0, cast(void*)watcher);
+			EV_SET(&ev[1], fd, EVFILT_WRITE, write, 0, 0, cast(void*)watcher);
 			if (watcher.flag(WatchFlag.Read) && watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &(ev[0]), 2, null, 0, null);
+				err = kevent(_kqueueFD, &ev[0], 2, null, 0, null);
 			else if (watcher.flag(WatchFlag.Read))
-				err = kevent(_kqueueFD, &(ev[0]), 1, null, 0, null);
+				err = kevent(_kqueueFD, &ev[0], 1, null, 0, null);
 			else if (watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &(ev[1]), 1, null, 0, null);
+				err = kevent(_kqueueFD, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
 				kevent_t ev;
@@ -93,19 +93,19 @@ class SelectorBase : Selector {
 		int err = -1;
 		if (watcher.type != WatcherType.Timer) {
 			kevent_t[2] ev = void;
-			EV_SET(&(ev[0]), fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
-			EV_SET(&(ev[1]), fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
+			EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
+			EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
 			if (watcher.flag(WatchFlag.Read) && watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &(ev[0]), 2, null, 0, null);
+				err = kevent(_kqueueFD, &ev[0], 2, null, 0, null);
 			else if (watcher.flag(WatchFlag.Read))
-				err = kevent(_kqueueFD, &(ev[0]), 1, null, 0, null);
+				err = kevent(_kqueueFD, &ev[0], 1, null, 0, null);
 			else if (watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &(ev[1]), 1, null, 0, null);
+				err = kevent(_kqueueFD, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
 				kevent_t ev;
 				auto watch = cast(TimerBase)watcher;
-				if (watch is null)
+				if (!watch)
 					return false;
 				EV_SET(&ev, fd, EVFILT_TIMER, EV_DELETE, 0, 0, cast(void*)watcher);
 				err = kevent(_kqueueFD, &ev, 1, null, 0, null);

@@ -16,7 +16,7 @@ struct WSClient {
 	TcpStream client;
 	alias client this;
 
-	@property auto id() => cast(int)handle;
+	@property id() => cast(int)handle;
 
 	void send(T)(in T msg) {
 		import std.traits,

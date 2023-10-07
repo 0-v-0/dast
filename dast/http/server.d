@@ -14,9 +14,9 @@ class Request {
 	size_t stop;
 	int requestId;
 
-	@property auto headers() => request.headers;
+	@property headers() => request.headers;
 
-	@property auto socket() => sock;
+	@property socket() => sock;
 
 	@property void socket(Socket socket) {
 		static id = 0;
@@ -29,13 +29,13 @@ class Request {
 
 	protected bool fillBuffer() {
 		while (!request.tryParse(buffer[0 .. stop])) {
-			auto readn = sock.receive(buffer[stop .. $]);
-			if (readn <= 0) {
+			auto len = sock.receive(buffer[stop .. $]);
+			if (len <= 0) {
 				if (sock.isAlive)
 					sock.close();
 				return false;
 			}
-			stop += readn;
+			stop += len;
 		}
 		return true;
 	}
