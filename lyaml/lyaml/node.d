@@ -33,11 +33,10 @@ class NodeException : YAMLException {
 }
 
 struct Node {
-	import std.conv : to;
+	import std.conv;
 	import std.datetime;
 	import std.exception;
 	import std.range.primitives;
-	import std.string;
 	import std.traits;
 
 	package NodeType type_;
@@ -180,7 +179,7 @@ struct Node {
 			return to!T(*cast(double*)&p);
 		if (type_ == NodeType.string)
 			return to!(Unqual!T)(*cast(string*)&p);
-		throw new NodeException(format("Cannot convert %s to " ~ T.stringof, type_), mark_);
+		throw new NodeException(text("Cannot convert ", type_, " to " ~ T.stringof), mark_);
 	}
 
 	T get(T : const(char)[])() @trusted const if (!is(T == enum)) {
@@ -199,7 +198,7 @@ struct Node {
 		case NodeType.timestamp:
 			return time.toString();
 		default:
-			throw new NodeException("Cannot convert %s to string".format(type_), mark_);
+			throw new NodeException(text("Cannot convert ", type_, " to string"), mark_);
 		}
 	}
 
@@ -223,23 +222,23 @@ struct Node {
 
 	T get(T : SysTime)() const {
 		if (type_ != NodeType.timestamp)
-			throw new NodeException("Cannot convert %s to timestamp".format(type_), mark_);
+			throw new NodeException(text("Cannot convert ", type_, " to timestamp"), mark_);
 		return time;
 	}
 
-	inout(T) get(T : const(Node)[])() inout @trusted if (!is(T == enum)) {
+	const(T) get(T : const(Node)[])() const @trusted if (!is(T == enum)) {
 		if (type_ == NodeType.null_)
 			return null;
 		if (type_ != NodeType.sequence)
-			throw new NodeException("Cannot convert %s to array".format(type_), mark_);
+			throw new NodeException(text("Cannot convert ", type_, " to array"), mark_);
 		return children;
 	}
 
-	inout(T) get(T : const(Node[string]))() inout @trusted if (!is(T == enum)) {
+	const(T) get(T : const(Node[string]))() const @trusted if (!is(T == enum)) {
 		if (type_ == NodeType.null_)
 			return null;
 		if (type_ != NodeType.map)
-			throw new NodeException("Cannot convert %s to map".format(type_), mark_);
+			throw new NodeException(text("Cannot convert ", type_, " to map"), mark_);
 		return map;
 	}
 
@@ -264,7 +263,7 @@ struct Node {
 		case NodeType.map:
 			return map.length;
 		default:
-			throw new NodeException("Trying to get length of a %s node".format(type_),
+			throw new NodeException(text("Trying to get length of a ", type_, " node"),
 				mark_);
 		}
 	}
@@ -278,7 +277,7 @@ struct Node {
 		assert(iNode.length == 3);
 	}
 
-	auto ref opIndex(T)(T index) inout @trusted {
+	auto ref opIndex(T)(T index) const @trusted {
 		switch (type_) {
 		case NodeType.sequence:
 			static if (isIntegral!T)
@@ -288,8 +287,7 @@ struct Node {
 		case NodeType.map:
 			return map[index.toStr];
 		default:
-			throw new NodeException("Trying to index a %s node".format(type_),
-				mark_);
+			throw new NodeException(text("Trying to index a ", type_, " node"), mark_);
 		}
 	}
 
@@ -371,8 +369,7 @@ struct Node {
 			else
 				return map[key.toStr] = Node(value);
 		default:
-			throw new NodeException("Trying to index a %s node".format(type_),
-				mark_);
+			throw new NodeException(text("Trying to index a ", type_, " node"), mark_);
 		}
 	}
 
@@ -404,7 +401,8 @@ struct Node {
 					return;
 				}
 			if (type_ != NodeType.sequence)
-				throw new NodeException("Trying to add an element to a %s node".format(type_), mark_);
+				throw new NodeException(text("Trying to add an element to a ", type_,
+						" node"), mark_);
 		}
 		static if (is(Unqual!T == Node))
 			children ~= value;
@@ -449,8 +447,7 @@ struct Node {
 			type_ = NodeType.map;
 			map = null;
 		} else if (type_ != NodeType.map)
-			throw new NodeException(
-				"Trying to add a key-value pair to a %s node".format(type_), mark_);
+			throw new NodeException(text("Trying to add a key-value pair to a ", type_, " node"), mark_);
 
 		static if (is(Unqual!V == Node))
 			map[key.toStr] = value;
@@ -602,7 +599,7 @@ struct Node {
 		case NodeType.map:
 			return compareCollection!(Node[string]);
 		default:
-			assert(0, "Cannot compare %s nodes".format(type_));
+			assert(0, text("Cannot compare ", type_, " nodes"));
 		}
 	}
 

@@ -28,9 +28,7 @@ abstract class ListenerBase : SocketChannelBase {
 		DWORD dwBytesReceived;
 
 		debug (Log)
-			tracef("client socket:accept=%s  inner socket=%s", handle, _clientSocket.handle);
-		debug (Log)
-			trace("AcceptEx is: ", AcceptEx);
+			trace("client socket: accept=", _clientSocket.handle, ", server socket=", handle);
 		int nRet = AcceptEx(handle, cast(SOCKET)_clientSocket.handle,
 			_buffer.ptr, 0, sockaddr_in.sizeof + 16, sockaddr_in.sizeof + 16,
 			&dwBytesReceived, &_iocp.overlapped);
@@ -50,7 +48,7 @@ abstract class ListenerBase : SocketChannelBase {
 		// setsockopt(slink, SocketOptionLevel.SOCKET, 0x700B, value.ptr,
 		//                    cast(uint) value.length);
 		debug (Log)
-			tracef("slisten=%s, slink=%s", slisten, slink);
+			trace("slisten=", slisten, ", slink=", slink);
 		setsockopt(slink, SocketOptionLevel.SOCKET, 0x700B, cast(void*)&slisten, slisten.sizeof);
 		if (handler)
 			handler(_clientSocket);
@@ -119,7 +117,7 @@ abstract class StreamBase : SocketChannelBase {
 		DWORD dwFlags;
 
 		debug (Log)
-			tracef("start receiving handle=%d ", socket.handle);
+			trace("start receiving handle=", socket.handle);
 
 		int nRet = WSARecv(cast(SOCKET)socket.handle, &_dataReadBuffer, 1u, &dwReceived, &dwFlags,
 			&_iocpread.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
@@ -158,14 +156,14 @@ abstract class StreamBase : SocketChannelBase {
 
 		debug (Log) {
 			if (dwSent != _dataWriteBuffer.len)
-				warningf("dwSent=%d, BufferLength=%d", dwSent, _dataWriteBuffer.len);
+				warning("dwSent=", dwSent, ", BufferLength=", _dataWriteBuffer.len);
 		}
 		// FIXME: Needing refactor or cleanup
 		// The buffer may be full, so what can do here?
 		// checkErro(nRet, SOCKET_ERROR); // bug:
 
 		if (isError) {
-			errorf("Socket error on write: fd=%d, message=%s", handle, erroString);
+			error("Socket error on write: fd=", handle, ", message=", erroString);
 			close();
 		}
 
@@ -175,7 +173,7 @@ abstract class StreamBase : SocketChannelBase {
 	protected void doRead() {
 		clearError();
 		debug (Log)
-			tracef("data reading...%d nbytes", readLen);
+			trace("data reading ", readLen, " bytes");
 
 		if (readLen > 0) {
 			// import std.stdio;
@@ -184,7 +182,7 @@ abstract class StreamBase : SocketChannelBase {
 			if (onReceived)
 				onReceived(_readBuffer[0 .. readLen]);
 			debug (Log)
-				tracef("done with data reading...%d nbytes", readLen);
+				trace("done with data reading ", readLen, " bytes");
 
 			// continue reading
 			beginRead();
@@ -196,7 +194,7 @@ abstract class StreamBase : SocketChannelBase {
 			//     close();
 		} else {
 			debug (Log) {
-				warningf("undefined behavior on thread %d", getTid());
+				warning("undefined behavior on thread ", getTid());
 			} else {
 				_error = "undefined behavior on thread";
 			}
@@ -242,7 +240,7 @@ abstract class StreamBase : SocketChannelBase {
 
 		if (len < data.length) { // to fix the corrupted data
 			debug (Log)
-				warningf("remaining data: %d / %d ", data.length - len, data.length);
+				warning("remaining data: ", data.length - len);
 			sendDataBuffer = data.dup;
 		}
 	}
@@ -266,7 +264,7 @@ abstract class StreamBase : SocketChannelBase {
 	*/
 	void onWriteDone(size_t len) {
 		debug (Log)
-			tracef("finishing data writting %d nbytes) ", len);
+			trace("finishing data writting ", len, " bytes");
 		if (isWriteCancelling) {
 			_isWritting = false;
 			isWriteCancelling = false;
@@ -282,13 +280,13 @@ abstract class StreamBase : SocketChannelBase {
 			_isWritting = false;
 
 			debug (Log)
-				tracef("done with data writting %d nbytes) ", len);
+				trace("done with data writting ", len, " bytes");
 
 			tryWrite();
 		} else // if (sendDataBuffer.length > len)
 		{
 			// debug(Log)
-			tracef("remaining nbytes: %d", sendDataBuffer.length - len);
+			trace("remaining nbytes: ", sendDataBuffer.length - len);
 			// FIXME: Needing refactor or cleanup
 			// sendDataBuffer corrupted
 			// const(ubyte)[] data = writeBuffer.data;

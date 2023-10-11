@@ -145,7 +145,7 @@ class SelectorBase : Selector {
 						continue;
 					}
 				if ((events[i].filter & EVFILT_WRITE) && watch.isRegistered) {
-					// version(DebugMode) trace("The channel socket is: ", typeid(watch));
+					// debug (Log) trace("The channel socket is: ", typeid(watch));
 					auto wt = cast(SocketChannelBase)watch;
 					assert(wt);
 					wt.onWriteDone();

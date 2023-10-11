@@ -4,7 +4,6 @@ version (Posix)  : import core.stdc.errno,
 core.stdc.string,
 dast.async.core,
 std.exception,
-std.format,
 std.socket,
 std.string,
 core.sys.posix.sys.socket : accept;
@@ -28,7 +27,7 @@ abstract class ListenerBase : SocketChannelBase {
 			return false;
 
 		debug (Log)
-			infof("Listener fd=%d, client fd=%d", handle, clientFd);
+			info("Listener fd=", handle, " accepted a new connection, client fd=", clientFd);
 
 		if (handler)
 			handler(new Socket(clientFd, _socket.addressFamily));
@@ -37,7 +36,7 @@ abstract class ListenerBase : SocketChannelBase {
 
 	override void onWriteDone() {
 		debug (Log)
-			tracef("a new connection created");
+			trace("a new connection created");
 	}
 }
 
@@ -88,11 +87,10 @@ abstract class StreamBase : SocketChannelBase {
 			}
 
 			debug (Log)
-				warningf("read error: done=%s, errno=%d, message=%s",
-					done, errno, cast(string)fromStringz(strerror(errno)));
+				warning("read error: done=", done, ", errno=", errno, ", message: ", _error);
 		} else {
 			debug (Log)
-				warningf("connection broken: %s", _socket.remoteAddress);
+				warning("connection broken: ", _socket.remoteAddress);
 			onDisconnected();
 			if (_isClosed)
 				socket.close(); // release the sources
@@ -121,7 +119,7 @@ abstract class StreamBase : SocketChannelBase {
 	protected void tryWriteAll(in ubyte[] data) {
 		const len = socket.send(data);
 		// debug(Log)
-		tracef("actually sent bytes: %d / %d", len, data.length);
+		trace("actually sent bytes: ", len, " / ", data.length);
 
 		if (len > 0) {
 			if (canWriteAgain && len < data.length) //  && writeRetries < writeRetryLimit
@@ -131,7 +129,7 @@ abstract class StreamBase : SocketChannelBase {
 				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
 					writeRetries, len, data.length - len, data.length);
 				if (writeRetries > writeRetryLimit)
-					warning("You are writting a Big block of data!!!");
+					warning("You are writting a big block of data!!!");
 
 				tryWriteAll(data[len .. $]);
 			} else
@@ -140,13 +138,13 @@ abstract class StreamBase : SocketChannelBase {
 		} else if (len == Socket.ERROR) {
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
 				string msg = lastSocketError();
-				warningf("errno=%d, message: %s", errno, msg);
+				warning("errno=", errno, ", message: ", msg);
 				_error = msg;
 
 				errorOccurred(msg);
 			} else {
 				// debug(Log)
-				warningf("errno=%d, message: %s", errno, lastSocketError());
+				warning("errno=", errno, ", message: ", lastSocketError());
 				if (canWriteAgain) {
 					import core.thread;
 					import core.time;
@@ -163,7 +161,7 @@ abstract class StreamBase : SocketChannelBase {
 			}
 		} else {
 			debug (Log) {
-				warningf("len=%d, message: %s", len, lastSocketError());
+				warning("len=", len, ", message: ", lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
 				_error = lastSocketError();
@@ -177,24 +175,24 @@ abstract class StreamBase : SocketChannelBase {
 	protected size_t tryWrite(in ubyte[] data) {
 		const len = socket.send(data);
 		debug (Log)
-			tracef("actually sent bytes: %d / %d", len, data.length);
+			trace("actually sent bytes: ", len, " / ", data.length);
 
 		if (len > 0)
 			return len;
 
 		if (len == Socket.ERROR) {
 			debug (Log)
-				warningf("errno=%d, message: %s", errno, lastSocketError());
+				warning("errno=", errno, ", message: ", lastSocketError());
 
 			// FIXME: Needing refactor or cleanup
 			// check more error status
 			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
 				_error = lastSocketError();
-				warningf("errno=%d, message: %s", errno, _error);
+				warning("errno=", errno, ", message: ", _error);
 			}
 		} else {
 			debug (Log) {
-				warningf("len=%d, message: %s", len, lastSocketError());
+				warning("len=", len, ", message: ", lastSocketError());
 				assert(0, "Undefined behavior!");
 			} else {
 				_error = lastSocketError();
@@ -214,7 +212,7 @@ abstract class StreamBase : SocketChannelBase {
 	override void onWriteDone() {
 		// notified by kqueue selector when data writing done
 		debug (Log)
-			tracef("done with data writing");
+			trace("done with data writing");
 	}
 
 	// protected UbyteArrayObject _readBuffer;

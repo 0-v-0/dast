@@ -1,4 +1,4 @@
-import dast.http1;
+import dast.http.server;
 
 void handle(Request, Response resp) {
 	resp.writeHeader("HTTP/1.1 200 OK");

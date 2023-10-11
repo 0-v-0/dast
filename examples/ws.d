@@ -3,7 +3,7 @@ import std.logger;
 import dast.ws;
 
 class EchoSocketServer : WebSocketServer {
-	override void onOpen(WSClient client, Request req) {
+	override void onOpen(WSClient client, in Request req) {
 		try
 			tracef("Peer %s connect to '%s'", client.id, req.path);
 		catch (Exception) {
@@ -19,9 +19,9 @@ class EchoSocketServer : WebSocketServer {
 }
 
 class BroadcastServer : WebSocketServer {
-	private string[PeerID] peers;
+	private const(char)[][PeerID] peers;
 
-	override void onOpen(WSClient client, Request req) {
+	override void onOpen(WSClient client, in Request req) {
 		peers[client.id] = req.path;
 	}
 
@@ -69,7 +69,7 @@ void main() {
 		pragma(msg, "wshttp");
 		auto server = new WebSocketServer;
 		server.handler = &handle;
-		server.maxConnections = 90_000;
+		server.settings.maxConnections = 90_000;
 	}
 
 	server.run(10301);

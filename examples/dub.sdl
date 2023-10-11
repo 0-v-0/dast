@@ -6,16 +6,12 @@ configuration "fcgi" {
 	sourceFiles "fcgi.d"
 }
 configuration "http1" {
-	dependency "dast:http1" path=".."
+	dependency "dast:http" path=".."
 	sourceFiles "http1.d"
 }
 configuration "httpserver" {
 	dependency "dast:async" path=".."
 	sourceFiles "httpserver.d"
-}
-configuration "lshttp" {
-	dependency "dast:lshttp" path=".."
-	sourceFiles "lshttp.d"
 }
 configuration "uwsgi" {
 	dependency "dast:uwsgi" path=".."

@@ -192,7 +192,7 @@ class Server {
 			try
 				handler(req, resp);
 			catch (Exception e) {
-				warningf("%s", e);
+				warning(e);
 				resp.head.clear();
 				resp.buf.clear();
 				resp.writeHeader("HTTP/1.1 500 Internal Server Error");

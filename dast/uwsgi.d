@@ -181,7 +181,7 @@ class Server {
 			try
 				handler(req, resp);
 			catch (Exception e) {
-				warningf("%s", e);
+				warning(e);
 				resp.writeHeader("HTTP/1.1 500 Internal Server Error");
 				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
 				resp << e.toString;

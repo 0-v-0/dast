@@ -1,5 +1,4 @@
 import dast.async;
-import std.logger;
 import std.socket;
 import std.stdio;
 
@@ -34,7 +33,7 @@ void main() {
 		client.onClosed = {
 			debug writeln("The connection is closed!");
 		};
-		client.onError = (string msg) { writeln("Error: ", msg); };
+		client.onError = (in char[] msg) { writeln("Error: ", msg); };
 	};
 	listener.start();
 

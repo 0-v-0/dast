@@ -44,11 +44,11 @@ class SelectorBase : Selector {
 					wt.setTimer();
 			}
 
-		// version(DebugMode) infof("register, watcher(fd=%d)", watcher.handle);
+		// debug (Log) infof("register, watcher(fd=%d)", watcher.handle);
 		const fd = watcher.handle;
 		assert(fd >= 0, "The watcher.handle is not initilized!");
 
-		// if(fd < 0) return false;
+		// if (fd < 0) return false;
 		epoll_event ev = buildEpollEvent(watcher);
 		if (epoll_ctl(_epollFD, EPOLL_CTL_ADD, fd, &ev) != 0) {
 			if (errno != EEXIST)
@@ -70,14 +70,14 @@ class SelectorBase : Selector {
 
 	override bool unregister(Channel watcher)
 	in (watcher) {
-		// version(DebugMode) infof("unregister watcher(fd=%d)", watcher.handle);
+		// debug (Log) infof("unregister watcher(fd=%d)", watcher.handle);
 
 		const int fd = watcher.handle;
 		if (fd < 0)
 			return false;
 
 		if ((epoll_ctl(_epollFD, EPOLL_CTL_DEL, fd, null)) != 0) {
-			errorf("unregister failed, watcher.handle=%d", watcher.handle);
+			error("unregister failed, watcher.handle=", watcher.handle);
 			return false;
 		}
 		// TODO: check this
@@ -101,7 +101,7 @@ class SelectorBase : Selector {
 			auto watch = cast(Channel)events[i].data.ptr;
 			if (watch is null) {
 				debug (Log)
-					warningf("watcher is null");
+					warning("watcher is null");
 				continue;
 			}
 

@@ -41,7 +41,7 @@ abstract class Channel {
 		_type = type;
 	}
 
-	@property @safe {
+	@property @safe pure nothrow @nogc {
 		bool isRegistered() const => _isRegistered;
 
 		bool isClosed() const => _isClosed;
@@ -86,7 +86,7 @@ abstract class Channel {
 			debug (Log)
 				trace("channel closed...", handle);
 		} else
-			debug warningf("The watcher(fd=%d) has already been closed", handle);
+			debug warning("The watcher(fd=", handle, ") has already been closed");
 	}
 
 	void setNext(Channel next) {

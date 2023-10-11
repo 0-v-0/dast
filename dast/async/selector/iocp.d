@@ -39,7 +39,7 @@ class SelectorBase : Selector {
 		}
 
 		debug (Log)
-			infof("register, watcher(fd=%d, type=%s)", watcher.handle, watcher.type);
+			info("register, watcher(fd=", watcher.handle, ", type=", watcher.type, ")");
 		_event.setNext(watcher);
 		return true;
 	}
@@ -51,7 +51,7 @@ class SelectorBase : Selector {
 	override bool unregister(Channel watcher) {
 		// FIXME: Needing refactor or cleanup
 		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
-		//tracef("unregister (fd=%d)", watcher.handle);
+		//trace("unregister fd=", watcher.handle);
 
 		// IocpContext _data;
 		// _data.watcher = watcher;
@@ -91,7 +91,7 @@ class SelectorBase : Selector {
 
 		debug {
 			// const ret = GetQueuedCompletionStatus(_iocpHandle, &bytes, &key, &overlapped, INFINITE);
-			// tracef("GetQueuedCompletionStatus, ret=%d", ret);
+			// trace("GetQueuedCompletionStatus, ret=", ret);
 
 			// trace("timeout=", timeout);
 		}

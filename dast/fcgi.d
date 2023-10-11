@@ -370,7 +370,7 @@ class FCGIServer {
 			try
 				handler(req, resp);
 			catch (Exception e) {
-				warningf("%s", e);
+				warning(e);
 				resp.writeHeader("Status: 500");
 				resp << e.toString;
 			}

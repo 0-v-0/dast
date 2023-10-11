@@ -8,6 +8,8 @@ enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;
 enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
+alias UintObject = BaseTypeObject!uint;
+
 interface ITimer {
 	///
 	bool isActive();
@@ -59,7 +61,7 @@ class TimingWheel {
 		Params:
 			tm = the timer
 	*/
-	pragma(inline) void addNewTimer(WheelTimer tm, size_t wheel = 0) {
+	void addNewTimer(WheelTimer tm, size_t wheel = 0) {
 		size_t index;
 		if (wheel > 0)
 			index = nextWheel(wheel);
@@ -93,7 +95,7 @@ class TimingWheel {
 
 protected:
 	/// get next wheel times 's Wheel
-	pragma(inline) size_t nextWheel(size_t wheel) {
+	size_t nextWheel(size_t wheel) {
 		auto next = wheel % _list.length;
 		return (_now + next) % _list.length;
 	}
@@ -101,19 +103,19 @@ protected:
 	/// get the index which is farthest with current index
 	size_t getPrev() const => (_now ? _now : _list.length) - 1;
 	/// go forward a element,and return the element
-	pragma(inline) NullWheelTimer doNext() {
+	NullWheelTimer doNext() {
 		++_now;
 		if (_now == _list.length)
 			_now = 0;
 		return _list[_now];
 	}
 	/// rest a timer
-	pragma(inline) void rest(WheelTimer tm, size_t next) {
+	void rest(WheelTimer tm, size_t next) {
 		remove(tm);
 		addNewTimer(tm, next);
 	}
 	/// remove the timer
-	pragma(inline) void remove(WheelTimer tm) {
+	void remove(WheelTimer tm) {
 		tm._prev._next = tm._next;
 		if (tm._next)
 			tm._next._prev = tm._prev;
@@ -172,7 +174,7 @@ class NullWheelTimer : WheelTimer {
 
 		while (tm) {
 			// WheelTimer timer = tm._next;
-			if (tm.oneShop()) {
+			if (tm.oneShop) {
 				tm.stop();
 			}
 			tm.onTimeout();
@@ -248,7 +250,7 @@ struct CustomTimer {
 
 	int doWheel() {
 		auto nowTime = Clock.currStdTime / 10000;
-		// tracef("nowTime - _nextTime = %d", nowTime - _nextTime);
+		// trace("nowTime - _nextTime = ", nowTime - _nextTime);
 		while (nowTime >= _nextTime) {
 			_timeWheel.prevWheel();
 			_nextTime += CustomTimerMinTimeout;
@@ -367,7 +369,7 @@ class KissWheelTimer : WheelTimer {
 		if (_now >= _circle) {
 			_now = 0;
 			// rest(_wheelSize);
-			// if(_watcher)
+			// if (_watcher)
 			//     catchAndLogException(_watcher.onRead);
 
 			if (timeout)

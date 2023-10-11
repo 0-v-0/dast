@@ -54,7 +54,7 @@ class TcpListener : ListenerBase {
 				trace("listening...");
 			canRead = onAccept((Socket socket) {
 				debug (Log)
-					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
+					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
 				if (onAccepted) {
 					auto stream = onPeerCreating ?

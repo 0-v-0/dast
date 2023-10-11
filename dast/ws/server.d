@@ -31,8 +31,7 @@ struct WSClient {
 		}
 		auto data = Frame(true, op, false, State.done, [0, 0, 0, 0], bytes.length, bytes).serialize;
 		try {
-			tracef("Sending %u bytes to #%d in one frame of %u bytes long",
-				bytes.length, id, data.length);
+			trace("Sending ", bytes.length, " bytes to #", id, " in one frame of ", data.length, " bytes long");
 			return client.write(data);
 		} catch (Exception) {
 		}
@@ -72,7 +71,9 @@ class WebSocketServer : ListenerBase {
 
 	void add(TcpStream client) nothrow {
 		if (clients.length > settings.maxConnections) {
-			try warningf("Maximum number of connections reached (%u)", settings.maxConnections); catch(Exception) {}
+			try
+				warning("Maximum number of connections ", settings.maxConnections, " reached");
+			catch(Exception) {}
 			client.close();
 		} else
 			clients[WSClient(client).id] = WSClient(client);
@@ -84,7 +85,7 @@ class WebSocketServer : ListenerBase {
 		frames.remove(id);
 		if (auto client = clients[id]) {
 			onClose(WSClient(client));
-			try infof("Closing connection #%d", id); catch(Exception) {}
+			try info("Closing connection #", id); catch(Exception) {}
 			client.close();
 		}
 		clients.remove(id);
@@ -96,8 +97,8 @@ class WebSocketServer : ListenerBase {
 		socket.bind(new InternetAddress("127.0.0.1", port));
 		socket.listen(128);
 
-		infof("Listening on port: %u", port);
-		infof("Maximum allowed connections: %u", settings.maxConnections);
+		info("Listening on port: ", port);
+		info("Maximum allowed connections: ", settings.maxConnections);
 		start();
 		(cast(EventLoop)_inLoop).run();
 	}
@@ -120,7 +121,7 @@ class WebSocketServer : ListenerBase {
 			//canRead =
 			onAccept((socket) {
 				debug (Log)
-					infof("new connection from %s, fd=%d", socket.remoteAddress, socket.handle);
+					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
 				auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
 				client.onReceived = (in ubyte[] data) {
@@ -198,7 +199,7 @@ private nothrow:
 		import std.algorithm : swap;
 
 		try
-			tracef("Received %u bytes from %d", data.length, client.id);
+			trace("Received ", data.length, " bytes from ", client.id);
 		catch (Exception) {
 		}
 
@@ -216,7 +217,7 @@ private nothrow:
 			Request req;
 			if (performHandshake(client, data, req)) {
 				try
-					infof("Handshake with %d done (path=%s)", client.id, req.path);
+					info("Handshake with ", client.id, " done (path=", req.path, ")");
 				catch (Exception) {
 				}
 				onOpen(WSClient(client), req);
@@ -225,11 +226,9 @@ private nothrow:
 	}
 
 	void handleFrame(WSClient client, in Frame frame) {
-		try
+		debug (Log)
 			tracef("From client %s received frame: done=%s; fin=%s; op=%s; length=%u",
 				client.id, frame.done, frame.fin, frame.op, frame.length);
-		catch (Exception) {
-		}
 		if (!frame.done)
 			return;
 		switch (frame.op) {
@@ -248,7 +247,7 @@ private nothrow:
 			return;
 		case Op.PONG:
 			try
-				tracef("Received pong from %s", client.id);
+				trace("Received pong from ", client.id);
 			catch (Exception) {
 			}
 			return;
