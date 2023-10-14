@@ -190,4 +190,4 @@ unittest {
 	assert(getST() != getST());
 }
 
-auto toStr(T)(T ptr) => std.string.fromStringz(ptr).idup;
+auto toStr(inout(char)* ptr) => std.string.fromStringz(ptr).idup;

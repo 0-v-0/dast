@@ -80,8 +80,8 @@ class SelectorBase : Selector {
 	}
 
 	override bool reregister(Channel watcher) {
-		throw new Exception("The Kqueue does not support reregister!");
-		//return false;
+		// Kqueue does not support reregister
+		return false;
 	}
 
 	override bool unregister(Channel watcher)

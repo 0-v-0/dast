@@ -46,7 +46,7 @@ TCP Client
 abstract class StreamBase : SocketChannelBase {
 	SimpleEventHandler disconnectionHandler;
 
-	protected bool _isConnected; //if server side always true.
+	protected bool _isConnected; // always true if server side
 
 	protected this() {
 	}
@@ -54,7 +54,6 @@ abstract class StreamBase : SocketChannelBase {
 	this(Selector loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4096 * 2) {
 		import std.array;
 
-		// _readBuffer = new UbyteArrayObject;
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
 		_readBuffer = uninitializedArray!(ubyte[])(bufferSize);
@@ -68,7 +67,7 @@ abstract class StreamBase : SocketChannelBase {
 	protected bool tryRead() {
 		bool done = true;
 		clearError();
-		ptrdiff_t len = socket.receive(cast(void[])_readBuffer);
+		ptrdiff_t len = socket.receive(_readBuffer);
 		debug (Log)
 			trace("read nbytes...", len);
 
@@ -215,8 +214,7 @@ abstract class StreamBase : SocketChannelBase {
 			trace("done with data writing");
 	}
 
-	// protected UbyteArrayObject _readBuffer;
-	private const(ubyte)[] _readBuffer;
+	private ubyte[] _readBuffer;
 	protected WriteBufferQueue _writeQueue;
 	protected bool isWriteCancelling;
 

@@ -45,7 +45,8 @@ class SelectorBase : Selector {
 	}
 
 	override bool reregister(Channel watcher) {
-		throw new Exception("The IOCP does not support reregister!");
+		// IOCP does not support reregister
+		return false;
 	}
 
 	override bool unregister(Channel watcher) {
@@ -61,7 +62,7 @@ class SelectorBase : Selector {
 		return true;
 	}
 
-	void weakUp() {
+	void weakUp() nothrow {
 		IocpContext _data;
 		_data.watcher = _event;
 		_data.operation = IocpOperation.event;

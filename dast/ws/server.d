@@ -92,12 +92,12 @@ class WebSocketServer : ListenerBase {
 	}
 
 	// dfmt on
-	void run(ushort port) {
+	void run() {
 		this.reusePort = settings.reusePort;
-		socket.bind(new InternetAddress("127.0.0.1", port));
-		socket.listen(128);
+		socket.bind(new InternetAddress("127.0.0.1", settings.port));
+		socket.listen(settings.connectionQueueSize);
 
-		info("Listening on port: ", port);
+		info("Listening on port: ", settings.port);
 		info("Maximum allowed connections: ", settings.maxConnections);
 		start();
 		(cast(EventLoop)_inLoop).run();

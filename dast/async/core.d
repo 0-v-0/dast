@@ -16,15 +16,16 @@ alias ConnectionHandler = void delegate(bool isSucceeded);
 alias AcceptCallback = void delegate(Selector loop, Socket socket);
 
 interface Selector {
+nothrow:
 	bool register(Channel channel);
 
 	bool reregister(Channel channel);
 
-	bool unregister(Channel channel) nothrow;
+	bool unregister(Channel channel);
 
 	void stop();
 
-	void dispose() nothrow;
+	void dispose();
 }
 
 abstract class Channel {
@@ -75,10 +76,10 @@ abstract class Channel {
 	void onWrite() {
 		assert(0, "unimplemented");
 	}
-
+nothrow:
 	final bool flag(WatchFlag index) => (_flags & index) != 0;
 
-	void close() nothrow {
+	void close() {
 		if (!_isClosed) {
 			debug (Log)
 				trace("channel closing...", handle);
@@ -99,7 +100,7 @@ abstract class Channel {
 		_next = next;
 	}
 
-	void clear() nothrow {
+	void clear() {
 		if (_priv)
 			_priv._next = _next;
 		if (_next)

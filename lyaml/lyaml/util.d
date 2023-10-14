@@ -2,7 +2,7 @@ module lyaml.util;
 
 import std.conv;
 
-auto toStr(T)(T x) {
+private auto toStr(T)(T x) {
 	static if (is(T == string))
 		return x;
 	else
@@ -25,7 +25,7 @@ struct Mark {
 	/// Get a string representation of the mark.
 	string toString() const {
 		// Line/column numbers start at zero internally, make them start at 1.
-		static string clamped(ushort v) => text(v + 1, v == ushort.max ? " or higher" : "");
+		static clamped(ushort v) => text(v + 1, v == ushort.max ? " or higher" : "");
 
 		return "line " ~ clamped(line_) ~ ",column " ~ clamped(column_);
 	}
