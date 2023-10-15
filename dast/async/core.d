@@ -1,7 +1,8 @@
 module dast.async.core;
 
-import std.socket;
-import dast.async.container;
+import dast.async.container,
+std.socket;
+public import dast.async.selector : Selector;
 
 package import std.logger;
 
@@ -14,19 +15,6 @@ alias DataWrittenHandler = void delegate(in void[] data, size_t size);
 alias AcceptHandler = void delegate(Socket socket);
 alias ConnectionHandler = void delegate(bool isSucceeded);
 alias AcceptCallback = void delegate(Selector loop, Socket socket);
-
-interface Selector {
-nothrow:
-	bool register(Channel channel);
-
-	bool reregister(Channel channel);
-
-	bool unregister(Channel channel);
-
-	void stop();
-
-	void dispose();
-}
 
 abstract class Channel {
 	socket_t handle;
@@ -45,23 +33,20 @@ abstract class Channel {
 	@property @safe pure nothrow @nogc {
 		bool isRegistered() const => _isRegistered;
 
-		bool isClosed() const => _isClosed;
+		bool isClosed() const => _closed;
 
 		WatcherType type() const => _type;
-
-		Selector eventLoop() => _inLoop;
 	}
 
-	protected bool _isClosed;
+	protected bool _closed;
 
 	protected void onClose() nothrow {
 		_isRegistered = false;
-		_isClosed = true;
+		_closed = true;
 		version (Windows) {
 		} else
 			_inLoop.unregister(this);
 		//  _inLoop = null;
-		clear();
 	}
 
 	protected void errorOccurred(in char[] msg) {
@@ -76,11 +61,10 @@ abstract class Channel {
 	void onWrite() {
 		assert(0, "unimplemented");
 	}
-nothrow:
-	final bool flag(WatchFlag index) => (_flags & index) != 0;
 
+nothrow:
 	void close() {
-		if (!_isClosed) {
+		if (!_closed) {
 			debug (Log)
 				trace("channel closing...", handle);
 			onClose();
@@ -90,42 +74,20 @@ nothrow:
 			debug warning("The watcher(fd=", handle, ") has already been closed");
 	}
 
-	void setNext(Channel next) {
-		if (next is this)
-			return; // Can't set to self
-		next._next = _next;
-		next._priv = this;
-		if (_next)
-			_next._priv = next;
-		_next = next;
-	}
-
-	void clear() {
-		if (_priv)
-			_priv._next = _next;
-		if (_next)
-			_next._priv = _priv;
-		_next = null;
-		_priv = null;
-	}
-
 	mixin OverrideErro;
 
 protected:
-	final void setFlag(WatchFlag index, bool enable) {
+	final void setFlag(WF index, bool enable = true) {
 		if (enable)
-			_flags |= index;
+			flags |= index;
 		else
-			_flags &= ~index;
+			flags &= ~index;
 	}
 
 	Selector _inLoop;
 
-private:
-	WatchFlag _flags;
-	WatcherType _type;
-
-	Channel _priv, _next;
+	package WF flags;
+	private WatcherType _type;
 }
 
 class EventChannel : Channel {
@@ -177,15 +139,10 @@ abstract class SocketChannelBase : Channel {
 		super(loop, type);
 	}
 
-	pragma(inline) @property final socket() @trusted => _socket;
+	@property final socket() @trusted => _socket;
 
 	version (Windows) {
-
-		void setRead(size_t bytes) {
-			readLen = bytes;
-		}
-
-		protected size_t readLen;
+		package size_t readLen;
 	}
 
 	void start();
@@ -214,21 +171,16 @@ package template OverrideErro() {
 
 	string erroString() => cast(string)_error;
 
-	void clearError() {
-		_error = "";
-	}
-
-	const(char)[] _error;
+	package const(char)[] _error;
 }
 
 enum WatcherType : ubyte {
+	None,
 	Accept,
 	TCP,
-	UDP,
-	Timer,
+	//UDP,
+	Timer = 4,
 	Event,
-	File,
-	None
 }
 
 enum WatchFlag {
@@ -239,6 +191,8 @@ enum WatchFlag {
 	OneShot = 8,
 	ETMode = 16
 }
+
+package alias WF = WatchFlag;
 
 final class BaseTypeObject(T) {
 	T data;

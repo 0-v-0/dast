@@ -14,7 +14,7 @@ abstract class ListenerBase : SocketChannelBase {
 		import std.array;
 
 		super(loop, WatcherType.Accept);
-		setFlag(WatchFlag.Read, true);
+		setFlag(WF.Read);
 		_buffer = uninitializedArray!(ubyte[])(bufferSize);
 		socket = new TcpSocket(family);
 	}
@@ -29,7 +29,7 @@ abstract class ListenerBase : SocketChannelBase {
 
 		debug (Log)
 			trace("client socket: accept=", _clientSocket.handle, ", server socket=", handle);
-		int nRet = AcceptEx(handle, cast(SOCKET)_clientSocket.handle,
+		int nRet = AcceptEx(handle, _clientSocket.handle,
 			_buffer.ptr, 0, sockaddr_in.sizeof + 16, sockaddr_in.sizeof + 16,
 			&dwBytesReceived, &_iocp.overlapped);
 
@@ -39,17 +39,10 @@ abstract class ListenerBase : SocketChannelBase {
 	}
 
 	protected bool onAccept(scope AcceptHandler handler) {
+		_error = [];
 		debug (Log)
-			trace("new connection coming...");
-		clearError();
-		auto slisten = cast(SOCKET)handle;
-		auto slink = cast(SOCKET)_clientSocket.handle;
-		// void[] value = (&slisten)[0..1];
-		// setsockopt(slink, SocketOptionLevel.SOCKET, 0x700B, value.ptr,
-		//                    cast(uint) value.length);
-		debug (Log)
-			trace("slisten=", slisten, ", slink=", slink);
-		setsockopt(slink, SocketOptionLevel.SOCKET, 0x700B, cast(void*)&slisten, slisten.sizeof);
+			trace("handle=", handle, ", slink=", _clientSocket.handle);
+		setsockopt(_clientSocket.handle, SocketOptionLevel.SOCKET, 0x700B, &handle, handle.sizeof);
 		if (handler)
 			handler(_clientSocket);
 
@@ -71,8 +64,6 @@ private:
 	Socket _clientSocket;
 }
 
-alias AcceptorBase = ListenerBase;
-
 /** TCP Client */
 abstract class StreamBase : SocketChannelBase {
 	DataReceivedHandler onReceived;
@@ -84,8 +75,8 @@ abstract class StreamBase : SocketChannelBase {
 		import std.array;
 
 		super(loop, WatcherType.TCP);
-		setFlag(WatchFlag.Read, true);
-		setFlag(WatchFlag.Write, true);
+		setFlag(WF.Read);
+		setFlag(WF.Write);
 
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
@@ -113,13 +104,13 @@ abstract class StreamBase : SocketChannelBase {
 		_dataReadBuffer.buf = cast(char*)_readBuffer.ptr;
 		_iocpread.watcher = this;
 		_iocpread.operation = IocpOperation.read;
-		DWORD dwReceived;
-		DWORD dwFlags;
+		DWORD dwReceived = void;
+		DWORD dwFlags = void;
 
 		debug (Log)
 			trace("start receiving handle=", socket.handle);
 
-		int nRet = WSARecv(cast(SOCKET)socket.handle, &_dataReadBuffer, 1u, &dwReceived, &dwFlags,
+		int nRet = WSARecv(socket.handle, &_dataReadBuffer, 1u, &dwReceived, &dwFlags,
 			&_iocpread.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
 
 		checkErro(nRet, SOCKET_ERROR);
@@ -128,7 +119,7 @@ abstract class StreamBase : SocketChannelBase {
 	protected void doConnect(Address addr) {
 		_iocpwrite.watcher = this;
 		_iocpwrite.operation = IocpOperation.connect;
-		int nRet = ConnectEx(cast(SOCKET)socket.handle,
+		int nRet = ConnectEx(socket.handle,
 			cast(SOCKADDR*)addr.name(), addr.nameLen(), null, 0, null,
 			&_iocpwrite.overlapped);
 		checkErro(nRet, ERROR_IO_PENDING);
@@ -136,23 +127,21 @@ abstract class StreamBase : SocketChannelBase {
 
 	private uint doWrite() {
 		_inWrite = true;
-		DWORD dwFlags;
-		DWORD dwSent;
+		DWORD dwSent = void;
 		_iocpwrite.watcher = this;
 		_iocpwrite.operation = IocpOperation.write;
 		debug (Log) {
-			size_t bufferLength = sendDataBuffer.length;
+			const bufferLength = sendDataBuffer.length;
 			trace("writing...handle=", socket.handle);
 			trace("buffer content length: ", bufferLength);
-			// trace(cast(string) data);
 			if (bufferLength > 64)
 				tracef("%(%02X %) ...", sendDataBuffer[0 .. 64]);
 			else
 				tracef("%(%02X %)", sendDataBuffer[0 .. $]);
 		}
 
-		WSASend(cast(SOCKET)socket.handle, &_dataWriteBuffer, 1, &dwSent,
-			dwFlags, &_iocpwrite.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
+		WSASend(socket.handle, &_dataWriteBuffer, 1, &dwSent,
+			0, &_iocpwrite.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
 
 		debug (Log) {
 			if (dwSent != _dataWriteBuffer.len)
@@ -171,7 +160,7 @@ abstract class StreamBase : SocketChannelBase {
 	}
 
 	protected void doRead() {
-		clearError();
+		_error = [];
 		debug (Log)
 			trace("data reading ", readLen, " bytes");
 
@@ -190,7 +179,7 @@ abstract class StreamBase : SocketChannelBase {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
 			onDisconnected();
-			// if (_isClosed)
+			// if (_closed)
 			//     close();
 		} else {
 			debug (Log) {
@@ -204,23 +193,23 @@ abstract class StreamBase : SocketChannelBase {
 	// TODO
 	/// Send a big block of data
 	protected size_t tryWrite(in ubyte[] data) {
-		if (_isWritting) {
-			warning("Busy in writting on thread: ");
+		if (_isWriting) {
+			warning("Busy in writing on thread: ");
 			return 0;
 		}
 		debug (Log)
-			trace("start to write");
-		_isWritting = true;
+			trace("start writing");
+		_isWriting = true;
 
-		clearError();
+		_error = [];
 		setWriteBuffer(data);
 		return doWrite();
 	}
 
 	protected void tryWrite() {
-		if (_isWritting) {
+		if (_isWriting) {
 			debug (Log)
-				warning("Busy in writting on thread: ");
+				warning("Busy in writing on thread: ");
 			return;
 		}
 
@@ -228,15 +217,14 @@ abstract class StreamBase : SocketChannelBase {
 			return;
 
 		debug (Log)
-			trace("start to write");
-		_isWritting = true;
-
-		clearError();
+			trace("start writing");
+		_isWriting = true;
+		_error = [];
 
 		writeBuffer = _writeQueue.front;
 		auto data = writeBuffer.data;
 		setWriteBuffer(data);
-		size_t len = doWrite();
+		const len = doWrite();
 
 		if (len < data.length) { // to fix the corrupted data
 			debug (Log)
@@ -245,8 +233,6 @@ abstract class StreamBase : SocketChannelBase {
 		}
 	}
 
-	private bool _isWritting;
-
 	private void setWriteBuffer(in ubyte[] data) {
 		debug (Log)
 			trace("buffer content length: ", data.length);
@@ -254,8 +240,8 @@ abstract class StreamBase : SocketChannelBase {
 		// tracef("%(%02X %)", data);
 
 		sendDataBuffer = data; //data[writeLen .. $]; // TODO: need more tests
-		_dataWriteBuffer.buf = cast(char*)sendDataBuffer.ptr;
 		_dataWriteBuffer.len = cast(uint)sendDataBuffer.length;
+		_dataWriteBuffer.buf = cast(char*)sendDataBuffer.ptr;
 	}
 
 	/**
@@ -264,9 +250,9 @@ abstract class StreamBase : SocketChannelBase {
 	*/
 	void onWriteDone(size_t len) {
 		debug (Log)
-			trace("finishing data writting ", len, " bytes");
+			trace("finishing data writing ", len, " bytes");
 		if (isWriteCancelling) {
-			_isWritting = false;
+			_isWriting = false;
 			isWriteCancelling = false;
 			_writeQueue.clear(); // clean the data buffer
 			return;
@@ -277,10 +263,10 @@ abstract class StreamBase : SocketChannelBase {
 				warning("_writeQueue is empty!");
 
 			writeBuffer.doFinish();
-			_isWritting = false;
+			_isWriting = false;
 
 			debug (Log)
-				trace("done with data writting ", len, " bytes");
+				trace("done with data writing ", len, " bytes");
 
 			tryWrite();
 		} else // if (sendDataBuffer.length > len)
@@ -297,23 +283,22 @@ abstract class StreamBase : SocketChannelBase {
 		}
 	}
 
-	void cancelWrite() {
-		isWriteCancelling = true;
-	}
+	bool _isConnected; // if server side always true
+	SimpleEventHandler disconnectionHandler;
 
-	protected void onDisconnected() {
+protected:
+	void onDisconnected() {
 		_isConnected = false;
-		_isClosed = true;
+		_closed = true;
 		if (disconnectionHandler)
 			disconnectionHandler();
 	}
 
-	bool _isConnected; // if server side always true
-	SimpleEventHandler disconnectionHandler;
+	WriteBufferQueue _writeQueue;
+	bool isWriteCancelling;
 
-	protected WriteBufferQueue _writeQueue;
-	protected bool isWriteCancelling;
 private:
+	bool _isWriting;
 	const(ubyte)[] _readBuffer, sendDataBuffer;
 	StreamWriteBuffer* writeBuffer;
 	IocpContext _iocpread, _iocpwrite;
@@ -323,15 +308,15 @@ private:
 
 mixin template CheckIocpError() {
 	void checkErro(int ret, int erro = 0) {
-		auto dwLastError = GetLastError();
-		if (ret != 0 || dwLastError == 0)
+		auto err = GetLastError();
+		if (ret != 0 || err == 0)
 			return;
 
 		debug (Log)
-			tracef("erro=%d, dwLastError=%d", erro, dwLastError);
+			tracef("erro=%d, dwLastError=%d", erro, err);
 
-		if (dwLastError != ERROR_IO_PENDING)
-			_error = text("AcceptEx failed with error: code=",dwLastError);
+		if (err != ERROR_IO_PENDING)
+			_error = text("AcceptEx failed with error: code=", err);
 	}
 }
 
@@ -379,9 +364,9 @@ shared static this() {
 }
 
 private void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
-	DWORD dwBytesReturned;
+	DWORD bytesReturned;
 	if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
-			&pfn, pfn.sizeof, &dwBytesReturned, null, null) == SOCKET_ERROR)
+			&pfn, pfn.sizeof, &bytesReturned, null, null) == SOCKET_ERROR)
 		throw new ErrnoException("Get function failed", WSAGetLastError());
 }
 

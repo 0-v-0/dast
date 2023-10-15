@@ -2,7 +2,7 @@ module dast.async.eventloop;
 
 import dast.async.selector;
 
-class EventLoop : SelectorBase {
+class EventLoop : Selector {
 	void run() {
 		onLoop(&onWeakUp);
 	}

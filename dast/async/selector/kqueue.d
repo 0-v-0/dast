@@ -17,11 +17,13 @@ std.string;
 
 version (HaveTimer) import dast.async.timer.kqueue;
 
-class SelectorBase : Selector {
+alias Selector = Kqueue;
+
+class Kqueue {
 	this() {
-		_kqueueFD = kqueue();
+		_eventHandle = kqueue();
 		_event = new KqueueEventChannel(this);
-		register(_event);
+		register(_event.handle);
 	}
 
 	~this() {
@@ -29,37 +31,35 @@ class SelectorBase : Selector {
 	}
 
 	void dispose() {
-		if (!isDisposed)
+		if (!_eventHandle)
 			return;
-		isDisposed = true;
 		unregister(_event);
-		close(_kqueueFD);
+		close(_eventHandle);
+		_eventHandle = 0;
 	}
 
-	private bool isDisposed = false;
-
-	override bool register(Channel watcher)
+	bool register(Channel watcher)
 	in (watcher) {
 		int err = -1;
 		if (watcher.type != WatcherType.Timer) {
-			const int fd = watcher.handle;
+			const fd = watcher.handle;
 			if (fd < 0)
 				return false;
 			kevent_t[2] ev = void;
 			short read = EV_ADD | EV_ENABLE;
 			short write = EV_ADD | EV_ENABLE;
-			if (watcher.flag(WatchFlag.ETMode)) {
+			if (watch.flags & WF.ETMode) {
 				read |= EV_CLEAR;
 				write |= EV_CLEAR;
 			}
 			EV_SET(&ev[0], fd, EVFILT_READ, read, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, write, 0, 0, cast(void*)watcher);
-			if (watcher.flag(WatchFlag.Read) && watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &ev[0], 2, null, 0, null);
-			else if (watcher.flag(WatchFlag.Read))
-				err = kevent(_kqueueFD, &ev[0], 1, null, 0, null);
-			else if (watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &ev[1], 1, null, 0, null);
+			if ((watcher.flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
+			else if (watcher.flags & WF.Read)
+				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
+			else if (watcher.flags & WF.Write)
+				err = kevent(_eventHandle, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
 				kevent_t ev;
@@ -69,22 +69,20 @@ class SelectorBase : Selector {
 				size_t time = watch.time < 20 ? 20 : watch.time; // in millisecond
 				EV_SET(&ev, watch.handle, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_CLEAR,
 					0, time, cast(void*)watcher);
-				err = kevent(_kqueueFD, &ev, 1, null, 0, null);
+				err = kevent(_eventHandle, &ev, 1, null, 0, null);
 			}
 		}
 		if (err < 0)
 			return false;
-		// watcher.currtLoop = this;
-		_event.setNext(watcher);
 		return true;
 	}
 
-	override bool reregister(Channel watcher) {
+	bool reregister(Channel watcher) {
 		// Kqueue does not support reregister
 		return false;
 	}
 
-	override bool unregister(Channel watcher)
+	bool unregister(Channel watcher)
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -95,12 +93,12 @@ class SelectorBase : Selector {
 			kevent_t[2] ev = void;
 			EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
-			if (watcher.flag(WatchFlag.Read) && watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &ev[0], 2, null, 0, null);
-			else if (watcher.flag(WatchFlag.Read))
-				err = kevent(_kqueueFD, &ev[0], 1, null, 0, null);
-			else if (watcher.flag(WatchFlag.Write))
-				err = kevent(_kqueueFD, &ev[1], 1, null, 0, null);
+			if ((watcher.flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
+			else if (watcher.flags & WF.Read)
+				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
+			else if (watcher.flags & WF.Write)
+				err = kevent(_eventHandle, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
 				kevent_t ev;
@@ -108,14 +106,10 @@ class SelectorBase : Selector {
 				if (!watch)
 					return false;
 				EV_SET(&ev, fd, EVFILT_TIMER, EV_DELETE, 0, 0, cast(void*)watcher);
-				err = kevent(_kqueueFD, &ev, 1, null, 0, null);
+				err = kevent(_eventHandle, &ev, 1, null, 0, null);
 			}
 		}
-		if (err < 0)
-			return false;
-		// watcher.currtLoop = null;
-		watcher.clear();
-		return true;
+		return err >= 0;
 	}
 
 	// override bool weakUp()
@@ -130,7 +124,7 @@ class SelectorBase : Selector {
 		do {
 			weak();
 			kevent_t[64] events;
-			auto len = kevent(_kqueueFD, null, 0, events.ptr, events.length, &tspec);
+			auto len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
 			if (len < 1)
 				continue;
 			foreach (i; 0 .. len) {
@@ -164,14 +158,14 @@ class SelectorBase : Selector {
 
 private:
 	bool running;
-	int _kqueueFD;
+	int _eventHandle;
 	EventChannel _event;
 }
 
 class KqueueEventChannel : EventChannel {
 	this(Selector loop) {
 		super(loop);
-		setFlag(WatchFlag.Read, true);
+		setFlag(WF.Read);
 		_pair = socketPair();
 		_pair[0].blocking = false;
 		_pair[1].blocking = false;

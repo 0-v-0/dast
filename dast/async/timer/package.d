@@ -8,3 +8,5 @@ else version (Kqueue)
 	public import dast.async.timer.kqueue;
 else version (Windows)
 	public import dast.async.timer.iocp;
+else
+	static assert(0, "unsupported platform");

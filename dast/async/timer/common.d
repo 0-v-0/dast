@@ -10,34 +10,7 @@ enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
 alias UintObject = BaseTypeObject!uint;
 
-interface ITimer {
-	///
-	bool isActive();
-
-	/// in ms
-	size_t interval();
-
-	/// ditto
-	ITimer interval(size_t v);
-
-	/// ditto
-	ITimer interval(Duration duration);
-
-	///
-	ITimer onTick(TickedEventHandler handler);
-
-	/// immediately: true to call first event immediately
-	/// once: true to call timed event only once
-	void start(bool immediately = false, bool once = false);
-
-	void stop();
-
-	void reset(bool immediately = false, bool once = false);
-
-	void reset(size_t interval);
-
-	void reset(Duration duration);
-}
+nothrow:
 
 /**
 	Timing Wheel manger Class
@@ -267,7 +240,7 @@ private:
 	long _nextTime;
 }
 
-abstract class TimerChannelBase : Channel, ITimer {
+abstract class TimerChannelBase : Channel {
 	protected bool _isActive;
 	protected size_t _interval = 1000;
 
@@ -292,19 +265,19 @@ abstract class TimerChannelBase : Channel, ITimer {
 	}
 
 	/// ditto
-	@property ITimer interval(size_t v) pure {
+	@property interval(size_t v) {
 		_interval = v;
 		return this;
 	}
 
 	/// ditto
-	@property ITimer interval(Duration duration) pure {
+	@property interval(Duration duration) {
 		_interval = cast(size_t)duration.total!"msecs";
 		return this;
 	}
 
 	/// The handler will be handled in another thread
-	ITimer onTick(TickedEventHandler handler) pure {
+	auto onTick(TickedEventHandler handler) {
 		ticked = handler;
 		return this;
 	}

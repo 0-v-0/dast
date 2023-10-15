@@ -14,16 +14,14 @@ TCP Server
 abstract class ListenerBase : SocketChannelBase {
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, WatcherType.Accept);
-		setFlag(WatchFlag.Read, true);
+		setFlag(WF.Read);
 		socket = new TcpSocket(family);
 	}
 
 	protected bool onAccept(scope AcceptHandler handler) {
-		debug (Log)
-			trace("new connection coming...");
-		clearError();
-		auto clientFd = cast(socket_t)accept(handle, null, null);
-		if (clientFd == socket_t.init)
+		_error = [];
+		auto clientFd = accept(handle, null, null);
+		if (clientFd < 0)
 			return false;
 
 		debug (Log)
@@ -58,15 +56,15 @@ abstract class StreamBase : SocketChannelBase {
 			trace("Buffer size for read: ", bufferSize);
 		_readBuffer = uninitializedArray!(ubyte[])(bufferSize);
 		super(loop, WatcherType.TCP);
-		setFlag(WatchFlag.Read, true);
-		setFlag(WatchFlag.Write, true);
-		setFlag(WatchFlag.ETMode, true);
+		setFlag(WF.Read);
+		setFlag(WF.Write);
+		setFlag(WF.ETMode);
 	}
 
 	///
 	protected bool tryRead() {
 		bool done = true;
-		clearError();
+		_error = [];
 		ptrdiff_t len = socket.receive(_readBuffer);
 		debug (Log)
 			trace("read nbytes...", len);
@@ -91,7 +89,7 @@ abstract class StreamBase : SocketChannelBase {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
 			onDisconnected();
-			if (_isClosed)
+			if (_closed)
 				socket.close(); // release the sources
 			else
 				close();
@@ -102,7 +100,7 @@ abstract class StreamBase : SocketChannelBase {
 
 	protected void onDisconnected() {
 		_isConnected = false;
-		_isClosed = true;
+		_closed = true;
 		if (disconnectionHandler)
 			disconnectionHandler();
 	}
@@ -128,7 +126,7 @@ abstract class StreamBase : SocketChannelBase {
 				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
 					writeRetries, len, data.length - len, data.length);
 				if (writeRetries > writeRetryLimit)
-					warning("You are writting a big block of data!!!");
+					warning("You are writing a big block of data!!!");
 
 				tryWriteAll(data[len .. $]);
 			} else
@@ -152,7 +150,7 @@ abstract class StreamBase : SocketChannelBase {
 					tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
 						writeRetries, len, data.length - len, data.length);
 					if (writeRetries > writeRetryLimit)
-						warning("You are writting a Big block of data!!!");
+						warning("You are writing a Big block of data!!!");
 					warning("Wait for a 100 msecs to try again");
 					Thread.sleep(100.msecs);
 					tryWriteAll(data);
@@ -204,9 +202,6 @@ abstract class StreamBase : SocketChannelBase {
 		socket.connect(addr);
 	}
 
-	void cancelWrite() {
-		isWriteCancelling = true;
-	}
 
 	override void onWriteDone() {
 		// notified by kqueue selector when data writing done

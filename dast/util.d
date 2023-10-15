@@ -15,7 +15,7 @@ version (Have_database_util) {
 
 	S snakeCase(S)(S input, char sep = '_') {
 		if (!input.length)
-			return "";
+			return [];
 		char[128] buffer;
 		size_t length;
 

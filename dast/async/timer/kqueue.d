@@ -15,7 +15,7 @@ import core.stdc.errno,
 class TimerBase : TimerChannelBase {
 	this(Selector loop) {
 		super(loop);
-		setFlag(WatchFlag.Read, true);
+		setFlag(WF.Read);
 		_sock = new Socket(AddressFamily.UNIX, SocketType.STREAM);
 		handle = _sock.handle;
 		_readBuffer = new UintObject;
@@ -26,7 +26,7 @@ class TimerBase : TimerChannelBase {
 	}
 
 	bool readTimer(scope ReadCallback read) {
-		clearError();
+		_error = [];
 		_readBuffer.data = 1;
 		if (read)
 			read(_readBuffer);

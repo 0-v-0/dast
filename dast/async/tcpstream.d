@@ -17,13 +17,13 @@ class TcpStream : StreamBase {
 
 	SimpleEventHandler onClosed;
 
-	// for client side
+	// client side
 	this(Selector loop, AddressFamily family = AddressFamily.INET, int bufferSize = 4096 * 2) {
 		super(loop, family, bufferSize);
 		socket = new Socket(family, SocketType.STREAM, ProtocolType.TCP);
 	}
 
-	// for server side
+	// server side
 	this(Selector loop, Socket socket, size_t bufferSize = 4096 * 2) {
 		super(loop, socket.addressFamily, bufferSize);
 		this.socket = socket;
@@ -104,7 +104,7 @@ protected:
 
 	override void onRead() {
 		debug (Log)
-			trace("start to read");
+			trace("start reading");
 
 		version (Posix)
 			while (_isRegistered && !tryRead()) {
@@ -144,14 +144,12 @@ protected:
 				onConnected(true);
 			return;
 		}
-
-		// bool canWrite = true;
 		debug (Log)
-			trace("start to write");
+			trace("start writing");
 
 		while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
 			debug (Log)
-				trace("writting...");
+				trace("writing...");
 
 			StreamWriteBuffer* writeBuffer = _writeQueue.front;
 			auto data = writeBuffer.data;
@@ -160,8 +158,8 @@ protected:
 				continue;
 			}
 
-			clearError();
-			size_t len = tryWrite(data);
+			_error = [];
+			const len = tryWrite(data);
 			if (len > 0 && writeBuffer.popSize(len)) {
 				debug (Log)
 					trace("finishing data writing ", len, " bytes");
@@ -169,7 +167,7 @@ protected:
 			}
 
 			if (isError) {
-				auto msg = text("Socket error on write: fd=", handle, ", message=", erroString);
+				const msg = text("Socket error on write: fd=", handle, ", message=", erroString);
 				errorOccurred(msg);
 				error(msg);
 				break;
