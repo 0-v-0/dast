@@ -8,23 +8,20 @@ std.socket,
 std.conv : text;
 
 class TcpStream : StreamBase {
-	ref auto opDispatch(string member, A...)(auto ref A args) {
-		static if (A.length)
-			mixin("return _socket.", member, "(", args, ");");
-		else
-			mixin("return _socket.", member, ";");
-	}
+	import tame.meta;
+
+	mixin Forward!"_socket";
 
 	SimpleEventHandler onClosed;
 
 	// client side
-	this(Selector loop, AddressFamily family = AddressFamily.INET, int bufferSize = 4096 * 2) {
+	this(Selector loop, AddressFamily family = AddressFamily.INET, int bufferSize = 4 * 1024) {
 		super(loop, family, bufferSize);
 		socket = new Socket(family, SocketType.STREAM, ProtocolType.TCP);
 	}
 
 	// server side
-	this(Selector loop, Socket socket, size_t bufferSize = 4096 * 2) {
+	this(Selector loop, Socket socket, size_t bufferSize = 4 * 1024) {
 		super(loop, socket.addressFamily, bufferSize);
 		this.socket = socket;
 		_isConnected = true;
@@ -33,10 +30,6 @@ class TcpStream : StreamBase {
 	this(Socket socket) {
 		_socket = socket;
 		handle = socket.handle;
-	}
-
-	void connect(string ip, ushort port) {
-		connect(parseAddress(ip, port));
 	}
 
 	void connect(Address addr) {
@@ -114,7 +107,7 @@ protected:
 			doRead();
 
 		if (isError) {
-			auto msg = text("Socket error on write: fd=", handle, ", message=", erroString);
+			const msg = text("Socket error on write: fd=", handle, ", message=", erroString);
 			error(msg);
 			errorOccurred(msg);
 		}
@@ -123,7 +116,7 @@ protected:
 	override void onClose() {
 		debug (Log) {
 			if (!_writeQueue.empty)
-				warning("Some data has not been sent yet.");
+				warning("Some data has not been sent yet");
 		}
 
 		_writeQueue.clear();

@@ -28,7 +28,7 @@ class TcpListener : ListenerBase {
 		version (Windows)
 			super(loop, family, bufferSize);
 		else
-			super(loop, family);
+			super(loop, bufferSize);
 	}
 
 	override void start() {
@@ -49,28 +49,28 @@ class TcpListener : ListenerBase {
 		debug (Log)
 			trace("start to listen");
 		// while(canRead && isRegistered) // why?
-		{
+		//{
+		debug (Log)
+			trace("listening...");
+		canRead = onAccept((Socket socket) {
 			debug (Log)
-				trace("listening...");
-			canRead = onAccept((Socket socket) {
-				debug (Log)
-					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
+				info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-				if (onAccepted) {
-					auto stream = onPeerCreating ?
-						onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, _bufferSize);
+			if (onAccepted) {
+				auto stream = onPeerCreating ?
+					onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, _bufferSize);
 
-					onAccepted(this, stream);
-					stream.start();
-				}
-			});
-
-			if (isError) {
-				canRead = false;
-				error("listener error: ", erroString);
-				close();
+				onAccepted(this, stream);
+				stream.start();
 			}
+		});
+
+		if (isError) {
+			canRead = false;
+			error("listener error: ", erroString);
+			close();
 		}
+		//}
 	}
 }
 

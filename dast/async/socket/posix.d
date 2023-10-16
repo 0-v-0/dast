@@ -202,7 +202,6 @@ abstract class StreamBase : SocketChannelBase {
 		socket.connect(addr);
 	}
 
-
 	override void onWriteDone() {
 		// notified by kqueue selector when data writing done
 		debug (Log)

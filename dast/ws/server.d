@@ -115,28 +115,28 @@ class WebSocketServer : ListenerBase {
 		debug (Log)
 			trace("start to listen");
 		// while(canRead && isRegistered) // why??
-		{
+		//{
+		debug (Log)
+			trace("listening...");
+		//canRead =
+		onAccept((socket) {
 			debug (Log)
-				trace("listening...");
-			//canRead =
-			onAccept((socket) {
-				debug (Log)
-					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
+				info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-				auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
-				client.onReceived = (in ubyte[] data) {
-					onReceive(WSClient(client), data);
-				};
-				client.onClosed = { remove(WSClient(client).id); };
-				client.start();
-			});
+			auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
+			client.onReceived = (in ubyte[] data) {
+				onReceive(WSClient(client), data);
+			};
+			client.onClosed = { remove(WSClient(client).id); };
+			client.start();
+		});
 
-			if (isError) {
-				//canRead = false;
-				error("listener error: ", erroString);
-				close();
-			}
+		if (isError) {
+			//canRead = false;
+			error("listener error: ", erroString);
+			close();
 		}
+		//}
 	}
 
 	bool performHandshake(WSClient client, in ubyte[] msg, ref Request req) nothrow {
