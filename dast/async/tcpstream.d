@@ -7,22 +7,22 @@ core.time,
 std.socket,
 std.conv : text;
 
-class TcpStream : StreamBase {
+@safe class TcpStream : StreamBase {
 	import tame.meta;
 
 	mixin Forward!"_socket";
 
-	SimpleEventHandler onClosed;
+	SimpleHandler onClosed;
 
 	// client side
-	this(Selector loop, AddressFamily family = AddressFamily.INET, int bufferSize = 4 * 1024) {
-		super(loop, family, bufferSize);
-		socket = new Socket(family, SocketType.STREAM, ProtocolType.TCP);
+	this(Selector loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
+		super(loop, bufferSize);
+		socket = new TcpSocket(family);
 	}
 
 	// server side
-	this(Selector loop, Socket socket, size_t bufferSize = 4 * 1024) {
-		super(loop, socket.addressFamily, bufferSize);
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
+		super(loop, bufferSize);
 		this.socket = socket;
 		_isConnected = true;
 	}
@@ -32,7 +32,7 @@ class TcpStream : StreamBase {
 		handle = socket.handle;
 	}
 
-	void connect(Address addr) {
+	void connect(Address addr) @trusted {
 		if (_isConnected)
 			return;
 
@@ -54,11 +54,7 @@ class TcpStream : StreamBase {
 		if (_isConnected)
 			close();
 		_isConnected = false;
-		auto family = AddressFamily.INET;
-		if (socket)
-			family = socket.addressFamily;
-
-		socket = new Socket(family, SocketType.STREAM, ProtocolType.TCP);
+		socket = new TcpSocket(socket ? socket.addressFamily : AddressFamily.INET);
 		connect(addr);
 	}
 
@@ -73,44 +69,73 @@ class TcpStream : StreamBase {
 			beginRead();
 	}
 
-	void write(StreamWriteBuffer* buffer)
-	in (buffer) {
+	/// safe for big data sending
+	void write(in void[] data) {
 		if (!_isConnected)
-			return warning("The connection has been closed!");
-
-		_writeQueue.enqueue(buffer);
-
+			return warning("The connection has been closed");
+		if (data.length)
+			_writeQueue.enqueue(data);
 		version (Windows)
 			tryWrite();
 		else
-			onWrite();
-	}
+			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
+				const data = _writeQueue.front;
+				if (!data.length) {
+					_writeQueue.dequeue();
+					continue;
+				}
 
-	/// safe for big data sending
-	void write(in void[] data, DataWrittenHandler handler = null) {
-		if (data.length)
-			write(new StreamWriteBuffer(data, handler));
+				_error = [];
+				const len = tryWrite(data);
+				if (data.length == len) {
+					debug (Log)
+						trace("finishing data writing ", len, " bytes");
+					_writeQueue.dequeue();
+				}
+
+				if (isError) {
+					errorOccurred(text("Socket error on write: fd=", handle, ", message=", _error));
+					break;
+				}
+			}
 	}
 
 protected:
 	ConnectionHandler onConnected;
+	bool _isConnected;
 
 	override void onRead() {
 		debug (Log)
 			trace("start reading");
 
-		version (Posix)
+		version (Posix) {
 			while (_isRegistered && !tryRead()) {
 				debug (Log)
 					trace("continue reading...");
-			} else
-			doRead();
+			}
+		} else {
+			_error = [];
+			debug (Log)
+				trace("data reading ", readLen, " bytes");
 
-		if (isError) {
-			const msg = text("Socket error on write: fd=", handle, ", message=", erroString);
-			error(msg);
-			errorOccurred(msg);
+			if (readLen) {
+				if (onReceived)
+					onReceived(_readBuf[0 .. readLen]);
+				debug (Log)
+					trace("done with data reading ", readLen, " bytes");
+
+				beginRead(); // continue reading
+			} else {
+				debug (Log)
+					warning("connection broken: ", _socket.remoteAddress);
+				onDisconnected();
+				// if (!_isRegistered)
+				//	close();
+			}
 		}
+
+		if (isError)
+			errorOccurred(text("Socket error on write: fd=", handle, ", message=", _error));
 	}
 
 	override void onClose() {
@@ -122,49 +147,10 @@ protected:
 		_writeQueue.clear();
 		super.onClose();
 		_isConnected = false;
-		socket.shutdown(SocketShutdown.BOTH);
-		socket.close();
+		_socket.shutdown(SocketShutdown.BOTH);
+		_socket.close();
 
 		if (onClosed)
 			onClosed();
-	}
-
-	override void onWrite() {
-		if (!_isConnected) {
-			_isConnected = true;
-
-			if (onConnected)
-				onConnected(true);
-			return;
-		}
-		debug (Log)
-			trace("start writing");
-
-		while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
-			debug (Log)
-				trace("writing...");
-
-			StreamWriteBuffer* writeBuffer = _writeQueue.front;
-			auto data = writeBuffer.data;
-			if (data.length == 0) {
-				_writeQueue.dequeue().doFinish();
-				continue;
-			}
-
-			_error = [];
-			const len = tryWrite(data);
-			if (len > 0 && writeBuffer.popSize(len)) {
-				debug (Log)
-					trace("finishing data writing ", len, " bytes");
-				_writeQueue.dequeue().doFinish();
-			}
-
-			if (isError) {
-				const msg = text("Socket error on write: fd=", handle, ", message=", erroString);
-				errorOccurred(msg);
-				error(msg);
-				break;
-			}
-		}
 	}
 }

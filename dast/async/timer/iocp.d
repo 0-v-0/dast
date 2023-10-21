@@ -5,32 +5,19 @@ dast.async.core,
 dast.async.timer.common,
 std.datetime;
 
-class TimerBase : TimerChannelBase {
-	this(Selector loop) {
-		super(loop);
-		setFlag(WF.Read, true);
+class TimerBase : Timer {
+	this() {
 		_timer = new KissWheelTimer;
-		_timer.timeout = &onTimerTimeout;
-		_readBuffer = new UintObject;
-	}
-
-	bool readTimer(scope ReadCallback read) {
-		_error = [];
-		_readBuffer.data = 1;
-		if (read)
-			read(_readBuffer);
-		return false;
+		_timer.timeout = (Object) {
+			_timer.rest(wheelSize);
+			//onRead();
+		};
 	}
 
 	// override void start(bool immediately = false, bool once = false) {
 	// 	setTimerOut();
 	// 	super.start(immediately, once);
 	// }
-
-	private void onTimerTimeout(Object) {
-		_timer.rest(wheelSize);
-		onRead();
-	}
 
 	override void stop() {
 		_timer.stop();
@@ -51,8 +38,6 @@ class TimerBase : TimerChannelBase {
 	}
 
 	@property KissWheelTimer timer() pure => _timer;
-
-	UintObject _readBuffer;
 
 	private KissWheelTimer _timer;
 }

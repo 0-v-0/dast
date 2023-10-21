@@ -13,14 +13,14 @@ TCP Server
 */
 abstract class ListenerBase : SocketChannelBase {
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {
-		super(loop, WatcherType.Accept);
-		setFlag(WF.Read);
+		super(loop, WT.Accept);
+		flags |= WF.Read;
 		socket = new TcpSocket(family);
 	}
 
 	protected bool onAccept(scope AcceptHandler handler) {
 		_error = [];
-		auto clientFd = accept(handle, null, null);
+		const clientFd = accept(handle, null, null);
 		if (clientFd < 0)
 			return false;
 
@@ -31,51 +31,44 @@ abstract class ListenerBase : SocketChannelBase {
 			handler(new Socket(clientFd, _socket.addressFamily));
 		return true;
 	}
-
-	override void onWriteDone() {
-		debug (Log)
-			trace("a new connection created");
-	}
 }
 
 /**
 TCP Client
 */
 abstract class StreamBase : SocketChannelBase {
-	SimpleEventHandler disconnectionHandler;
-
-	protected bool _isConnected; // always true if server side
+	SimpleHandler disconnectedHandler;
 
 	protected this() {
 	}
 
-	this(Selector loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4096 * 2) {
+	this(Selector loop, size_t bufferSize = 4 * 1024) {
 		import std.array;
 
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
-		_readBuffer = uninitializedArray!(ubyte[])(bufferSize);
-		super(loop, WatcherType.TCP);
-		setFlag(WF.Read);
-		setFlag(WF.Write);
-		setFlag(WF.ETMode);
+		_readBuf = uninitializedArray!(ubyte[])(bufferSize);
+		super(loop, WT.TCP);
+		flags |= WF.Read | WF.Write | WF.ETMode;
 	}
 
-	///
-	protected bool tryRead() {
-		bool done = true;
+	int writeRetryLimit = 5;
+	private int writeRetries = 0;
+
+protected:
+	bool tryRead() {
 		_error = [];
-		ptrdiff_t len = socket.receive(_readBuffer);
+		const len = socket.receive(_readBuf);
 		debug (Log)
 			trace("read nbytes...", len);
 
 		if (len > 0) {
 			if (onReceived)
-				onReceived(_readBuffer[0 .. len]);
+				onReceived(_readBuf[0 .. len]);
 
-			// It's prossible that more data are wainting for read in inner buffer.
-			if (len == _readBuffer.length)
-				done = false;
+			// It's possible that more data are waiting for read in inner buffer
+			if (len == _readBuf.length)
+				return false;
 		} else if (len < 0) {
 			// FIXME: Needing refactor or cleanup
 			// check more error status
@@ -84,47 +77,39 @@ abstract class StreamBase : SocketChannelBase {
 			}
 
 			debug (Log)
-				warning("read error: done=", done, ", errno=", errno, ", message: ", _error);
+				warning("read error: errno=", errno, ", message: ", _error);
 		} else {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
 			onDisconnected();
-			if (_closed)
-				socket.close(); // release the sources
-			else
+			if (_isRegistered)
 				close();
+			else
+				socket.close(); // release the sources
 		}
-
-		return done;
+		return true;
 	}
 
-	protected void onDisconnected() {
-		_isConnected = false;
-		_closed = true;
-		if (disconnectionHandler)
-			disconnectionHandler();
+	void onDisconnected() {
+		_isRegistered = false;
+		if (disconnectedHandler)
+			disconnectedHandler();
 	}
-
-	protected bool canWriteAgain = true;
-	int writeRetryLimit = 5;
-	private int writeRetries = 0;
-
-	/**
+	/*
 	Warning: It will try the best to write all the data.
 		TODO: create a example for test
-	*/
-	protected void tryWriteAll(in ubyte[] data) {
+
+	void tryWriteAll(in ubyte[] data) {
 		const len = socket.send(data);
-		// debug(Log)
-		trace("actually sent bytes: ", len, " / ", data.length);
+		debug (Log)
+			trace("actually sent bytes: ", len, " / ", data.length);
 
 		if (len > 0) {
-			if (canWriteAgain && len < data.length) //  && writeRetries < writeRetryLimit
-			{
-				// debug(Log)
+			if (len < data.length) { // && writeRetries < writeRetryLimit
+				// debug (Log)
 				writeRetries++;
-				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
-					writeRetries, len, data.length - len, data.length);
+				trace("[", writeRetries, "] rewrite: written ", len,
+					", remaining: ", data.length - len, ", total: ", data.length);
 				if (writeRetries > writeRetryLimit)
 					warning("You are writing a big block of data!!!");
 
@@ -140,36 +125,34 @@ abstract class StreamBase : SocketChannelBase {
 
 				errorOccurred(msg);
 			} else {
-				// debug(Log)
+				// debug (Log)
 				warning("errno=", errno, ", message: ", lastSocketError());
-				if (canWriteAgain) {
-					import core.thread;
-					import core.time;
+				import core.thread;
+				import core.time;
 
-					writeRetries++;
-					tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
-						writeRetries, len, data.length - len, data.length);
-					if (writeRetries > writeRetryLimit)
-						warning("You are writing a Big block of data!!!");
-					warning("Wait for a 100 msecs to try again");
-					Thread.sleep(100.msecs);
-					tryWriteAll(data);
-				}
+				writeRetries++;
+				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
+					writeRetries, len, data.length - len, data.length);
+				if (writeRetries > writeRetryLimit)
+					warning("You are writing a big block of data!!!");
+				warning("Wait for a 100 msecs to try again");
+				Thread.sleep(100.msecs);
+				tryWriteAll(data);
 			}
 		} else {
 			debug (Log) {
 				warning("len=", len, ", message: ", lastSocketError());
-				assert(0, "Undefined behavior!");
+				assert(0, "Undefined behavior");
 			} else {
 				_error = lastSocketError();
 			}
 		}
-	}
+	}*/
 
 	/**
 	Try to write a block of data.
 	*/
-	protected size_t tryWrite(in ubyte[] data) {
+	final size_t tryWrite(in void[] data) {
 		const len = socket.send(data);
 		debug (Log)
 			trace("actually sent bytes: ", len, " / ", data.length);
@@ -190,7 +173,7 @@ abstract class StreamBase : SocketChannelBase {
 		} else {
 			debug (Log) {
 				warning("len=", len, ", message: ", lastSocketError());
-				assert(0, "Undefined behavior!");
+				assert(0, "Undefined behavior");
 			} else {
 				_error = lastSocketError();
 			}
@@ -198,23 +181,17 @@ abstract class StreamBase : SocketChannelBase {
 		return 0;
 	}
 
-	protected void doConnect(Address addr) {
+	void doConnect(Address addr) {
 		socket.connect(addr);
 	}
 
-	override void onWriteDone() {
-		// notified by kqueue selector when data writing done
-		debug (Log)
-			trace("done with data writing");
-	}
-
-	private ubyte[] _readBuffer;
-	protected WriteBufferQueue _writeQueue;
-	protected bool isWriteCancelling;
+	bool isWriteCancelling;
+	ubyte[] _readBuf;
+	WriteBufferQueue _writeQueue;
 
 	/**
 	* Warning: The received data is stored a inner buffer. For a data safe,
 	* you would make a copy of it.
 	*/
-	DataReceivedHandler onReceived;
+	public RecvHandler onReceived;
 }

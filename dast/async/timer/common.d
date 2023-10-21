@@ -8,7 +8,7 @@ enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;
 enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
-alias UintObject = BaseTypeObject!uint;
+alias TimeoutHandler = void delegate(Object sender);
 
 nothrow:
 
@@ -215,7 +215,7 @@ unittest {
 }
 
 struct CustomTimer {
-	void init() {
+	void initialize() {
 		if (_timeWheel is null)
 			_timeWheel = new TimingWheel(CustomTimerWheelSize);
 		_nextTime = Clock.currStdTime / 10000 + CustomTimerMinTimeout;
@@ -240,17 +240,12 @@ private:
 	long _nextTime;
 }
 
-abstract class TimerChannelBase : Channel {
+abstract class Timer {
 	protected bool _isActive;
 	protected size_t _interval = 1000;
 
-	/// Timer tick handler
-	TickedEventHandler ticked;
-
-	this(Selector loop) {
-		super(loop, WatcherType.Timer);
-		_timeOut = 50;
-	}
+	/// Timer tick handler - The handler will be handled in another thread
+	TickedHandler ticked;
 
 	@property const nothrow @nogc {
 		///
@@ -276,23 +271,12 @@ abstract class TimerChannelBase : Channel {
 		return this;
 	}
 
-	/// The handler will be handled in another thread
-	auto onTick(TickedEventHandler handler) {
-		ticked = handler;
-		return this;
-	}
-
 	void start() {
-		_inLoop.register(this);
-		_isRegistered = true;
 		_isActive = true;
 	}
 
 	void stop() {
-		if (_isActive) {
-			_isActive = false;
-			onClose();
-		}
+		_isActive = false;
 	}
 
 	void reset(size_t interval) {
@@ -312,10 +296,6 @@ abstract class TimerChannelBase : Channel {
 		}
 	}
 
-	override void close() {
-		onClose();
-	}
-
 	protected void onTick() {
 		// trace("tick thread id: ", getTid());
 		if (ticked)
@@ -323,12 +303,8 @@ abstract class TimerChannelBase : Channel {
 	}
 
 protected:
-	uint _wheelSize;
-	uint _circle;
-	size_t _timeOut;
+	uint _wheelSize, _circle;
 }
-
-alias TimeoutHandler = void delegate(Object sender);
 
 class KissWheelTimer : WheelTimer {
 	// override void onTimeout() nothrow
@@ -342,8 +318,6 @@ class KissWheelTimer : WheelTimer {
 		if (_now >= _circle) {
 			_now = 0;
 			// rest(_wheelSize);
-			// if (_watcher)
-			//     catchAndLogException(_watcher.onRead);
 
 			if (timeout)
 				timeout(this);

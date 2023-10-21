@@ -19,11 +19,10 @@ version (HaveTimer) import dast.async.timer.kqueue;
 
 alias Selector = Kqueue;
 
-class Kqueue {
+class Kqueue : KqueueEventChannel {
 	this() {
 		_eventHandle = kqueue();
-		_event = new KqueueEventChannel(this);
-		register(_event.handle);
+		register(handle);
 	}
 
 	~this() {
@@ -33,7 +32,7 @@ class Kqueue {
 	void dispose() {
 		if (!_eventHandle)
 			return;
-		unregister(_event);
+		unregister(this);
 		close(_eventHandle);
 		_eventHandle = 0;
 	}
@@ -41,7 +40,7 @@ class Kqueue {
 	bool register(Channel watcher)
 	in (watcher) {
 		int err = -1;
-		if (watcher.type != WatcherType.Timer) {
+		if (watcher.type != WT.Timer) {
 			const fd = watcher.handle;
 			if (fd < 0)
 				return false;
@@ -89,7 +88,7 @@ class Kqueue {
 			return false;
 
 		int err = -1;
-		if (watcher.type != WatcherType.Timer) {
+		if (watcher.type != WT.Timer) {
 			kevent_t[2] ev = void;
 			EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
@@ -114,39 +113,39 @@ class Kqueue {
 
 	// override bool weakUp()
 	// {
-	//     _event.call();
+	//     call();
 	//     return true;
 	// }
 
-	void onLoop(scope void delegate() weak) {
+	void onLoop(scope void delegate() handler) {
 		running = true;
 		auto tspec = timespec(1, 1000 * 10);
 		do {
-			weak();
+			handler();
 			kevent_t[64] events;
 			auto len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
 			if (len < 1)
 				continue;
 			foreach (i; 0 .. len) {
 				auto watch = cast(Channel)(events[i].udata);
-				if ((events[i].flags & EV_EOF) || (events[i].flags & EV_ERROR)) {
+				if (events[i].flags & (EV_EOF | EV_ERROR)) {
 					watch.close();
 					continue;
 				}
 				version (HaveTimer)
-					if (watch.type == WatcherType.Timer) {
+					if (watch.type == WT.Timer) {
 						watch.onRead();
 						continue;
 					}
-				if ((events[i].filter & EVFILT_WRITE) && watch.isRegistered) {
-					// debug (Log) trace("The channel socket is: ", typeid(watch));
-					auto wt = cast(SocketChannelBase)watch;
-					assert(wt);
-					wt.onWriteDone();
-				}
+				if (watch.isRegistered) {
+					if (events[i].filter & EVFILT_WRITE) {
+						// debug (Log) trace("The channel socket is: ", typeid(watch));
+						assert(cast(SocketChannelBase)watch);
+					}
 
-				if ((events[i].filter & EVFILT_READ) && watch.isRegistered)
-					watch.onRead();
+					if (events[i].filter & EVFILT_READ)
+						watch.onRead();
+				}
 			}
 		}
 		while (running);
@@ -159,13 +158,12 @@ class Kqueue {
 private:
 	bool running;
 	int _eventHandle;
-	EventChannel _event;
 }
 
 class KqueueEventChannel : EventChannel {
-	this(Selector loop) {
-		super(loop);
-		setFlag(WF.Read);
+	this() {
+		super(this);
+		flags |= WF.Read;
 		_pair = socketPair();
 		_pair[0].blocking = false;
 		_pair[1].blocking = false;
@@ -176,15 +174,14 @@ class KqueueEventChannel : EventChannel {
 		close();
 	}
 
-	override void call() {
+	/+ override void call() {
 		_pair[0].send("call");
-	}
+	}+/
 
 	override void onRead() {
 		ubyte[128] data = void;
 		while (_pair[1].receive(data) > 0) {
 		}
-
 		super.onRead();
 	}
 

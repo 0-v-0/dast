@@ -1,43 +1,41 @@
 module dast.async.container.queue;
 
-struct Queue(T, bool check = false) if (is(typeof(null) : T)) {
-pure nothrow @safe:
-	@property T front() => _first;
+struct Queue(T, bool check = false) {
+pure nothrow @safe @nogc:
+	@property T front() => arr[_head];
 
-	@property bool empty() const => _first is null;
+	@property bool empty() const => _head == _tail;
+	@property bool full() const => (_tail + 1) % N == _head;
+	@property uint size() const => _tail >= _head ? _tail - _head : N - _head + _tail;
 
 	void enqueue(T item)
 	in (item) {
-		if (_last)
-			_last.next = item;
+		static if (check)
+			assert(!full);
+		arr[_tail] = item;
+		if (_tail < N)
+			++_tail;
 		else
-			_first = item;
-		item.next = null;
-		_last = item;
+			_tail = 0;
 	}
 
 	T dequeue() {
 		static if (check)
-			assert(_first && _last);
-		T item = _first;
-		if (_first !is null)
-			_first = _first.next;
-		if (!_first)
-			_last = null;
-		return item;
+			assert(!empty);
+		T x = arr[_head];
+		if (_head < N)
+			++_head;
+		else
+			_head = 0;
+		return x;
 	}
 
 	void clear() {
-		T current = _first;
-		while (current) {
-			_first = current.next;
-			current.next = null;
-			current = _first;
-		}
-
-		_first = null;
-		_last = null;
+		_head = _tail = 0;
 	}
 
-	private T _first, _last;
+private:
+	enum N = 32;
+	uint _head, _tail;
+	T[N] arr = void;
 }

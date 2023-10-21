@@ -9,8 +9,8 @@ core.time,
 std.socket,
 std.logger;
 
-alias AcceptEventHandler = void delegate(TcpListener sender, TcpStream stream),
-PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket);
+alias AcceptHandler = void delegate(TcpListener sender, TcpStream stream) @safe,
+PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket) @safe;
 
 class TcpListener : ListenerBase {
 	import tame.meta;
@@ -19,8 +19,8 @@ class TcpListener : ListenerBase {
 
 	mixin Forward!"_socket";
 
-	AcceptEventHandler onAccepted;
-	SimpleEventHandler onClosed;
+	AcceptHandler onAccepted;
+	SimpleHandler onClosed;
 	PeerCreateHandler onPeerCreating;
 
 	this(EventLoop loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
@@ -45,14 +45,13 @@ class TcpListener : ListenerBase {
 	}
 
 	protected override void onRead() {
-		bool canRead = true;
+		//bool canRead = true;
 		debug (Log)
 			trace("start to listen");
-		// while(canRead && isRegistered) // why?
-		//{
 		debug (Log)
 			trace("listening...");
-		canRead = onAccept((Socket socket) {
+		//canRead =
+		onAccept((Socket socket) {
 			debug (Log)
 				info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
@@ -66,11 +65,10 @@ class TcpListener : ListenerBase {
 		});
 
 		if (isError) {
-			canRead = false;
-			error("listener error: ", erroString);
+			//canRead = false;
+			error("listener error: ", _error);
 			close();
 		}
-		//}
 	}
 }
 

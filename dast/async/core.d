@@ -6,65 +6,43 @@ public import dast.async.selector : Selector;
 
 package import std.logger;
 
-alias SimpleEventHandler = void delegate() nothrow;
-alias ErrorEventHandler = void delegate(in char[] msg);
-alias TickedEventHandler = void delegate(Object sender);
-alias ReadCallback = void delegate(Object obj);
-alias DataReceivedHandler = void delegate(in ubyte[] data);
+@safe:
+alias SimpleHandler = void delegate() nothrow,
+ErrorHandler = void delegate(in char[] msg) nothrow,
+TickedHandler = void delegate(Object sender),
+RecvHandler = void delegate(in ubyte[] data),
+AcceptHandler = void delegate(
+	Socket socket),
+ConnectionHandler = void delegate(bool success),
+AcceptCallback = void delegate(Selector loop, Socket socket);
+
 alias DataWrittenHandler = void delegate(in void[] data, size_t size);
-alias AcceptHandler = void delegate(Socket socket);
-alias ConnectionHandler = void delegate(bool isSucceeded);
-alias AcceptCallback = void delegate(Selector loop, Socket socket);
-
-abstract class Channel {
+class Channel {
 	socket_t handle;
-	ErrorEventHandler onError;
+	ErrorHandler onError;
+	@property pure nothrow @nogc {
+		protected this() {
+		}
 
-	protected bool _isRegistered;
+		this(Selector loop, WatcherType type = WT.Event) {
+			_inLoop = loop;
+			_type = type;
+		}
 
-	protected this() {
-	}
+		final bool isClosed() const => !_isRegistered;
 
-	this(Selector loop, WatcherType type) {
-		_inLoop = loop;
-		_type = type;
-	}
+		final bool isRegistered() const => _isRegistered;
 
-	@property @safe pure nothrow @nogc {
-		bool isRegistered() const => _isRegistered;
-
-		bool isClosed() const => _closed;
-
-		WatcherType type() const => _type;
-	}
-
-	protected bool _closed;
-
-	protected void onClose() nothrow {
-		_isRegistered = false;
-		_closed = true;
-		version (Windows) {
-		} else
-			_inLoop.unregister(this);
-		//  _inLoop = null;
-	}
-
-	protected void errorOccurred(in char[] msg) {
-		if (onError)
-			onError(msg);
+		final WatcherType type() const => _type;
 	}
 
 	void onRead() {
 		assert(0, "unimplemented");
 	}
 
-	void onWrite() {
-		assert(0, "unimplemented");
-	}
-
 nothrow:
 	void close() {
-		if (!_closed) {
+		if (_isRegistered) {
 			debug (Log)
 				trace("channel closing...", handle);
 			onClose();
@@ -77,59 +55,31 @@ nothrow:
 	mixin OverrideErro;
 
 protected:
-	final void setFlag(WF index, bool enable = true) {
-		if (enable)
-			flags |= index;
-		else
-			flags &= ~index;
+	Selector _inLoop;
+	bool _isRegistered;
+
+	void onClose() {
+		_isRegistered = false;
+		version (Windows) {
+		} else
+			_inLoop.unregister(this);
+		//  _inLoop = null;
 	}
 
-	Selector _inLoop;
+	void errorOccurred(in char[] msg) {
+		try
+			error(msg);
+		catch (Exception) {
+		}
+		if (onError)
+			onError(msg);
+	}
 
 	package WF flags;
 	private WatcherType _type;
 }
 
-class EventChannel : Channel {
-	this(Selector loop) {
-		super(loop, WatcherType.Event);
-	}
-
-	void call() {
-		assert(0);
-	}
-}
-
-struct StreamWriteBuffer {
-@safe:
-	this(const(void)[] data, DataWrittenHandler handler = null) {
-		_data = data;
-		_sentHandler = handler;
-	}
-
-	@property data() const => cast(const(ubyte)[])_data[_site .. $];
-
-	/// add send offset and return is empty
-	bool popSize(size_t size) {
-		_site += size;
-		return _site >= _data.length;
-	}
-
-	/// do send finish
-	void doFinish() @system {
-		if (_sentHandler)
-			_sentHandler(_data, _site);
-		_sentHandler = null;
-		_data = null;
-	}
-
-	StreamWriteBuffer* next;
-
-private:
-	size_t _site;
-	const(void)[] _data;
-	DataWrittenHandler _sentHandler;
-}
+alias EventChannel = Channel;
 
 abstract class SocketChannelBase : Channel {
 	protected this() {
@@ -139,17 +89,11 @@ abstract class SocketChannelBase : Channel {
 		super(loop, type);
 	}
 
-	@property final socket() @trusted => _socket;
+	@property final socket() => _socket;
 
-	version (Windows) {
-		package size_t readLen;
-	}
+	version (Windows) package uint readLen;
 
 	void start();
-
-	void onWriteDone() {
-		assert(0, "unimplemented");
-	}
 
 protected:
 	@property void socket(Socket s) {
@@ -164,15 +108,7 @@ protected:
 	Socket _socket;
 }
 
-alias WriteBufferQueue = Queue!(StreamWriteBuffer*);
-
-package template OverrideErro() {
-	bool isError() => _error.length != 0;
-
-	string erroString() => cast(string)_error;
-
-	package const(char)[] _error;
-}
+alias WriteBufferQueue = Queue!(const(void)[], true);
 
 enum WatcherType : ubyte {
 	None,
@@ -192,8 +128,17 @@ enum WatchFlag {
 	ETMode = 16
 }
 
-package alias WF = WatchFlag;
+package:
+alias WT = WatcherType,
+WF = WatchFlag;
 
-final class BaseTypeObject(T) {
-	T data;
+template OverrideErro() {
+	bool isError() const => _error.length != 0;
+
+	package(dast) string _error;
+}
+
+bool popSize(ref scope const(void)[] arr, size_t size) {
+	arr = arr[size .. $];
+	return arr.length > 0;
 }

@@ -9,29 +9,12 @@ std.datetime,
 std.exception,
 std.socket;
 
-abstract class TimerBase : TimerChannelBase {
-	this(Selector loop) {
-		super(loop);
-		setFlag(WF.Read);
-		_readBuffer = new UintObject;
-		this.handle = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+class TimerBase : Timer {
+	this() {
+		handle = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
 	}
 
-	~this() {
-		close();
-	}
-
-	bool readTimer(scope ReadCallback read) {
-		_error = [];
-		uint value;
-		core.sys.posix.unistd.read(this.handle, &value, 8);
-		_readBuffer.data = value;
-		if (read)
-			read(_readBuffer);
-		return false;
-	}
-
-	UintObject _readBuffer;
+	int handle;
 }
 
 package bool setTimer(int fd) {

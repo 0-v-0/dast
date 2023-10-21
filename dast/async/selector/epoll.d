@@ -18,11 +18,10 @@ version (HaveTimer) import dast.async.timer;
 
 alias Selector = Epoll;
 
-class Epoll {
+class Epoll : EpollEventChannel {
 	this() {
 		_eventHandle = epoll_create1(0);
-		_event = new EpollEventChannel(this);
-		register(_event);
+		register(this);
 	}
 
 	~this() {
@@ -32,7 +31,7 @@ class Epoll {
 	void dispose() {
 		if (!_eventHandle)
 			return;
-		unregister(_event);
+		unregister(this);
 		close(_eventHandle);
 		_eventHandle = 0;
 	}
@@ -40,12 +39,12 @@ class Epoll {
 	bool register(int fd, Channel watcher)
 	in (watcher) {
 		version (HaveTimer)
-			if (watcher.type == WatcherType.Timer)
+			if (watcher.type == WT.Timer)
 				setTimer(fd);
 
-		// debug (Log) infof("register, watcher(fd=%d)", watcher.handle);
+		// debug (Log) info("register, watcher fd=", watcher.handle);
 		const fd = watcher.handle;
-		assert(fd >= 0, "The watcher.handle is not initilized!");
+		assert(fd >= 0, "The watcher.handle is not initilized");
 
 		// if (fd < 0) return false;
 		epoll_event ev = buildEvent(watcher);
@@ -58,7 +57,7 @@ class Epoll {
 
 	bool reregister(Channel watcher)
 	in (watcher) {
-		const int fd = watcher.handle;
+		const fd = watcher.handle;
 		if (fd < 0)
 			return false;
 		auto ev = buildEvent(watcher);
@@ -67,7 +66,8 @@ class Epoll {
 
 	bool unregister(Channel watcher)
 	in (watcher) {
-		debug (Log) info("unregister watcher fd=", watcher.handle);
+		debug (Log)
+			info("unregister watcher fd=", watcher.handle);
 
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -82,10 +82,10 @@ class Epoll {
 		return true;
 	}
 
-	void onLoop(scope void delegate() weak) {
+	void onLoop(scope void delegate() handler) {
 		running = true;
 		do {
-			weak();
+			handler();
 			handleEvents();
 		}
 		while (running);
@@ -96,70 +96,56 @@ class Epoll {
 		const len = epoll_wait(_eventHandle, events.ptr, events.length, 10);
 		foreach (i; 0 .. len) {
 			auto watch = cast(Channel)events[i].data.ptr;
-			if (watch is null) {
+			if (!watch) {
 				debug (Log)
 					warning("watcher is null");
 				continue;
 			}
 
-			if (isErro(events[i].events)) {
+			if (events[i].events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) {
 				debug (Log)
 					warning("close event: ", watch.handle);
 				watch.close();
 				continue;
 			}
 
-			if (watch.isRegistered && isRead(events[i].events)) {
+			if (watch.isRegistered && (events[i].events & EPOLLIN)) {
 				watch.onRead();
 			}
 
-			if (watch.isRegistered && isWrite(events[i].events)) {
-				auto wt = cast(SocketChannelBase)watch;
-				assert(wt);
-				wt.onWriteDone();
+			if (watch.isRegistered && (events[i].events & EPOLLOUT)) {
+				assert(cast(SocketChannelBase)watch);
 				// watch.onWrite();
 			}
 		}
 	}
 
-	void stop() {
+	void stop() nothrow{
 		running = false;
 	}
-
-protected @property nothrow:
-	bool isErro(uint events) => (events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) != 0;
-
-	bool isRead(uint events) => (events & EPOLLIN) != 0;
-
-	bool isWrite(uint events) => (events & EPOLLOUT) != 0;
 
 private:
 	bool running;
 	int _eventHandle;
-	EventChannel _event;
 }
 
 epoll_event buildEvent(Channel watch) {
-	epoll_event ev;
-	ev.data.ptr = watch;
-	ev.events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
+	uint events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
 	if (watch.flags & WF.Read)
-		ev.events |= EPOLLIN;
+		events |= EPOLLIN;
 	if (watch.flags & WF.Write)
-		ev.events |= EPOLLOUT;
+		events |= EPOLLOUT;
 	if (watch.flags & WF.OneShot)
-		ev.events |= EPOLLONESHOT;
+		events |= EPOLLONESHOT;
 	if (watch.flags & WF.ETMode)
-		ev.events |= EPOLLET;
-	return ev;
+		events |= EPOLLET;
+	return epoll_event(events, epoll_data_t(watch));
 }
 
 class EpollEventChannel : EventChannel {
-	alias UlongObject = BaseTypeObject!ulong;
 	this(Selector loop) {
-		super(loop);
-		setFlag(WF.Read);
-		_readBuffer = new UlongObject;
+		super(this);
+		flags |= WF.Read;
 		handle = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	}
 
@@ -167,25 +153,16 @@ class EpollEventChannel : EventChannel {
 		close();
 	}
 
-	override void call() {
+	/+void call() {
 		ulong value = 1;
 		core.sys.posix.unistd.write(handle, &value, value.sizeof);
-	}
+	}+/
 
 	override void onRead() {
-		readEvent();
-		super.onRead();
-	}
-
-	bool readEvent(scope ReadCallback read = null) {
 		_error = [];
 		ulong value = void;
-		core.sys.posix.unistd.read(handle, &value, value.sizeof);
-		_readBuffer.data = value;
-		if (read)
-			read(_readBuffer);
-		return false;
+		read(handle, &value, value.sizeof);
+		_readBuf.data = value;
+		super.onRead();
 	}
-
-	UlongObject _readBuffer;
 }

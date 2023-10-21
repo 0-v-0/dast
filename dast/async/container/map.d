@@ -4,7 +4,7 @@ import core.sync.mutex;
 import tame.meta;
 
 class Map(TKey, TValue) {
-nothrow:
+@safe nothrow:
 	this() {
 		mutex = new Mutex;
 	}
@@ -31,7 +31,7 @@ nothrow:
 		unlock();
 	}
 
-	@property bool empty() const pure @safe @nogc => data.length == 0;
+	@property bool empty() const pure @nogc => data.length == 0;
 
 	bool remove(TKey key) {
 		lock();
@@ -46,7 +46,6 @@ nothrow:
 		unlock();
 	}
 
-@safe:
 	final lock() => mutex.lock_nothrow();
 
 	final unlock() => mutex.unlock_nothrow();

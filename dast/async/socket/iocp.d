@@ -1,7 +1,6 @@
 module dast.async.socket.iocp;
 
 version (Windows)  : import core.sys.windows.windows,
-core.sys.windows.winsock2,
 core.sys.windows.mswsock,
 dast.async.core,
 std.exception,
@@ -9,42 +8,44 @@ std.socket,
 std.conv : text;
 
 /** TCP Server */
-abstract class ListenerBase : SocketChannelBase {
-	this(Selector loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
+@safe abstract class ListenerBase : SocketChannelBase {
+	this(Selector loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		import std.array;
 
-		super(loop, WatcherType.Accept);
-		setFlag(WF.Read);
-		_buffer = uninitializedArray!(ubyte[])(bufferSize);
+		super(loop, WT.Accept);
+		flags |= WF.Read;
+		_buf = uninitializedArray!(ubyte[])(bufferSize);
 		socket = new TcpSocket(family);
 	}
 
-	mixin CheckIocpError;
+	mixin checkErro;
 
-	protected void doAccept() {
-		_iocp.watcher = this;
-		_iocp.operation = IocpOperation.accept;
-		_clientSocket = new Socket(socket.addressFamily, SocketType.STREAM, ProtocolType.TCP);
-		DWORD dwBytesReceived;
-
-		debug (Log)
-			trace("client socket: accept=", _clientSocket.handle, ", server socket=", handle);
-		int nRet = AcceptEx(handle, _clientSocket.handle,
-			_buffer.ptr, 0, sockaddr_in.sizeof + 16, sockaddr_in.sizeof + 16,
-			&dwBytesReceived, &_iocp.overlapped);
-
-		debug (Log)
-			trace("do AcceptEx: the return is: ", nRet);
-		checkErro(nRet);
+	override void onClose() {
+		// TODO
 	}
 
-	protected bool onAccept(scope AcceptHandler handler) {
+protected:
+	void doAccept() @trusted {
+		_iocp.watcher = this;
+		_iocp.operation = IocpOperation.accept;
+		_clientSock = new TcpSocket(socket.addressFamily);
+		uint dwBytesReceived = void;
+
+		debug (Log)
+			trace("client socket: accept=", _clientSock.handle, ", server socket=", handle);
+		enum size = sockaddr_in.sizeof + 16;
+		checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
+				&dwBytesReceived, &_iocp.overlapped));
+	}
+
+	bool onAccept(scope AcceptHandler handler) @trusted {
 		_error = [];
 		debug (Log)
-			trace("handle=", handle, ", slink=", _clientSocket.handle);
-		setsockopt(_clientSocket.handle, SocketOptionLevel.SOCKET, 0x700B, &handle, handle.sizeof);
+			trace("handle=", handle, ", slink=", _clientSock.handle);
+		_clientSock.setOption(SocketOptionLevel.SOCKET,
+			cast(SocketOption)SO_UPDATE_ACCEPT_CONTENT, (&handle)[0 .. 1]);
 		if (handler)
-			handler(_clientSocket);
+			handler(_clientSock);
 
 		debug (Log)
 			trace("accept next connection...");
@@ -53,204 +54,36 @@ abstract class ListenerBase : SocketChannelBase {
 		return true;
 	}
 
-	override void onClose() {
-		// TODO
-	}
-
 private:
 	IocpContext _iocp;
-	WSABUF _dataWriteBuffer;
-	ubyte[] _buffer;
-	Socket _clientSocket;
+	ubyte[] _buf;
+	Socket _clientSock;
 }
 
 /** TCP Client */
-abstract class StreamBase : SocketChannelBase {
-	DataReceivedHandler onReceived;
+@safe abstract class StreamBase : SocketChannelBase {
+	RecvHandler onReceived;
 
 	protected this() {
 	}
 
-	this(Selector loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4096 * 2) {
+	this(Selector loop, uint bufferSize = 4 * 1024) {
 		import std.array;
 
-		super(loop, WatcherType.TCP);
-		setFlag(WF.Read);
-		setFlag(WF.Write);
+		super(loop, WT.TCP);
+		flags |= WF.Read | WF.Write;
 
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
-		_readBuffer = uninitializedArray!(ubyte[])(bufferSize);
-		socket = new TcpSocket(family);
+		_readBuf = uninitializedArray!(ubyte[])(bufferSize);
 	}
 
-	mixin CheckIocpError;
-
-	override void onRead() {
-		debug (Log)
-			trace("ready to read");
-		_inRead = false;
-		super.onRead();
-	}
-
-	override void onWrite() {
-		_inWrite = false;
-		super.onWrite();
-	}
-
-	protected void beginRead() {
-		_inRead = true;
-		_dataReadBuffer.len = cast(uint)_readBuffer.length;
-		_dataReadBuffer.buf = cast(char*)_readBuffer.ptr;
-		_iocpread.watcher = this;
-		_iocpread.operation = IocpOperation.read;
-		DWORD dwReceived = void;
-		DWORD dwFlags = void;
-
-		debug (Log)
-			trace("start receiving handle=", socket.handle);
-
-		int nRet = WSARecv(socket.handle, &_dataReadBuffer, 1u, &dwReceived, &dwFlags,
-			&_iocpread.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
-
-		checkErro(nRet, SOCKET_ERROR);
-	}
-
-	protected void doConnect(Address addr) {
-		_iocpwrite.watcher = this;
-		_iocpwrite.operation = IocpOperation.connect;
-		int nRet = ConnectEx(socket.handle,
-			cast(SOCKADDR*)addr.name(), addr.nameLen(), null, 0, null,
-			&_iocpwrite.overlapped);
-		checkErro(nRet, ERROR_IO_PENDING);
-	}
-
-	private uint doWrite() {
-		_inWrite = true;
-		DWORD dwSent = void;
-		_iocpwrite.watcher = this;
-		_iocpwrite.operation = IocpOperation.write;
-		debug (Log) {
-			const bufferLength = sendDataBuffer.length;
-			trace("writing...handle=", socket.handle);
-			trace("buffer content length: ", bufferLength);
-			if (bufferLength > 64)
-				tracef("%(%02X %) ...", sendDataBuffer[0 .. 64]);
-			else
-				tracef("%(%02X %)", sendDataBuffer[0 .. $]);
-		}
-
-		WSASend(socket.handle, &_dataWriteBuffer, 1, &dwSent,
-			0, &_iocpwrite.overlapped, cast(LPWSAOVERLAPPED_COMPLETION_ROUTINE)null);
-
-		debug (Log) {
-			if (dwSent != _dataWriteBuffer.len)
-				warning("dwSent=", dwSent, ", BufferLength=", _dataWriteBuffer.len);
-		}
-		// FIXME: Needing refactor or cleanup
-		// The buffer may be full, so what can do here?
-		// checkErro(nRet, SOCKET_ERROR); // bug:
-
-		if (isError) {
-			error("Socket error on write: fd=", handle, ", message=", erroString);
-			close();
-		}
-
-		return dwSent;
-	}
-
-	protected void doRead() {
-		_error = [];
-		debug (Log)
-			trace("data reading ", readLen, " bytes");
-
-		if (readLen > 0) {
-			// import std.stdio;
-			// writefln("length=%d, data: %(%02X %)", readLen, _readBuffer[0 .. readLen]);
-
-			if (onReceived)
-				onReceived(_readBuffer[0 .. readLen]);
-			debug (Log)
-				trace("done with data reading ", readLen, " bytes");
-
-			// continue reading
-			beginRead();
-		} else if (readLen == 0) {
-			debug (Log)
-				warning("connection broken: ", _socket.remoteAddress);
-			onDisconnected();
-			// if (_closed)
-			//     close();
-		} else {
-			debug (Log) {
-				warning("undefined behavior on thread ", getTid());
-			} else {
-				_error = "undefined behavior on thread";
-			}
-		}
-	}
-
-	// TODO
-	/// Send a big block of data
-	protected size_t tryWrite(in ubyte[] data) {
-		if (_isWriting) {
-			warning("Busy in writing on thread: ");
-			return 0;
-		}
-		debug (Log)
-			trace("start writing");
-		_isWriting = true;
-
-		_error = [];
-		setWriteBuffer(data);
-		return doWrite();
-	}
-
-	protected void tryWrite() {
-		if (_isWriting) {
-			debug (Log)
-				warning("Busy in writing on thread: ");
-			return;
-		}
-
-		if (_writeQueue.empty)
-			return;
-
-		debug (Log)
-			trace("start writing");
-		_isWriting = true;
-		_error = [];
-
-		writeBuffer = _writeQueue.front;
-		auto data = writeBuffer.data;
-		setWriteBuffer(data);
-		const len = doWrite();
-
-		if (len < data.length) { // to fix the corrupted data
-			debug (Log)
-				warning("remaining data: ", data.length - len);
-			sendDataBuffer = data.dup;
-		}
-	}
-
-	private void setWriteBuffer(in ubyte[] data) {
-		debug (Log)
-			trace("buffer content length: ", data.length);
-		// trace(cast(string)data);
-		// tracef("%(%02X %)", data);
-
-		sendDataBuffer = data; //data[writeLen .. $]; // TODO: need more tests
-		_dataWriteBuffer.len = cast(uint)sendDataBuffer.length;
-		_dataWriteBuffer.buf = cast(char*)sendDataBuffer.ptr;
-	}
+	mixin checkErro;
 
 	/**
 	 * Called by selector after data sent
-	 * Note: It's only for IOCP selector:
 	*/
-	void onWriteDone(size_t len) {
-		debug (Log)
-			trace("finishing data writing ", len, " bytes");
+	void onWriteDone(uint len) {
 		if (isWriteCancelling) {
 			_isWriting = false;
 			isWriteCancelling = false;
@@ -258,66 +91,131 @@ abstract class StreamBase : SocketChannelBase {
 			return;
 		}
 
-		if (writeBuffer.popSize(len)) {
-			if (!_writeQueue.dequeue())
-				warning("_writeQueue is empty!");
-
-			writeBuffer.doFinish();
+		if (writeBuf.popSize(len)) {
+			writeBuf = [];
 			_isWriting = false;
 
 			debug (Log)
 				trace("done with data writing ", len, " bytes");
 
-			tryWrite();
-		} else // if (sendDataBuffer.length > len)
-		{
-			// debug(Log)
-			trace("remaining nbytes: ", sendDataBuffer.length - len);
+			if (_writeQueue.empty)
+				warning("_writeQueue is empty");
+			else
+				tryWrite();
+		} else if (sendDataBuf.length > len) {
+			debug (Log)
+				trace("remaining nbytes: ", sendDataBuf.length - len);
 			// FIXME: Needing refactor or cleanup
-			// sendDataBuffer corrupted
-			// const(ubyte)[] data = writeBuffer.data;
-			// tracef("%(%02X %)", data);
-			// tracef("%(%02X %)", sendDataBuffer);
-			setWriteBuffer(sendDataBuffer[len .. $]); // send remaining
-			len = doWrite();
+			// sendDataBuf corrupted
+			// tracef("%(%02X %)", sendDataBuf);
+			// send remaining
+			len = write(sendDataBuf[len .. $]);
 		}
 	}
 
-	bool _isConnected; // if server side always true
-	SimpleEventHandler disconnectionHandler;
+	SimpleHandler disconnectedHandler;
 
 protected:
+	final void beginRead() @trusted {
+		_iocpRead.operation = IocpOperation.read;
+		_iocpRead.watcher = this;
+		uint dwReceived = void, dwFlags;
+
+		debug (Log)
+			trace("start receiving handle=", socket.handle);
+
+		checkErro(WSARecv(socket.handle, cast(WSABUF*)&_readBuf, 1, &dwReceived, &dwFlags,
+				&_iocpRead.overlapped, null), SOCKET_ERROR);
+	}
+
+	void doConnect(Address addr) @trusted {
+		_iocpWrite.operation = IocpOperation.connect;
+		_iocpWrite.watcher = this;
+		checkErro(ConnectEx(socket.handle, addr.name(), addr.nameLen(), null, 0, null,
+				&_iocpWrite.overlapped), ERROR_IO_PENDING);
+	}
+
+	// TODO
+	/// Send a big block of data
+	final size_t tryWrite(in void[] data) {
+		if (_isWriting) {
+			warning("Busy in writing on thread: ");
+			return 0;
+		}
+		_isWriting = true;
+
+		_error = [];
+		return write(data);
+	}
+
+	final void tryWrite() {
+		if (_isWriting) {
+			debug (Log)
+				warning("Busy in writing on thread: ");
+			return;
+		}
+
+		assert(!_writeQueue.empty);
+		_isWriting = true;
+		_error = [];
+
+		writeBuf = _writeQueue.front;
+		const data = writeBuf;
+		const len = write(data);
+		if (len < data.length) { // to fix the corrupted data
+			debug (Log)
+				warning("remaining data: ", data.length - len);
+			sendDataBuf = data[len .. $].dup;
+		}
+	}
+
 	void onDisconnected() {
-		_isConnected = false;
-		_closed = true;
-		if (disconnectionHandler)
-			disconnectionHandler();
+		_isRegistered = false;
+		if (disconnectedHandler)
+			disconnectedHandler();
 	}
 
 	WriteBufferQueue _writeQueue;
 	bool isWriteCancelling;
 
+	const(ubyte)[] _readBuf;
 private:
 	bool _isWriting;
-	const(ubyte)[] _readBuffer, sendDataBuffer;
-	StreamWriteBuffer* writeBuffer;
-	IocpContext _iocpread, _iocpwrite;
-	WSABUF _dataReadBuffer, _dataWriteBuffer;
-	bool _inWrite, _inRead;
+	IocpContext _iocpRead, _iocpWrite;
+	const(void)[] writeBuf, sendDataBuf;
+
+	uint write(in void[] data) @trusted {
+		sendDataBuf = data;
+		uint dwSent = void;
+		_iocpWrite.operation = IocpOperation.write;
+		_iocpWrite.watcher = this;
+		WSASend(socket.handle, cast(WSABUF*)&sendDataBuf, 1, &dwSent, 0, &_iocpWrite.overlapped, null);
+
+		// FIXME: Needing refactor or cleanup
+		// The buffer may be full, so what can do here?
+		// checkErro(ret, SOCKET_ERROR); // bug:
+
+		if (isError) {
+			error("Socket error on write: fd=", handle, ", message=", _error);
+			close();
+		}
+
+		return dwSent;
+	}
 }
 
-mixin template CheckIocpError() {
-	void checkErro(int ret, int erro = 0) {
-		auto err = GetLastError();
-		if (ret != 0 || err == 0)
-			return;
+void checkErro()(int ret, int erro = 0) {
+	import core.sys.windows.winerror;
 
-		debug (Log)
-			tracef("erro=%d, dwLastError=%d", erro, err);
+	const err = WSAGetLastError();
+	if (ret != 0 || err == 0)
+		return;
 
-		if (err != ERROR_IO_PENDING)
-			_error = text("AcceptEx failed with error: code=", err);
-	}
+	debug (Log)
+		tracef("erro=%d, dwLastError=%d", erro, err);
+
+	if (err != WSAEWOULDBLOCK && err != ERROR_IO_PENDING)
+		_error = text("WSA error: code=", err);
 }
 
 enum IocpOperation {
@@ -338,7 +236,7 @@ struct IocpContext {
 alias WSAOVERLAPPED = OVERLAPPED;
 alias LPWSAOVERLAPPED = OVERLAPPED*;
 
-__gshared {
+immutable {
 	LPFN_ACCEPTEX AcceptEx;
 	LPFN_CONNECTEX ConnectEx;
 	/*
@@ -366,7 +264,7 @@ shared static this() {
 private void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
 	DWORD bytesReturned;
 	if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
-			&pfn, pfn.sizeof, &bytesReturned, null, null) == SOCKET_ERROR)
+			cast(void*)&pfn, pfn.sizeof, &bytesReturned, null, null) == SOCKET_ERROR)
 		throw new ErrnoException("Get function failed", WSAGetLastError());
 }
 
@@ -402,3 +300,15 @@ int WSASend(SOCKET, LPWSABUF, DWORD, LPDWORD, DWORD, LPWSAOVERLAPPED,
 int WSASendDisconnect(SOCKET, LPWSABUF);
 int WSASendTo(SOCKET, LPWSABUF, DWORD, LPDWORD, DWORD, const(SOCKADDR)*, int,
 	LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE);
+
+int GetQueuedCompletionStatusEx(HANDLE, LPOVERLAPPED_ENTRY, ULONG, PULONG,
+	DWORD, BOOL);
+
+alias LPOVERLAPPED_ENTRY = OVERLAPPED_ENTRY*;
+
+struct OVERLAPPED_ENTRY {
+	ULONG_PTR lpCompletionKey;
+	LPOVERLAPPED lpOverlapped;
+	ULONG_PTR Internal;
+	DWORD dwNumberOfBytesTransferred;
+}
