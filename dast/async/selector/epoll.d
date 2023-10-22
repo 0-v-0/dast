@@ -36,7 +36,7 @@ class Epoll : EpollEventChannel {
 		_eventHandle = 0;
 	}
 
-	bool register(int fd, SocketChannelBase watcher)
+	bool register(int fd, SocketChannel watcher)
 	in (watcher) {
 		version (HaveTimer)
 			if (watcher.type == WT.Timer)
@@ -55,7 +55,7 @@ class Epoll : EpollEventChannel {
 		return true;
 	}
 
-	bool reregister(SocketChannelBase watcher)
+	bool reregister(SocketChannel watcher)
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -64,7 +64,7 @@ class Epoll : EpollEventChannel {
 		return epoll_ctl(_eventHandle, EPOLL_CTL_MOD, fd, &ev) == 0;
 	}
 
-	bool unregister(SocketChannelBase watcher)
+	bool unregister(SocketChannel watcher)
 	in (watcher) {
 		debug (Log)
 			info("unregister watcher fd=", watcher.handle);
@@ -95,12 +95,8 @@ class Epoll : EpollEventChannel {
 		epoll_event[64] events;
 		const len = epoll_wait(_eventHandle, events.ptr, events.length, 10);
 		foreach (i; 0 .. len) {
-			auto watch = cast(Channel)events[i].data.ptr;
-			if (!watch) {
-				debug (Log)
-					warning("watcher is null");
-				continue;
-			}
+			auto watch = cast(SocketChannel)events[i].data.ptr;
+			assert(watch);
 
 			if (events[i].events & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) {
 				debug (Log)
@@ -114,7 +110,7 @@ class Epoll : EpollEventChannel {
 			}
 
 			if (watch.isRegistered && (events[i].events & EPOLLOUT)) {
-				assert(cast(SocketChannelBase)watch);
+				assert(cast(SocketChannel)watch);
 				// watch.onWrite();
 			}
 		}
@@ -129,20 +125,21 @@ private:
 	int _eventHandle;
 }
 
-epoll_event buildEvent(SocketChannelBase watch) {
+epoll_event buildEvent(SocketChannel watch) {
 	uint events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
-	if (watch.flags & WF.Read)
+	const flags = watch.flags;
+	if (flags & WF.Read)
 		events |= EPOLLIN;
-	if (watch.flags & WF.Write)
+	if (flags & WF.Write)
 		events |= EPOLLOUT;
-	if (watch.flags & WF.OneShot)
+	if (flags & WF.OneShot)
 		events |= EPOLLONESHOT;
-	if (watch.flags & WF.ETMode)
+	if (flags & WF.ETMode)
 		events |= EPOLLET;
 	return epoll_event(events, epoll_data_t(watch));
 }
 
-class EpollEventChannel : EventChannel {
+class EpollEventChannel {
 	this(Selector loop) {
 		flags |= WF.Read;
 		handle = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -154,14 +151,14 @@ class EpollEventChannel : EventChannel {
 
 	/+void call() {
 		ulong value = 1;
-		core.sys.posix.unistd.write(handle, &value, value.sizeof);
+		write(handle, &value, value.sizeof);
 	}+/
 
-	override void onRead() {
+	void onRead() {
 		_error = [];
 		ulong value = void;
 		read(handle, &value, value.sizeof);
-		_readBuf.data = value;
+		_rBuf.data = value;
 		//super.onRead();
 	}
 }

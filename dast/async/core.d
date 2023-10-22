@@ -1,6 +1,7 @@
 module dast.async.core;
 
 import dast.async.container,
+std.array,
 std.socket;
 public import dast.async.selector : Selector;
 
@@ -17,35 +18,26 @@ ConnectionHandler = void delegate(bool success),
 AcceptCallback = void delegate(Selector loop, Socket socket);
 
 alias DataWrittenHandler = void delegate(in void[] data, size_t size);
-class Channel {
+
+abstract class SocketChannel {
+	ErrorHandler onError;
+
+	bool isError() const => _error.length != 0;
+
+	package(dast) string _error;
+
+	package WF flags;
+
 	@property pure nothrow @nogc {
-		protected this() {
-		}
+		final handle() const => _socket.handle;
+
+		final type() const => _type;
+
+		final socket() => _socket;
 
 		final bool isClosed() const => !_isRegistered;
 
 		final bool isRegistered() const => _isRegistered;
-	}
-
-	void onRead() {
-		assert(0, "unimplemented");
-	}
-
-	mixin OverrideErro;
-
-protected:
-	bool _isRegistered;
-
-	package WF flags;
-}
-
-alias EventChannel = Channel;
-
-abstract class SocketChannelBase : Channel {
-	socket_t handle;
-	ErrorHandler onError;
-
-	protected this() {
 	}
 
 	this(Selector loop, WatcherType type = WT.Event) {
@@ -53,11 +45,11 @@ abstract class SocketChannelBase : Channel {
 		_type = type;
 	}
 
-	@property final socket() => _socket;
-
-	@property final type() const => _type;
-
 	void start();
+
+	void onRead() {
+		assert(0, "unimplemented");
+	}
 
 nothrow:
 	void close() {
@@ -73,7 +65,6 @@ nothrow:
 
 protected:
 	@property void socket(Socket s) {
-		handle = s.handle;
 		version (Posix)
 			s.blocking = false;
 		_socket = s;
@@ -101,6 +92,7 @@ protected:
 	Selector _inLoop;
 	Socket _socket;
 	private WatcherType _type;
+	bool _isRegistered;
 }
 
 alias WriteBufferQueue = Queue!(const(void)[], true);
@@ -125,15 +117,10 @@ enum WatchFlag {
 
 package:
 alias WT = WatcherType,
-WF = WatchFlag;
-
-template OverrideErro() {
-	bool isError() const => _error.length != 0;
-
-	package(dast) string _error;
-}
+WF = WatchFlag,
+BUF = uninitializedArray!(ubyte[], size_t);
 
 bool popSize(ref scope const(void)[] arr, size_t size) {
 	arr = arr[size .. $];
-	return arr.length > 0;
+	return arr.length == 0;
 }

@@ -55,10 +55,7 @@ class WebSocketServer : ListenerBase {
 
 	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		settings.bufferSize = bufferSize;
-		version (Windows)
-			super(loop, family, bufferSize);
-		else
-			super(loop, family);
+		super(loop, family);
 		map = new typeof(map);
 		clients = new typeof(clients);
 	}

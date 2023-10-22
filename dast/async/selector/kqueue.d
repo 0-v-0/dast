@@ -37,7 +37,7 @@ class Kqueue : KqueueEventChannel {
 		_eventHandle = 0;
 	}
 
-	bool register(SocketChannelBase watcher)
+	bool register(SocketChannel watcher)
 	in (watcher) {
 		int err = -1;
 		if (watcher.type != WT.Timer) {
@@ -45,19 +45,20 @@ class Kqueue : KqueueEventChannel {
 			if (fd < 0)
 				return false;
 			kevent_t[2] ev = void;
+			const flags = watcher.flags;
 			short read = EV_ADD | EV_ENABLE;
 			short write = EV_ADD | EV_ENABLE;
-			if (watcher.flags & WF.ETMode) {
+			if (flags & WF.ETMode) {
 				read |= EV_CLEAR;
 				write |= EV_CLEAR;
 			}
 			EV_SET(&ev[0], fd, EVFILT_READ, read, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, write, 0, 0, cast(void*)watcher);
-			if ((watcher.flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+			if ((flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
 				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
-			else if (watcher.flags & WF.Read)
+			else if (flags & WF.Read)
 				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
-			else if (watcher.flags & WF.Write)
+			else if (flags & WF.Write)
 				err = kevent(_eventHandle, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
@@ -76,12 +77,13 @@ class Kqueue : KqueueEventChannel {
 		return true;
 	}
 
-	bool reregister(SocketChannelBase watcher) {
+	bool reregister(SocketChannel watcher)
+	in (watcher) {
 		// Kqueue does not support reregister
 		return false;
 	}
 
-	bool unregister(SocketChannelBase watcher)
+	bool unregister(SocketChannel watcher)
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -92,11 +94,12 @@ class Kqueue : KqueueEventChannel {
 			kevent_t[2] ev = void;
 			EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
-			if ((watcher.flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+			const flags = watcher.flags;
+			if ((flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
 				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
-			else if (watcher.flags & WF.Read)
+			else if (flags & WF.Read)
 				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
-			else if (watcher.flags & WF.Write)
+			else if (flags & WF.Write)
 				err = kevent(_eventHandle, &ev[1], 1, null, 0, null);
 		} else {
 			version (HaveTimer) {
@@ -127,7 +130,7 @@ class Kqueue : KqueueEventChannel {
 			if (len < 1)
 				continue;
 			foreach (i; 0 .. len) {
-				auto watch = cast(Channel)(events[i].udata);
+				auto watch = cast(SocketChannel)(events[i].udata);
 				if (events[i].flags & (EV_EOF | EV_ERROR)) {
 					watch.close();
 					continue;
@@ -138,10 +141,10 @@ class Kqueue : KqueueEventChannel {
 						continue;
 					}
 				if (watch.isRegistered) {
-					if (events[i].filter & EVFILT_WRITE) {
+					// if (events[i].filter & EVFILT_WRITE) {
 						// debug (Log) trace("The channel socket is: ", typeid(watch));
-						assert(cast(SocketChannelBase)watch);
-					}
+						// assert(cast(SocketChannel)watch);
+					// }
 
 					if (events[i].filter & EVFILT_READ)
 						watch.onRead();
@@ -160,7 +163,7 @@ private:
 	int _eventHandle;
 }
 
-class KqueueEventChannel : EventChannel {
+class KqueueEventChannel {
 	this() {
 		flags |= WF.Read;
 		_pair = socketPair();
@@ -173,15 +176,14 @@ class KqueueEventChannel : EventChannel {
 		close();
 	}
 
-	/+ override void call() {
+	/+ void call() {
 		_pair[0].send("call");
 	}+/
 
-	override void onRead() {
+	void onRead() {
 		ubyte[128] data = void;
 		while (_pair[1].receive(data) > 0) {
 		}
-		super.onRead();
 	}
 
 	Socket[2] _pair;

@@ -25,10 +25,7 @@ class TcpListener : ListenerBase {
 
 	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		_bufferSize = bufferSize;
-		version (Windows)
-			super(loop, family);
-		else
-			super(loop, bufferSize);
+		super(loop, family);
 	}
 
 	override void start() {
@@ -47,9 +44,7 @@ class TcpListener : ListenerBase {
 	protected override void onRead() {
 		//bool canRead = true;
 		debug (Log)
-			trace("start to listen");
-		debug (Log)
-			trace("listening...");
+			trace("start listening");
 		//canRead =
 		onAccept((Socket socket) {
 			debug (Log)

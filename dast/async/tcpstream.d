@@ -12,6 +12,7 @@ std.conv : text;
 
 	mixin Forward!"_socket";
 
+	ConnectionHandler onConnected;
 	SimpleHandler onClosed;
 
 	// client side
@@ -27,19 +28,14 @@ std.conv : text;
 		_isConnected = true;
 	}
 
-	this(Socket socket) {
-		_socket = socket;
-		handle = socket.handle;
-	}
-
 	void connect(Address addr) @trusted {
 		if (_isConnected)
 			return;
 
 		try {
-			scope Address a = socket.addressFamily == AddressFamily.INET6 ?
+			scope Address a = _socket.addressFamily == AddressFamily.INET6 ?
 				new Internet6Address(0) : new InternetAddress(0);
-			socket.bind(a);
+			_socket.bind(a);
 			doConnect(addr);
 			start();
 			_isConnected = true;
@@ -54,7 +50,7 @@ std.conv : text;
 		if (_isConnected)
 			close();
 		_isConnected = false;
-		socket = new TcpSocket(socket ? socket.addressFamily : AddressFamily.INET);
+		socket = new TcpSocket(_socket ? _socket.addressFamily : AddressFamily.INET);
 		connect(addr);
 	}
 
@@ -70,7 +66,7 @@ std.conv : text;
 	}
 
 	/// safe for big data sending
-	void write(in void[] data) {
+	void write(const void[] data) {
 		if (!_isConnected)
 			return warning("The connection has been closed");
 		if (data.length)
@@ -101,37 +97,15 @@ std.conv : text;
 	}
 
 protected:
-	ConnectionHandler onConnected;
 	bool _isConnected;
 
 	override void onRead() {
 		debug (Log)
 			trace("start reading");
 
-		version (Posix) {
-			while (_isRegistered && !tryRead()) {
-				debug (Log)
-					trace("continue reading...");
-			}
-		} else {
-			_error = [];
+		while (_isRegistered && !tryRead()) {
 			debug (Log)
-				trace("data reading ", readLen, " bytes");
-
-			if (readLen) {
-				if (onReceived)
-					onReceived(_readBuf[0 .. readLen]);
-				debug (Log)
-					trace("done with data reading ", readLen, " bytes");
-
-				beginRead(); // continue reading
-			} else {
-				debug (Log)
-					warning("connection broken: ", _socket.remoteAddress);
-				onDisconnected();
-				// if (!_isRegistered)
-				//	close();
-			}
+				trace("continue reading...");
 		}
 
 		if (isError)

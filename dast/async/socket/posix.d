@@ -11,7 +11,7 @@ core.sys.posix.sys.socket : accept;
 /**
 TCP Server
 */
-abstract class ListenerBase : SocketChannelBase {
+abstract class ListenerBase : SocketChannel {
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, WT.Accept);
 		flags |= WF.Read;
@@ -36,38 +36,35 @@ abstract class ListenerBase : SocketChannelBase {
 /**
 TCP Client
 */
-abstract class StreamBase : SocketChannelBase {
-	SimpleHandler disconnectedHandler;
+abstract class StreamBase : SocketChannel {
+	/**
+	* Warning: The received data is stored a inner buffer. For a data safe,
+	* you would make a copy of it.
+	*/
+	RecvHandler onReceived;
+	SimpleHandler onDisconnected;
 
-	protected this() {
-	}
-
-	this(Selector loop, size_t bufferSize = 4 * 1024) {
-		import std.array;
-
+	this(Selector loop, uint bufferSize = 4 * 1024) {
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
-		_readBuf = uninitializedArray!(ubyte[])(bufferSize);
+		_rBuf = BUF(bufferSize);
 		super(loop, WT.TCP);
 		flags |= WF.Read | WF.Write | WF.ETMode;
 	}
 
-	int writeRetryLimit = 5;
-	private int writeRetries = 0;
-
 protected:
-	bool tryRead() {
+	final bool tryRead() {
 		_error = [];
-		const len = socket.receive(_readBuf);
+		const len = socket.receive(_rBuf);
 		debug (Log)
 			trace("read nbytes...", len);
 
 		if (len > 0) {
 			if (onReceived)
-				onReceived(_readBuf[0 .. len]);
+				onReceived(_rBuf[0 .. len]);
 
 			// It's possible that more data are waiting for read in inner buffer
-			if (len == _readBuf.length)
+			if (len == _rBuf.length)
 				return false;
 		} else if (len < 0) {
 			// FIXME: Needing refactor or cleanup
@@ -81,7 +78,7 @@ protected:
 		} else {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
-			onDisconnected();
+			disconnected();
 			if (_isRegistered)
 				close();
 			else
@@ -90,69 +87,17 @@ protected:
 		return true;
 	}
 
-	void onDisconnected() {
+	private void disconnected() {
 		_isRegistered = false;
-		if (disconnectedHandler)
-			disconnectedHandler();
+		if (onDisconnected)
+			onDisconnected();
 	}
-	/*
-	Warning: It will try the best to write all the data.
-		TODO: create a example for test
-
-	void tryWriteAll(in ubyte[] data) {
-		const len = socket.send(data);
-		debug (Log)
-			trace("actually sent bytes: ", len, " / ", data.length);
-
-		if (len > 0) {
-			if (len < data.length) { // && writeRetries < writeRetryLimit
-				// debug (Log)
-				writeRetries++;
-				trace("[", writeRetries, "] rewrite: written ", len,
-					", remaining: ", data.length - len, ", total: ", data.length);
-				if (writeRetries > writeRetryLimit)
-					warning("You are writing a big block of data!!!");
-
-				tryWriteAll(data[len .. $]);
-			} else
-				writeRetries = 0;
-
-		} else if (len == Socket.ERROR) {
-			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				string msg = lastSocketError();
-				warning("errno=", errno, ", message: ", msg);
-				_error = msg;
-
-				errorOccurred(msg);
-			} else {
-				// debug (Log)
-				warning("errno=", errno, ", message: ", lastSocketError());
-				import core.thread;
-				import core.time;
-
-				writeRetries++;
-				tracef("[%d] rewrite: written %d, remaining: %d, total: %d",
-					writeRetries, len, data.length - len, data.length);
-				if (writeRetries > writeRetryLimit)
-					warning("You are writing a big block of data!!!");
-				warning("Wait for a 100 msecs to try again");
-				Thread.sleep(100.msecs);
-				tryWriteAll(data);
-			}
-		} else {
-			debug (Log) {
-				warning("len=", len, ", message: ", lastSocketError());
-				assert(0, "Undefined behavior");
-			} else {
-				_error = lastSocketError();
-			}
-		}
-	}*/
 
 	/**
 	Try to write a block of data.
 	*/
-	final size_t tryWrite(in void[] data) {
+	final size_t tryWrite(in void[] data)
+	in (data.length) {
 		const len = socket.send(data);
 		debug (Log)
 			trace("actually sent bytes: ", len, " / ", data.length);
@@ -160,23 +105,14 @@ protected:
 		if (len > 0)
 			return len;
 
-		if (len == Socket.ERROR) {
-			debug (Log)
-				warning("errno=", errno, ", message: ", lastSocketError());
+		debug (Log)
+			warning("errno=", errno, ", message: ", lastSocketError());
 
-			// FIXME: Needing refactor or cleanup
-			// check more error status
-			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_error = lastSocketError();
-				warning("errno=", errno, ", message: ", _error);
-			}
-		} else {
-			debug (Log) {
-				warning("len=", len, ", message: ", lastSocketError());
-				assert(0, "Undefined behavior");
-			} else {
-				_error = lastSocketError();
-			}
+		// FIXME: Needing refactor or cleanup
+		// check more error status
+		if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+			_error = lastSocketError();
+			warning("errno=", errno, ", message: ", _error);
 		}
 		return 0;
 	}
@@ -186,12 +122,6 @@ protected:
 	}
 
 	bool isWriteCancelling;
-	ubyte[] _readBuf;
+	ubyte[] _rBuf;
 	WriteBufferQueue _writeQueue;
-
-	/**
-	* Warning: The received data is stored a inner buffer. For a data safe,
-	* you would make a copy of it.
-	*/
-	public RecvHandler onReceived;
 }
