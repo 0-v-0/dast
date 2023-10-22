@@ -10,7 +10,6 @@ alias Selector = Iocp;
 
 @safe class Iocp : EventChannel {
 	this() @trusted {
-		super(this);
 		_eventHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
 	}
 
@@ -18,7 +17,7 @@ alias Selector = Iocp;
 		.close(_eventHandle);
 	} +/
 
-	bool register(Channel watcher) @trusted
+	bool register(SocketChannelBase watcher) @trusted
 	in (watcher.type <= WT.Event) {
 		const fd = watcher.handle;
 		const type = watcher.type;
@@ -35,12 +34,12 @@ alias Selector = Iocp;
 		return true;
 	}
 
-	bool reregister(Channel watcher) {
+	bool reregister(SocketChannelBase watcher) {
 		// IOCP does not support reregister
 		return false;
 	}
 
-	bool unregister(Channel watcher) {
+	bool unregister(SocketChannelBase watcher) {
 		// FIXME: Needing refactor or cleanup
 		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
 		//trace("unregister fd=", fd);
@@ -120,13 +119,10 @@ private:
 
 	void onSocketRead(Channel wt, uint len)
 	in (wt) {
-		if (len == 0 || wt.isClosed) {
-			debug (Log)
-				info("channel closed");
+		if (len == 0 || wt.isClosed) // channel closed
 			return;
-		}
 
-		auto io = cast(SocketChannelBase)wt;
+		auto io = cast(StreamBase)wt;
 		assert(io, "The type of channel is: " ~ typeid(wt).name);
 
 		io.readLen = len;

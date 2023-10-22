@@ -18,27 +18,46 @@ AcceptCallback = void delegate(Selector loop, Socket socket);
 
 alias DataWrittenHandler = void delegate(in void[] data, size_t size);
 class Channel {
-	socket_t handle;
-	ErrorHandler onError;
 	@property pure nothrow @nogc {
 		protected this() {
-		}
-
-		this(Selector loop, WatcherType type = WT.Event) {
-			_inLoop = loop;
-			_type = type;
 		}
 
 		final bool isClosed() const => !_isRegistered;
 
 		final bool isRegistered() const => _isRegistered;
-
-		final WatcherType type() const => _type;
 	}
 
 	void onRead() {
 		assert(0, "unimplemented");
 	}
+
+	mixin OverrideErro;
+
+protected:
+	bool _isRegistered;
+
+	package WF flags;
+}
+
+alias EventChannel = Channel;
+
+abstract class SocketChannelBase : Channel {
+	socket_t handle;
+	ErrorHandler onError;
+
+	protected this() {
+	}
+
+	this(Selector loop, WatcherType type = WT.Event) {
+		_inLoop = loop;
+		_type = type;
+	}
+
+	@property final socket() => _socket;
+
+	@property final type() const => _type;
+
+	void start();
 
 nothrow:
 	void close() {
@@ -52,11 +71,15 @@ nothrow:
 			debug warning("The watcher(fd=", handle, ") has already been closed");
 	}
 
-	mixin OverrideErro;
-
 protected:
-	Selector _inLoop;
-	bool _isRegistered;
+	@property void socket(Socket s) {
+		handle = s.handle;
+		version (Posix)
+			s.blocking = false;
+		_socket = s;
+		debug (Log)
+			trace("new socket fd: ", handle);
+	}
 
 	void onClose() {
 		_isRegistered = false;
@@ -75,37 +98,9 @@ protected:
 			onError(msg);
 	}
 
-	package WF flags;
-	private WatcherType _type;
-}
-
-alias EventChannel = Channel;
-
-abstract class SocketChannelBase : Channel {
-	protected this() {
-	}
-
-	this(Selector loop, WatcherType type) {
-		super(loop, type);
-	}
-
-	@property final socket() => _socket;
-
-	version (Windows) package uint readLen;
-
-	void start();
-
-protected:
-	@property void socket(Socket s) {
-		handle = s.handle;
-		version (Posix)
-			s.blocking = false;
-		_socket = s;
-		debug (Log)
-			trace("new socket fd: ", handle);
-	}
-
+	Selector _inLoop;
 	Socket _socket;
+	private WatcherType _type;
 }
 
 alias WriteBufferQueue = Queue!(const(void)[], true);

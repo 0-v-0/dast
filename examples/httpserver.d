@@ -22,7 +22,7 @@ void main() {
 		"Connection: keep-alive\r\nContent-Type: text/plain\r\n\r\nHello, World!";
 	listener.onAccepted = (TcpListener, TcpStream client) {
 		client.onReceived = (in ubyte[] data) {
-			debug writeln("received: ", cast(string)data);
+			//debug writeln("received: ", cast(string)data);
 
 			client.write(writeData);
 		};

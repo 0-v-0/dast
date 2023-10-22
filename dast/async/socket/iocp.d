@@ -9,12 +9,11 @@ std.conv : text;
 
 /** TCP Server */
 @safe abstract class ListenerBase : SocketChannelBase {
-	this(Selector loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
+	this(Selector loop, AddressFamily family = AddressFamily.INET) {
 		import std.array;
 
 		super(loop, WT.Accept);
 		flags |= WF.Read;
-		_buf = uninitializedArray!(ubyte[])(bufferSize);
 		socket = new TcpSocket(family);
 	}
 
@@ -33,7 +32,6 @@ protected:
 
 		debug (Log)
 			trace("client socket: accept=", _clientSock.handle, ", server socket=", handle);
-		enum size = sockaddr_in.sizeof + 16;
 		checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
 				&dwBytesReceived, &_iocp.overlapped));
 	}
@@ -55,8 +53,9 @@ protected:
 	}
 
 private:
+	enum size = sockaddr_in.sizeof + 16;
 	IocpContext _iocp;
-	ubyte[] _buf;
+	ubyte[size * 4] _buf;
 	Socket _clientSock;
 }
 
@@ -175,6 +174,7 @@ protected:
 			disconnectedHandler();
 	}
 
+	version (Windows) package(dast.async) uint readLen;
 	WriteBufferQueue _writeQueue;
 	bool isWriteCancelling;
 

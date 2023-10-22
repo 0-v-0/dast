@@ -15,5 +15,6 @@ class TimerBase : Timer {
 		handle = _sock.handle;
 	}
 
+	socket_t handle;
 	Socket _sock;
 }

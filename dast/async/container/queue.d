@@ -13,7 +13,7 @@ pure nothrow @safe @nogc:
 		static if (check)
 			assert(!full);
 		arr[_tail] = item;
-		if (_tail < N)
+		if (_tail < N - 1)
 			++_tail;
 		else
 			_tail = 0;
@@ -23,7 +23,7 @@ pure nothrow @safe @nogc:
 		static if (check)
 			assert(!empty);
 		T x = arr[_head];
-		if (_head < N)
+		if (_head < N - 1)
 			++_head;
 		else
 			_head = 0;
@@ -37,5 +37,5 @@ pure nothrow @safe @nogc:
 private:
 	enum N = 32;
 	uint _head, _tail;
-	T[N] arr = void;
+	T[N] arr;
 }

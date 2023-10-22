@@ -37,7 +37,7 @@ class Kqueue : KqueueEventChannel {
 		_eventHandle = 0;
 	}
 
-	bool register(Channel watcher)
+	bool register(SocketChannelBase watcher)
 	in (watcher) {
 		int err = -1;
 		if (watcher.type != WT.Timer) {
@@ -47,7 +47,7 @@ class Kqueue : KqueueEventChannel {
 			kevent_t[2] ev = void;
 			short read = EV_ADD | EV_ENABLE;
 			short write = EV_ADD | EV_ENABLE;
-			if (watch.flags & WF.ETMode) {
+			if (watcher.flags & WF.ETMode) {
 				read |= EV_CLEAR;
 				write |= EV_CLEAR;
 			}
@@ -76,12 +76,12 @@ class Kqueue : KqueueEventChannel {
 		return true;
 	}
 
-	bool reregister(Channel watcher) {
+	bool reregister(SocketChannelBase watcher) {
 		// Kqueue does not support reregister
 		return false;
 	}
 
-	bool unregister(Channel watcher)
+	bool unregister(SocketChannelBase watcher)
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -162,7 +162,6 @@ private:
 
 class KqueueEventChannel : EventChannel {
 	this() {
-		super(this);
 		flags |= WF.Read;
 		_pair = socketPair();
 		_pair[0].blocking = false;

@@ -36,7 +36,7 @@ class Epoll : EpollEventChannel {
 		_eventHandle = 0;
 	}
 
-	bool register(int fd, Channel watcher)
+	bool register(int fd, SocketChannelBase watcher)
 	in (watcher) {
 		version (HaveTimer)
 			if (watcher.type == WT.Timer)
@@ -55,7 +55,7 @@ class Epoll : EpollEventChannel {
 		return true;
 	}
 
-	bool reregister(Channel watcher)
+	bool reregister(SocketChannelBase watcher)
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -64,7 +64,7 @@ class Epoll : EpollEventChannel {
 		return epoll_ctl(_eventHandle, EPOLL_CTL_MOD, fd, &ev) == 0;
 	}
 
-	bool unregister(Channel watcher)
+	bool unregister(SocketChannelBase watcher)
 	in (watcher) {
 		debug (Log)
 			info("unregister watcher fd=", watcher.handle);
@@ -129,7 +129,7 @@ private:
 	int _eventHandle;
 }
 
-epoll_event buildEvent(Channel watch) {
+epoll_event buildEvent(SocketChannelBase watch) {
 	uint events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
 	if (watch.flags & WF.Read)
 		events |= EPOLLIN;
@@ -144,7 +144,6 @@ epoll_event buildEvent(Channel watch) {
 
 class EpollEventChannel : EventChannel {
 	this(Selector loop) {
-		super(this);
 		flags |= WF.Read;
 		handle = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	}
@@ -163,6 +162,6 @@ class EpollEventChannel : EventChannel {
 		ulong value = void;
 		read(handle, &value, value.sizeof);
 		_readBuf.data = value;
-		super.onRead();
+		//super.onRead();
 	}
 }

@@ -15,7 +15,7 @@ PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket) @safe;
 class TcpListener : ListenerBase {
 	import tame.meta;
 
-	private size_t _bufferSize = 4 * 1024;
+	private uint _bufferSize = 4 * 1024;
 
 	mixin Forward!"_socket";
 
@@ -23,10 +23,10 @@ class TcpListener : ListenerBase {
 	SimpleHandler onClosed;
 	PeerCreateHandler onPeerCreating;
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET, size_t bufferSize = 4 * 1024) {
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		_bufferSize = bufferSize;
 		version (Windows)
-			super(loop, family, bufferSize);
+			super(loop, family);
 		else
 			super(loop, bufferSize);
 	}
