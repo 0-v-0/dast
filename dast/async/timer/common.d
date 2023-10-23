@@ -2,7 +2,6 @@ module dast.async.timer.common;
 
 import dast.async.core;
 import std.datetime;
-import std.exception;
 
 enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;

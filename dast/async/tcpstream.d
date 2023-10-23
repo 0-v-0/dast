@@ -2,10 +2,7 @@ module dast.async.tcpstream;
 
 import dast.async.core,
 dast.async.selector,
-dast.async.socket,
-core.time,
-std.socket,
-std.conv : text;
+dast.async.socket;
 
 @safe class TcpStream : StreamBase {
 	import tame.meta;
@@ -62,13 +59,13 @@ std.conv : text;
 		_inLoop.register(this);
 		_isRegistered = true;
 		version (Windows)
-			beginRead();
+			recv();
 	}
 
 	/// safe for big data sending
 	void write(const void[] data) {
 		if (!_isConnected)
-			return warning("The connection has been closed");
+			return errorOccurred("The connection has been closed");
 		if (data.length)
 			_writeQueue.enqueue(data);
 		version (Windows)
@@ -76,41 +73,20 @@ std.conv : text;
 		else
 			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
 				const data = _writeQueue.front;
-				if (!data.length) {
-					_writeQueue.dequeue();
-					continue;
-				}
-
-				_error = [];
+				assert(data.length);
 				const len = tryWrite(data);
+				if (!len) // error
+					break;
 				if (data.length == len) {
 					debug (Log)
 						trace("finishing data writing ", len, " bytes");
 					_writeQueue.dequeue();
-				}
-
-				if (isError) {
-					errorOccurred(text("Socket error on write: fd=", handle, ", message=", _error));
-					break;
 				}
 			}
 	}
 
 protected:
 	bool _isConnected;
-
-	override void onRead() {
-		debug (Log)
-			trace("start reading");
-
-		while (_isRegistered && !tryRead()) {
-			debug (Log)
-				trace("continue reading...");
-		}
-
-		if (isError)
-			errorOccurred(text("Socket error on write: fd=", handle, ", message=", _error));
-	}
 
 	override void onClose() {
 		debug (Log) {

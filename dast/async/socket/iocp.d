@@ -3,9 +3,7 @@ module dast.async.socket.iocp;
 version (Windows)  : import core.sys.windows.windows,
 core.sys.windows.mswsock,
 dast.async.core,
-std.exception,
-std.socket,
-std.conv : text;
+std.exception;
 
 /** TCP Server */
 @safe abstract class ListenerBase : SocketChannel {
@@ -22,21 +20,20 @@ std.conv : text;
 	}
 
 protected:
-	void doAccept() @trusted {
+	bool doAccept() @trusted {
 		_iocp.operation = IocpOperation.accept;
 		_clientSock = new TcpSocket(_socket.addressFamily);
-		//_clientSock = new Socket(_socket.addressFamily,
-		//	WSASocket(_socket.addressFamily, _socket.type, _socket.protocol, null, 0, WSA_FLAG_OVERLAPPED));
+		//_clientSock = new Socket(WSASocket(_socket.addressFamily, SocketType.STREAM,
+		//ProtocolType.TCP, null, 0, WSA_FLAG_OVERLAPPED), _socket.addressFamily);
 		uint dwBytesReceived = void;
 
 		debug (Log)
 			trace("client socket: accept=", _clientSock.handle, ", server socket=", handle);
-		checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
-				&dwBytesReceived, &_iocp.overlapped));
+		return !checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
+				&dwBytesReceived, &_iocp.overlapped), "listener ");
 	}
 
 	bool onAccept(scope AcceptHandler handler) {
-		_error = [];
 		debug (Log)
 			trace("handle=", handle, ", slink=", _clientSock.handle);
 		socket_t[1] fd = [handle];
@@ -47,9 +44,9 @@ protected:
 
 		debug (Log)
 			trace("accept next connection...");
-		if (isRegistered)
-			doAccept();
-		return true;
+		if (_isRegistered)
+			return doAccept();
+		return false;
 	}
 
 private:
@@ -82,7 +79,7 @@ private:
 	/**
 	 * Called by selector after data sent
 	*/
-	void onWriteDone(uint len) {
+	void onWrite(uint len) {
 		if (isWriteCancelling) {
 			isWriteCancelling = false;
 			_writeQueue.clear(); // clean the data buffer
@@ -95,7 +92,7 @@ private:
 			_wBuf = [];
 
 			debug (Log)
-				trace("done with data writing ", len, " bytes");
+				trace("written ", len, " bytes");
 
 			if (!_writeQueue.empty)
 				tryWrite();
@@ -111,36 +108,17 @@ private:
 		}
 	}
 
-protected:
-	final void beginRead() @trusted {
-		_iocpRead.operation = IocpOperation.read;
-		uint dwReceived = void, dwFlags;
-
+	void onRead(uint len) {
 		debug (Log)
-			trace("start receiving handle=", handle);
+			trace("data reading ", len, " bytes");
 
-		checkErro(WSARecv(handle, cast(WSABUF*)&_rBuf, 1, &dwReceived, &dwFlags,
-				&_iocpRead.overlapped, null), SOCKET_ERROR);
-	}
-
-	void doConnect(Address addr) @trusted {
-		_iocpWrite.operation = IocpOperation.connect;
-		checkErro(ConnectEx(handle, addr.name(), addr.nameLen(), null, 0, null,
-				&_iocpWrite.overlapped), ERROR_IO_PENDING);
-	}
-
-	final bool tryRead() {
-		_error = [];
-		debug (Log)
-			trace("data reading ", readLen, " bytes");
-
-		if (readLen) {
+		if (len) {
 			if (onReceived)
-				onReceived(_rBuf[0 .. readLen]);
+				onReceived(_rBuf[0 .. len]);
 			debug (Log)
-				trace("done with data reading ", readLen, " bytes");
+				trace("read ", len, " bytes");
 
-			beginRead(); // continue reading
+			recv(); // continue reading
 		} else {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
@@ -148,13 +126,28 @@ protected:
 			// if (!_isRegistered)
 			//	close();
 		}
-		return true;
 	}
 
-	final void tryWrite() {
-		assert(!_writeQueue.empty);
-		_error = [];
+protected:
+	final void recv() @trusted {
+		_iocpRead.operation = IocpOperation.read;
+		uint dwReceived = void, dwFlags;
 
+		debug (Log)
+			trace("start receiving handle=", handle);
+
+		checkErro(WSARecv(handle, cast(WSABUF*)&_rBuf, 1, &dwReceived, &dwFlags,
+				&_iocpRead.overlapped, null), "recv ");
+	}
+
+	void doConnect(Address addr) @trusted {
+		_iocpWrite.operation = IocpOperation.connect;
+		checkErro(ConnectEx(handle, addr.name(), addr.nameLen(), null, 0, null,
+				&_iocpWrite.overlapped), "connect ");
+	}
+
+	final void tryWrite()
+	in (!_writeQueue.empty) {
 		_wBuf = _writeQueue.front;
 		const data = _wBuf;
 		const len = write(data);
@@ -165,7 +158,6 @@ protected:
 		}
 	}
 
-	version (Windows) package(dast.async) uint readLen;
 	WriteBufferQueue _writeQueue;
 	bool isWriteCancelling;
 
@@ -184,14 +176,9 @@ private:
 		sendDataBuf = data;
 		uint dwSent = void;
 		_iocpWrite.operation = IocpOperation.write;
-		WSASend(handle, cast(WSABUF*)&sendDataBuf, 1, &dwSent, 0, &_iocpWrite.overlapped, null);
 
-		// FIXME: Needing refactor or cleanup
-		// The buffer may be full, so what can do here?
-		// checkErro(ret, SOCKET_ERROR); // bug:
-
-		if (isError) {
-			error("Socket error on write: fd=", handle, ", message=", _error);
+		if (checkErro(WSASend(handle, cast(WSABUF*)&sendDataBuf, 1, &dwSent, 0,
+				&_iocpWrite.overlapped, null), "write ")) {
 			close();
 		}
 
@@ -199,18 +186,21 @@ private:
 	}
 }
 
-void checkErro()(int ret, int erro = 0) {
+private bool checkErro()(int ret, string prefix = null) {
 	import core.sys.windows.winerror;
 
 	const err = WSAGetLastError();
 	if (ret != 0 || err == 0)
-		return;
+		return false;
 
 	debug (Log)
-		tracef("erro=%d, dwLastError=%d", erro, err);
+		tracef("fd=", handle, ", dwLastError=", err);
 
-	if (err != WSAEWOULDBLOCK && err != ERROR_IO_PENDING)
-		_error = text("WSA error: code=", err);
+	if (err != WSAEWOULDBLOCK && err != ERROR_IO_PENDING) {
+		errorOccurred(text(prefix, " error: code=", err));
+		return true;
+	}
+	return false;
 }
 
 enum IocpOperation {
@@ -227,8 +217,7 @@ struct IocpContext {
 	IocpOperation operation;
 }
 
-alias WSAOVERLAPPED = OVERLAPPED,
-LPWSAOVERLAPPED = OVERLAPPED*,
+alias LPWSAOVERLAPPED = OVERLAPPED*,
 GROUP = uint;
 private alias LPWSAPROTOCOL_INFO = void*;
 

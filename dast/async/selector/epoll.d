@@ -9,10 +9,7 @@ core.sys.linux.epoll,
 core.sys.linux.sys.eventfd,
 core.sys.posix.netinet.tcp,
 core.sys.posix.netinet.in_,
-core.sys.posix.unistd,
-std.exception,
-std.socket,
-std.string;
+core.sys.posix.unistd;
 
 version (HaveTimer) import dast.async.timer;
 
@@ -36,12 +33,8 @@ class Epoll : EpollEventChannel {
 		_eventHandle = 0;
 	}
 
-	bool register(int fd, SocketChannel watcher)
+	bool register(SocketChannel watcher)
 	in (watcher) {
-		version (HaveTimer)
-			if (watcher.type == WT.Timer)
-				setTimer(fd);
-
 		// debug (Log) info("register, watcher fd=", watcher.handle);
 		const fd = watcher.handle;
 		assert(fd >= 0, "The watcher.handle is not initilized");
@@ -82,14 +75,7 @@ class Epoll : EpollEventChannel {
 		return true;
 	}
 
-	void onLoop(scope void delegate() handler) {
-		running = true;
-		do {
-			handler();
-			handleEvents();
-		}
-		while (running);
-	}
+	mixin Loop;
 
 	private void handleEvents() {
 		epoll_event[64] events;
@@ -116,13 +102,7 @@ class Epoll : EpollEventChannel {
 		}
 	}
 
-	void stop() nothrow{
-		running = false;
-	}
-
-private:
-	bool running;
-	int _eventHandle;
+	private int _eventHandle;
 }
 
 epoll_event buildEvent(SocketChannel watch) {
@@ -155,7 +135,6 @@ class EpollEventChannel {
 	}+/
 
 	void onRead() {
-		_error = [];
 		ulong value = void;
 		read(handle, &value, value.sizeof);
 		_rBuf.data = value;

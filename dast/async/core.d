@@ -22,10 +22,6 @@ alias DataWrittenHandler = void delegate(in void[] data, size_t size);
 abstract class SocketChannel {
 	ErrorHandler onError;
 
-	bool isError() const => _error.length != 0;
-
-	package(dast) string _error;
-
 	package WF flags;
 
 	@property pure nothrow @nogc {
@@ -116,6 +112,9 @@ enum WatchFlag {
 }
 
 package:
+import std.socket,
+std.conv : text;
+
 alias WT = WatcherType,
 WF = WatchFlag,
 BUF = uninitializedArray!(ubyte[], size_t);
@@ -123,4 +122,23 @@ BUF = uninitializedArray!(ubyte[], size_t);
 bool popSize(ref scope const(void)[] arr, size_t size) {
 	arr = arr[size .. $];
 	return arr.length == 0;
+}
+
+template Loop() {
+	private bool running;
+
+	void onLoop(scope void delegate() handler) @system {
+		running = true;
+		do {
+			handler();
+			handleEvents();
+		}
+		while (running);
+	}
+
+	void stop() nothrow {
+		running = false;
+		if (is(typeof(weakUp())))
+			weakUp();
+	}
 }

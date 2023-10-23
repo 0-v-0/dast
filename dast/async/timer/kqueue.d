@@ -6,8 +6,7 @@ core.sys.posix.netinet.in_,
 core.sys.posix.time,
 core.sys.posix.unistd,
 dast.async.core,
-dast.async.timer.common,
-std.socket;
+dast.async.timer.common;
 
 class TimerBase : Timer {
 	this() {

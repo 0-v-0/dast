@@ -108,27 +108,19 @@ class WebSocketServer : ListenerBase {
 	}
 
 	protected override void onRead() {
-		//bool canRead = true;
 		debug (Log)
-			trace("start to listen");
-		debug (Log)
-			trace("listening...");
-		//canRead =
-		onAccept((Socket socket) {
-			debug (Log)
-				info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
+			trace("start listening");
+		if (!onAccept((Socket socket) {
+				debug (Log)
+					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-			auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
-			client.onReceived = (in ubyte[] data) @trusted {
-				onReceive(WSClient(client), data);
-			};
-			client.onClosed = () @trusted { remove(WSClient(client).id); };
-			client.start();
-		});
-
-		if (isError) {
-			//canRead = false;
-			error("listener error: ", _error);
+				auto client = new TcpStream(_inLoop, socket, settings.bufferSize);
+				client.onReceived = (in ubyte[] data)@trusted {
+					onReceive(WSClient(client), data);
+				};
+				client.onClosed = ()@trusted { remove(WSClient(client).id); };
+				client.start();
+			})) {
 			close();
 		}
 	}

@@ -5,8 +5,6 @@ dast.async.eventloop,
 dast.async.selector,
 dast.async.socket,
 dast.async.tcpstream,
-core.time,
-std.socket,
 std.logger;
 
 alias AcceptHandler = void delegate(TcpListener sender, TcpStream stream) @safe,
@@ -42,26 +40,20 @@ class TcpListener : ListenerBase {
 	}
 
 	protected override void onRead() {
-		//bool canRead = true;
 		debug (Log)
 			trace("start listening");
-		//canRead =
-		onAccept((Socket socket) {
-			debug (Log)
-				info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
+		if (!onAccept((Socket socket) {
+				debug (Log)
+					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-			if (onAccepted) {
-				auto stream = onPeerCreating ?
+				if (onAccepted) {
+					auto stream = onPeerCreating ?
 					onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, _bufferSize);
 
-				onAccepted(this, stream);
-				stream.start();
-			}
-		});
-
-		if (isError) {
-			//canRead = false;
-			error("listener error: ", _error);
+					onAccepted(this, stream);
+					stream.start();
+				}
+			})) {
 			close();
 		}
 	}

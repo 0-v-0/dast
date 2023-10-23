@@ -3,8 +3,7 @@ module dast.async.selector.iocp;
 version (Windows)  : import core.sys.windows.windows,
 dast.async.socket,
 dast.async.core,
-dast.async.socket.iocp,
-std.socket;
+dast.async.socket.iocp;
 
 alias Selector = Iocp;
 
@@ -54,19 +53,7 @@ alias Selector = Iocp;
 		PostQueuedCompletionStatus(_eventHandle, 0, 0, &ctx.overlapped);
 	}
 
-	void onLoop(scope void delegate() handler) @system {
-		running = true;
-		do {
-			handler();
-			handleEvents();
-		}
-		while (running);
-	}
-
-	void stop() {
-		running = false;
-		weakUp();
-	}
+	mixin Loop;
 
 private:
 	void handleEvents() @trusted {
@@ -87,7 +74,7 @@ private:
 			assert(ev, "ev is null");
 
 			auto channel = cast(SocketChannel)cast(void*)entry.lpCompletionKey;
-			final switch (ev.operation) with (IocpOperation) {
+			switch (ev.operation) with (IocpOperation) {
 			case accept:
 				(cast(ListenerBase)channel).onRead();
 				break;
@@ -95,25 +82,23 @@ private:
 				if (len && !channel.isClosed) {
 					auto io = cast(StreamBase)channel;
 					assert(io);
-					io.readLen = len;
-					io.onRead();
+					io.onRead(len);
 				}
 				break;
 			case write:
 				debug (Log)
 					trace("finishing data writing ", len, " bytes");
-				(cast(StreamBase)channel).onWriteDone(len); // Notify the client about how many bytes actually sent
+				(cast(StreamBase)channel).onWrite(len); // Notify the client about how many bytes actually sent
 				break;
 			case event:
 				channel.onRead(); // TODO
 				break;
-			case connect, close:
+			default:
 				break;
 			}
 		}
 	}
 
-	bool running;
 	HANDLE _eventHandle;
 	SocketChannel[] _watchers;
 }

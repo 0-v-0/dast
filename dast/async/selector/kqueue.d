@@ -11,9 +11,7 @@ core.sys.posix.netinet.tcp,
 core.sys.posix.netinet.in_,
 core.sys.posix.unistd,
 core.sys.posix.time,
-dast.async.core,
-std.socket,
-std.string;
+dast.async.core;
 
 version (HaveTimer) import dast.async.timer.kqueue;
 
@@ -120,48 +118,41 @@ class Kqueue : KqueueEventChannel {
 	//     return true;
 	// }
 
-	void onLoop(scope void delegate() handler) {
-		running = true;
-		auto tspec = timespec(1, 1000 * 10);
-		do {
-			handler();
-			kevent_t[64] events;
-			auto len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
-			if (len < 1)
-				continue;
-			foreach (i; 0 .. len) {
-				auto watch = cast(SocketChannel)(events[i].udata);
-				if (events[i].flags & (EV_EOF | EV_ERROR)) {
-					watch.close();
-					continue;
-				}
-				version (HaveTimer)
-					if (watch.type == WT.Timer) {
-						watch.onRead();
-						continue;
-					}
-				if (watch.isRegistered) {
-					// if (events[i].filter & EVFILT_WRITE) {
-						// debug (Log) trace("The channel socket is: ", typeid(watch));
-						// assert(cast(SocketChannel)watch);
-					// }
-
-					if (events[i].filter & EVFILT_READ)
-						watch.onRead();
-				}
-			}
-		}
-		while (running);
-	}
-
-	override void stop() {
-		running = false;
-	}
+	mixin Loop;
 
 private:
-	bool running;
+	void handleEvents() @trusted {
+		kevent_t[64] events;
+		const len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
+		if (len < 1)
+			continue;
+		foreach (i; 0 .. len) {
+			auto watch = cast(SocketChannel)(events[i].udata);
+			if (events[i].flags & (EV_EOF | EV_ERROR)) {
+				watch.close();
+				continue;
+			}
+			version (HaveTimer)
+				if (watch.type == WT.Timer) {
+					watch.onRead();
+					continue;
+				}
+			if (watch.isRegistered) {
+				// if (events[i].filter & EVFILT_WRITE) {
+				// debug (Log) trace("The channel socket is: ", typeid(watch));
+				// assert(cast(SocketChannel)watch);
+				// }
+
+				if (events[i].filter & EVFILT_READ)
+					watch.onRead();
+			}
+		}
+	}
+
 	int _eventHandle;
 }
+
+private immutable tspec = timespec(1, 1000 * 10);
 
 class KqueueEventChannel {
 	this() {

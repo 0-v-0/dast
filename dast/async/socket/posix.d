@@ -3,9 +3,6 @@ module dast.async.socket.posix;
 version (Posix)  : import core.stdc.errno,
 core.stdc.string,
 dast.async.core,
-std.exception,
-std.socket,
-std.string,
 core.sys.posix.sys.socket : accept;
 
 /**
@@ -19,7 +16,6 @@ abstract class ListenerBase : SocketChannel {
 	}
 
 	protected bool onAccept(scope AcceptHandler handler) {
-		_error = [];
 		const clientFd = accept(handle, null, null);
 		if (clientFd < 0)
 			return false;
@@ -52,39 +48,38 @@ abstract class StreamBase : SocketChannel {
 		flags |= WF.Read | WF.Write | WF.ETMode;
 	}
 
-protected:
-	final bool tryRead() {
-		_error = [];
-		const len = socket.receive(_rBuf);
+	override void onRead() {
 		debug (Log)
-			trace("read nbytes...", len);
+			trace("start reading");
+		while (_isRegistered) {
+			const len = socket.receive(_rBuf);
+			debug (Log)
+				trace("read nbytes...", len);
 
-		if (len > 0) {
-			if (onReceived)
-				onReceived(_rBuf[0 .. len]);
+			if (len > 0) {
+				if (onReceived)
+					onReceived(_rBuf[0 .. len]);
 
-			// It's possible that more data are waiting for read in inner buffer
-			if (len == _rBuf.length)
-				return false;
-		} else if (len < 0) {
-			// FIXME: Needing refactor or cleanup
-			// check more error status
-			if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-				_error = cast(string)fromStringz(strerror(errno));
+				// It's possible that more data are waiting for read in inner buffer
+				if (len == _rBuf.length)
+					continue;
+			} else if (len < 0) {
+				// FIXME: Needing refactor or cleanup
+				// check more error status
+				if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+					errorOccurred(text("Socket error on write: fd=", handle, ", message=", lastSocketError()));
+				}
+			} else {
+				debug (Log)
+					warning("connection broken: ", _socket.remoteAddress);
+				disconnected();
+				if (_isRegistered)
+					close();
+				else
+					socket.close(); // release the sources
 			}
-
-			debug (Log)
-				warning("read error: errno=", errno, ", message: ", _error);
-		} else {
-			debug (Log)
-				warning("connection broken: ", _socket.remoteAddress);
-			disconnected();
-			if (_isRegistered)
-				close();
-			else
-				socket.close(); // release the sources
+			break;
 		}
-		return true;
 	}
 
 	private void disconnected() {
@@ -93,6 +88,7 @@ protected:
 			onDisconnected();
 	}
 
+protected:
 	/**
 	Try to write a block of data.
 	*/
@@ -105,15 +101,12 @@ protected:
 		if (len > 0)
 			return len;
 
-		debug (Log)
-			warning("errno=", errno, ", message: ", lastSocketError());
-
 		// FIXME: Needing refactor or cleanup
 		// check more error status
-		if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-			_error = lastSocketError();
-			warning("errno=", errno, ", message: ", _error);
-		}
+		const err = errno;
+		if (err != EINTR && err != EAGAIN && err != EWOULDBLOCK)
+			errorOccurred(text("Socket error on write: fd=", handle,
+					", errno=", err, ", message: ", lastSocketError()));
 		return 0;
 	}
 
