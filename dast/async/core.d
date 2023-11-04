@@ -119,7 +119,7 @@ alias WT = WatcherType,
 WF = WatchFlag,
 BUF = uninitializedArray!(ubyte[], size_t);
 
-bool popSize(ref scope const(void)[] arr, size_t size) {
+bool popSize(ref scope const(void)[] arr, size_t size) nothrow {
 	arr = arr[size .. $];
 	return arr.length == 0;
 }
