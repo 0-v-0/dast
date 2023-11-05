@@ -1,6 +1,6 @@
 module dast.async.core;
 
-import dast.async.container,
+import dast.async.queue,
 std.array,
 std.socket;
 public import dast.async.selector : Selector;
@@ -49,14 +49,15 @@ abstract class SocketChannel {
 
 nothrow:
 	void close() {
-		if (_isRegistered) {
-			debug (Log)
-				trace("channel closing...", handle);
-			onClose();
-			debug (Log)
-				trace("channel closed...", handle);
+		if (!_isRegistered)
+			assert(0, text("The watcher(fd=", handle, ") has already been closed"));
+		_isRegistered = false;
+		version (Windows) {
 		} else
-			debug warning("The watcher(fd=", handle, ") has already been closed");
+			_inLoop.unregister(this);
+		//  _inLoop = null;
+		debug (Log)
+			trace("channel closed...", handle);
 	}
 
 protected:
@@ -66,14 +67,6 @@ protected:
 		_socket = s;
 		debug (Log)
 			trace("new socket fd: ", handle);
-	}
-
-	void onClose() {
-		_isRegistered = false;
-		version (Windows) {
-		} else
-			_inLoop.unregister(this);
-		//  _inLoop = null;
 	}
 
 	void errorOccurred(in char[] msg) {

@@ -1,4 +1,4 @@
-module dast.async.container.queue;
+module dast.async.queue;
 
 struct Queue(T, bool check = false) {
 pure nothrow @safe @nogc:

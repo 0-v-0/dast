@@ -88,14 +88,14 @@ dast.async.socket;
 protected:
 	bool _isConnected;
 
-	override void onClose() {
+	override void close() {
 		debug (Log) {
 			if (!_writeQueue.empty)
 				warning("Some data has not been sent yet");
 		}
 
 		_writeQueue.clear();
-		super.onClose();
+		super.close();
 		_isConnected = false;
 		_socket.shutdown(SocketShutdown.BOTH);
 		_socket.close();

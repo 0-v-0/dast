@@ -34,9 +34,9 @@ class TcpListener : ListenerBase {
 	}
 
 	override void close() {
+		super.close();
 		if (onClosed)
 			onClosed();
-		onClose();
 	}
 
 	protected override void onRead() {

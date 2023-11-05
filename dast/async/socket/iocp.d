@@ -15,10 +15,6 @@ std.exception;
 
 	mixin checkErro;
 
-	override void onClose() {
-		// TODO
-	}
-
 protected:
 	bool doAccept() @trusted {
 		_iocp.operation = IocpOperation.accept;

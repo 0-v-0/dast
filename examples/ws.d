@@ -5,7 +5,7 @@ import dast.ws;
 class EchoSocketServer : WebSocketServer {
 	override void onOpen(WSClient client, in Request req) {
 		try
-			tracef("Peer %s connect to '%s'", client.id, req.path);
+			trace("Peer ", client.id, " connect to '", req.path, "'");
 		catch (Exception) {
 		}
 	}
@@ -20,9 +20,11 @@ class EchoSocketServer : WebSocketServer {
 
 class BroadcastServer : WebSocketServer {
 	private const(char)[][PeerID] peers;
+	WSClient[PeerID] clients;
 
 	override void onOpen(WSClient client, in Request req) {
 		peers[client.id] = req.path;
+		clients[client.id] = client;
 	}
 
 	override void onClose(WSClient client) {
@@ -71,6 +73,6 @@ void main() {
 		server.handler = &handle;
 		server.settings.maxConnections = 90_000;
 	}
-
-	server.run(10301);
+	server.settings.port = 10301;
+	server.run();
 }
