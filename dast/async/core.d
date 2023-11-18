@@ -1,11 +1,8 @@
 module dast.async.core;
 
 import dast.async.queue,
-std.array,
-std.socket;
+std.array;
 public import dast.async.selector : Selector;
-
-package import std.logger;
 
 @safe:
 alias SimpleHandler = void delegate() nothrow,
@@ -105,17 +102,13 @@ enum WatchFlag {
 }
 
 package:
-import std.socket,
+import std.logger,
+std.socket,
 std.conv : text;
 
 alias WT = WatcherType,
 WF = WatchFlag,
 BUF = uninitializedArray!(ubyte[], size_t);
-
-bool popSize(ref scope const(void)[] arr, size_t size) nothrow {
-	arr = arr[size .. $];
-	return arr.length == 0;
-}
 
 template Loop() {
 	private bool running;

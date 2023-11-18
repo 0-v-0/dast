@@ -89,6 +89,24 @@ abstract class StreamBase : SocketChannel {
 	}
 
 protected:
+
+	final void tryWrite() {
+		size_t len;
+		while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
+			const data = _writeQueue.front;
+			const n = tryWrite(data);
+			if (!n) // error
+				break;
+			if (data.length == n) {
+				debug (Log)
+					trace("finishing data writing ", n, " bytes");
+				_writeQueue.dequeue();
+				len += n;
+			}
+		}
+		return len;
+	}
+
 	/**
 	Try to write a block of data.
 	*/

@@ -75,18 +75,19 @@ private:
 	/**
 	 * Called by selector after data sent
 	*/
-	void onWrite(uint len) {
+	final void onWrite(uint len) {
 		if (isWriteCancelling) {
 			isWriteCancelling = false;
-			_writeQueue.clear(); // clean the data buffer
+			_writeQueue.clear();
 			return;
 		}
+		site += len;
 
-		if (_wBuf.popSize(len)) {
+		if (site >= _wBuf.length) {
 			if (!_writeQueue.dequeue())
 				warning("_writeQueue is empty");
-			_wBuf = [];
 
+			site = 0;
 			debug (Log)
 				trace("written ", len, " bytes");
 
@@ -142,10 +143,10 @@ protected:
 				&_iocpWrite.overlapped), "connect ");
 	}
 
-	final void tryWrite()
+	final void tryWrite() nothrow
 	in (!_writeQueue.empty) {
 		_wBuf = _writeQueue.front;
-		const data = _wBuf;
+		const data = _wBuf[site .. $];
 		const len = write(data);
 		if (len < data.length) { // to fix the corrupted data
 			debug (Log)
@@ -161,6 +162,7 @@ private:
 	IocpContext _iocpRead, _iocpWrite;
 	const(ubyte)[] _rBuf;
 	const(void)[] _wBuf, sendDataBuf;
+	uint site;
 
 	void disconnected() {
 		_isRegistered = false;
@@ -168,7 +170,7 @@ private:
 			onDisconnected();
 	}
 
-	uint write(in void[] data) @trusted {
+	uint write(in void[] data) @trusted nothrow {
 		sendDataBuf = data;
 		uint dwSent = void;
 		_iocpWrite.operation = IocpOperation.write;
@@ -182,7 +184,7 @@ private:
 	}
 }
 
-private bool checkErro()(int ret, string prefix = null) {
+private bool checkErro()(int ret, string prefix = null) nothrow {
 	import core.sys.windows.winerror;
 
 	const err = WSAGetLastError();

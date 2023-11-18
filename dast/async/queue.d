@@ -8,8 +8,7 @@ pure nothrow @safe @nogc:
 	@property bool full() const => (_tail + 1) % N == _head;
 	@property uint size() const => _tail >= _head ? _tail - _head : N - _head + _tail;
 
-	void enqueue(T item)
-	in (item) {
+	void enqueue(T item) {
 		static if (check)
 			assert(!full);
 		arr[_tail] = item;

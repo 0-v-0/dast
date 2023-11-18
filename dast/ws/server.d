@@ -60,12 +60,11 @@ class WebSocketServer : ListenerBase {
 	ServerSettings settings;
 	uint connections;
 
-	this(AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
-		this(new EventLoop, family, bufferSize);
+	this(AddressFamily family = AddressFamily.INET) {
+		super(new EventLoop, family);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
-		settings.bufferSize = bufferSize;
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, family);
 	}
 
@@ -76,24 +75,31 @@ class WebSocketServer : ListenerBase {
 	void onBinaryMessage(WSClient, const(ubyte)[]) nothrow {}
 
 	bool add(TcpStream client) nothrow {
+		if (!client.isConnected)
+			return false;
+
 		if (settings.maxConnections && connections >= settings.maxConnections) {
 			try
 				warning("Maximum number of connections ", settings.maxConnections, " reached");
 			catch (Exception) {}
-			client.close();
+				client.close();
 			return false;
 		}
 		connections++;
 		return true;
 	}
+	// dfmt on
 
 	void remove(WSClient client) nothrow {
 		onClose(client);
-		try info("Closing connection #", client.id); catch (Exception) {}
-		client.close();
+		try
+			info("Closing connection #", client.id);
+		catch (Exception) {
+		}
+		if (client.isConnected)
+			client.close();
 		connections--;
 	}
-	// dfmt on
 
 	void run() {
 		this.reusePort = settings.reusePort;
@@ -164,16 +170,13 @@ nothrow:
 		char[256] buf = void;
 		buf[0 .. len] = *key;
 		buf[len .. len + MAGIC.length] = MAGIC;
-		try {
-			client.write(
-				"HTTP/1.1 101 Switching Protocol\r\n" ~
-					"Upgrade: websocket\r\n" ~
-					"Connection: Upgrade\r\n" ~
-					"Sec-WebSocket-Accept: " ~ encode(
-						sha1Of(buf[0 .. len + MAGIC.length]), buf) ~
-					"\r\n\r\n");
-		} catch (Exception)
-			return false;
+		client.write(
+			"HTTP/1.1 101 Switching Protocol\r\n" ~
+				"Upgrade: websocket\r\n" ~
+				"Connection: Upgrade\r\n" ~
+				"Sec-WebSocket-Accept: " ~ encode(
+					sha1Of(buf[0 .. len + MAGIC.length]), buf) ~
+				"\r\n\r\n");
 		if (client.frames)
 			client.frames.length = 0;
 		else {
@@ -185,7 +188,7 @@ nothrow:
 		return true;
 	}
 
-private
+	private
 	void onReceive(WSClient client, in ubyte[] data) {
 		import std.algorithm : swap;
 

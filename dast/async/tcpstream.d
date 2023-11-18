@@ -63,26 +63,12 @@ dast.async.socket;
 	}
 
 	/// safe for big data sending
-	void write(const void[] data) {
+	void write(const void[] data) nothrow {
 		if (!_isConnected)
 			return errorOccurred("The connection has been closed");
 		if (data.length)
 			_writeQueue.enqueue(data);
-		version (Windows)
-			tryWrite();
-		else
-			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
-				const data = _writeQueue.front;
-				assert(data.length);
-				const len = tryWrite(data);
-				if (!len) // error
-					break;
-				if (data.length == len) {
-					debug (Log)
-						trace("finishing data writing ", len, " bytes");
-					_writeQueue.dequeue();
-				}
-			}
+		tryWrite();
 	}
 
 protected:
