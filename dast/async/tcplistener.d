@@ -13,7 +13,7 @@ PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket) @safe;
 class TcpListener : ListenerBase {
 	import tame.meta;
 
-	private uint _bufferSize = 4 * 1024;
+	uint bufferSize = 4 * 1024;
 
 	mixin Forward!"_socket";
 
@@ -21,8 +21,7 @@ class TcpListener : ListenerBase {
 	SimpleHandler onClosed;
 	PeerCreateHandler onPeerCreating;
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
-		_bufferSize = bufferSize;
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, family);
 	}
 
@@ -46,13 +45,12 @@ class TcpListener : ListenerBase {
 				debug (Log)
 					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-				if (onAccepted) {
-					auto stream = onPeerCreating ?
-					onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, _bufferSize);
+				auto stream = onPeerCreating ?
+				onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, bufferSize);
 
+				if (onAccepted)
 					onAccepted(this, stream);
-					stream.start();
-				}
+				stream.start();
 			})) {
 			close();
 		}

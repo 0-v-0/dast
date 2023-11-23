@@ -17,7 +17,7 @@ std.exception;
 
 protected:
 	bool doAccept() @trusted {
-		_iocp.operation = IocpOperation.accept;
+		_ctx.operation = IocpOperation.accept;
 		_clientSock = new TcpSocket(_socket.addressFamily);
 		//_clientSock = new Socket(WSASocket(_socket.addressFamily, SocketType.STREAM,
 		//ProtocolType.TCP, null, 0, WSA_FLAG_OVERLAPPED), _socket.addressFamily);
@@ -26,7 +26,7 @@ protected:
 		debug (Log)
 			trace("client socket: accept=", _clientSock.handle, ", server socket=", handle);
 		return !checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
-				&dwBytesReceived, &_iocp.overlapped), "listener ");
+				&dwBytesReceived, &_ctx.overlapped), "listener ");
 	}
 
 	bool onAccept(scope AcceptHandler handler) {
@@ -40,14 +40,12 @@ protected:
 
 		debug (Log)
 			trace("accept next connection...");
-		if (_isRegistered)
-			return doAccept();
-		return false;
+		return _isRegistered && doAccept();
 	}
 
 private:
 	enum size = sockaddr_in.sizeof + 16;
-	IocpContext _iocp;
+	IocpContext _ctx;
 	ubyte[size * 4] _buf;
 	Socket _clientSock;
 }
@@ -75,33 +73,31 @@ private:
 	/**
 	 * Called by selector after data sent
 	*/
-	final void onWrite(uint len) {
+	final onWrite(uint len) {
 		if (isWriteCancelling) {
 			isWriteCancelling = false;
+			_isWriting = false;
 			_writeQueue.clear();
 			return;
 		}
 		site += len;
-
-		if (site >= _wBuf.length) {
-			if (!_writeQueue.dequeue())
-				warning("_writeQueue is empty");
-
+		if (site >= _writeQueue.front.length) {
+			_writeQueue.pop1();
 			site = 0;
+			_isWriting = false;
 			debug (Log)
-				trace("written ", len, " bytes");
+				info("written ", len, " bytes");
 
 			if (!_writeQueue.empty)
 				tryWrite();
 		} else // if (sendDataBuf.length > len)
 		{
 			debug (Log)
-				trace("remaining nbytes: ", sendDataBuf.length - len);
-			// FIXME: Needing refactor or cleanup
-			// sendDataBuf corrupted
+				trace("remaining ", _wBuf.length - len, " bytes");
+			// FIXME: sendDataBuf corrupted
 			// tracef("%(%02X %)", sendDataBuf);
 			// send remaining
-			len = write(sendDataBuf[len .. $]);
+			tryWrite();
 		}
 	}
 
@@ -119,11 +115,14 @@ private:
 		} else {
 			debug (Log)
 				warning("connection broken: ", _socket.remoteAddress);
-			disconnected();
-			// if (!_isRegistered)
+			_isRegistered = false;
+			if (onDisconnected)
+				onDisconnected();
 			//	close();
 		}
 	}
+
+	bool isWriteCancelling;
 
 protected:
 	final void recv() @trusted {
@@ -143,39 +142,39 @@ protected:
 				&_iocpWrite.overlapped), "connect ");
 	}
 
-	final void tryWrite() nothrow
+	final tryWrite() nothrow
 	in (!_writeQueue.empty) {
-		_wBuf = _writeQueue.front;
-		const data = _wBuf[site .. $];
+		if (_isWriting) {
+			debug (Log)
+				warning("Busy in writing on thread: ");
+			return 0;
+		}
+		_isWriting = true;
+		const data = _writeQueue.front.data[site .. $];
 		const len = write(data);
 		if (len < data.length) { // to fix the corrupted data
 			debug (Log)
-				warning("remaining data: ", data.length - len);
-			sendDataBuf = data.dup;
+				warning("remaining ", data.length - len, " bytes");
+			_wBuf = data;
 		}
+		return len;
 	}
 
 	WriteBufferQueue _writeQueue;
-	bool isWriteCancelling;
-
 private:
 	IocpContext _iocpRead, _iocpWrite;
 	const(ubyte)[] _rBuf;
-	const(void)[] _wBuf, sendDataBuf;
+	const(void)[] _wBuf;
 	uint site;
+	bool _isWriting;
 
-	void disconnected() {
-		_isRegistered = false;
-		if (onDisconnected)
-			onDisconnected();
-	}
-
-	uint write(in void[] data) @trusted nothrow {
-		sendDataBuf = data;
+	uint write(in void[] data) @trusted nothrow
+	in (data.length) {
+		_wBuf = data;
 		uint dwSent = void;
 		_iocpWrite.operation = IocpOperation.write;
 
-		if (checkErro(WSASend(handle, cast(WSABUF*)&sendDataBuf, 1, &dwSent, 0,
+		if (checkErro(WSASend(handle, cast(WSABUF*)&_wBuf, 1, &dwSent, 0,
 				&_iocpWrite.overlapped, null), "write ")) {
 			close();
 		}

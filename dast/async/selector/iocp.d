@@ -86,15 +86,14 @@ private:
 				}
 				break;
 			case write:
-				debug (Log)
-					trace("finishing data writing ", len, " bytes");
+				debug// (Log)
+					info("finishing writing ", len, " bytes");
 				(cast(StreamBase)channel).onWrite(len); // Notify the client about how many bytes actually sent
 				break;
 			case event:
 				channel.onRead(); // TODO
 				break;
 			default:
-				break;
 			}
 		}
 	}

@@ -120,7 +120,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 			auto action = unpacker.unpack!string;
 		s:
 			switch (action) {
-				static foreach (i, f; AllActions) {
+				static foreach (f; AllActions) {
 					static foreach (attr; getUDAs!(f, Action)) {
 						static if (__traits(compiles, { s = attr.name; })) {
 							//pragma(msg, attr.name);
@@ -129,32 +129,32 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 							//pragma(msg, __traits(identifier, f));
 			case __traits(identifier, f):
 						}
-						static if (arity!f == 0)
-							f();
-						else {
-							static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
+						{
+							static if (arity!f == 0)
+								f();
+							else static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
 								static assert(ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_,
-									"The first parameter of Action \"" ~ fullyQualifiedName!f ~ "\" must be `ref`");
+									`The first parameter of Action "` ~ fullyQualifiedName!f ~ "\" must be `ref`");
 								static if (arity!f == 1)
 									f(req);
-								else
-									mixin("Parameters!f[1..$] p", i, ";",
-										"unpacker.unpack(p", i, ");",
-										"f(req, p", i, ");");
-							} else {
-								static if (arity!f == 1)
-									f(unpacker.unpack!(Parameters!f));
-								else
-									mixin("Parameters!f p", i, ";",
-										"unpacker.unpack(p", i, ");",
-										"f(p", i, ");");
+								else {
+									Parameters!f[1 .. $] p;
+									unpacker.unpackTo(p);
+									f(req, p);
+								}
+							} else static if (arity!f == 1)
+								f(unpacker.unpack!(Parameters!f));
+							else {
+								Parameters!f p;
+								unpacker.unpackTo(p);
+								f(p);
 							}
 						}
 						break s;
 					}
 				}
 			default:
-				throw new Exception("Unknown action \"" ~ action ~ "\"");
+				throw new Exception(`Unknown action "` ~ action ~ '"');
 			}
 		} catch (Exception e) {
 			req.buf.length = 0;

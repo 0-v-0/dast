@@ -88,19 +88,20 @@ abstract class StreamBase : SocketChannel {
 			onDisconnected();
 	}
 
-protected:
+	bool isWriteCancelling;
 
-	final void tryWrite() {
+protected:
+	final tryWrite() {
 		size_t len;
 		while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
-			const data = _writeQueue.front;
+			const data = _writeQueue.front.data;
 			const n = tryWrite(data);
 			if (!n) // error
 				break;
 			if (data.length == n) {
 				debug (Log)
-					trace("finishing data writing ", n, " bytes");
-				_writeQueue.dequeue();
+					trace("written ", n, " bytes");
+				_writeQueue.pop1();
 				len += n;
 			}
 		}
@@ -131,8 +132,6 @@ protected:
 	void doConnect(Address addr) {
 		socket.connect(addr);
 	}
-
-	bool isWriteCancelling;
 	ubyte[] _rBuf;
 	WriteBufferQueue _writeQueue;
 }

@@ -63,11 +63,11 @@ dast.async.socket;
 	}
 
 	/// safe for big data sending
-	void write(const void[] data) nothrow {
+	void write(const void[] data, DataSentHandler handler = null) nothrow {
 		if (!_isConnected)
 			return errorOccurred("The connection has been closed");
 		if (data.length)
-			_writeQueue.enqueue(data);
+			_writeQueue.enqueue(WriteBuffer(data, handler));
 		tryWrite();
 	}
 

@@ -51,11 +51,7 @@ class WSClient : TcpStream {
 	}
 }
 
-class WebSocketServer : ListenerBase {
-	import tame.meta;
-
-	mixin Forward!"_socket";
-
+class WebSocketServer : TcpListener {
 	ReqHandler handler;
 	ServerSettings settings;
 	uint connections;
@@ -74,7 +70,8 @@ class WebSocketServer : ListenerBase {
 	void onTextMessage(WSClient, string) nothrow {}
 	void onBinaryMessage(WSClient, const(ubyte)[]) nothrow {}
 
-	bool add(TcpStream client) nothrow {
+	bool add(TcpStream client) nothrow
+	in (client.handle) {
 		if (!client.isConnected)
 			return false;
 
@@ -90,7 +87,8 @@ class WebSocketServer : ListenerBase {
 	}
 	// dfmt on
 
-	void remove(WSClient client) nothrow {
+	void remove(WSClient client) nothrow
+	in (client.id) {
 		onClose(client);
 		try
 			info("Closing connection #", client.id);
@@ -102,6 +100,17 @@ class WebSocketServer : ListenerBase {
 	}
 
 	void run() {
+		onPeerCreating = (TcpListener sender, Socket socket) {
+			auto client = new WSClient(cast(EventLoop)sender._inLoop, socket, settings.bufferSize);
+			client.onReceived = (in ubyte[] data) @trusted {
+				onReceive(client, data);
+			};
+			client.onClosed = () @trusted {
+				if (client.id)
+					remove(client);
+			};
+			return client;
+		};
 		this.reusePort = settings.reusePort;
 		socket.bind(new InternetAddress("127.0.0.1", settings.port));
 		socket.listen(settings.connectionQueueSize);
@@ -113,31 +122,6 @@ class WebSocketServer : ListenerBase {
 			info("Maximum allowed connections: unlimited");
 		start();
 		(cast(EventLoop)_inLoop).run();
-	}
-
-	override void start() {
-		_inLoop.register(this);
-		_isRegistered = true;
-		version (Windows)
-			doAccept();
-	}
-
-	protected override void onRead() {
-		debug (Log)
-			trace("start listening");
-		if (!onAccept((Socket socket) {
-				debug (Log)
-					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
-
-				auto client = new WSClient(cast(EventLoop)_inLoop, socket, settings.bufferSize);
-				client.onReceived = (in ubyte[] data)@trusted {
-					onReceive(client, data);
-				};
-				client.onClosed = ()@trusted { remove(client); };
-				client.start();
-			})) {
-			close();
-		}
 	}
 
 nothrow:

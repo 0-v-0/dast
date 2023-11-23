@@ -49,7 +49,6 @@ pure nothrow:
 		}
 
 		if (masked) {
-
 			p[0 .. 4] = mask;
 			const U u = {a: mask};
 			auto result = buf[0 .. p + 4 - buf.ptr];

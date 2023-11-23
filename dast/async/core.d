@@ -14,7 +14,7 @@ AcceptHandler = void delegate(
 ConnectionHandler = void delegate(bool success),
 AcceptCallback = void delegate(Selector loop, Socket socket);
 
-alias DataWrittenHandler = void delegate(in void[] data, size_t size);
+alias DataSentHandler = void function(in void[] data, size_t size);
 
 abstract class SocketChannel {
 	ErrorHandler onError;
@@ -81,7 +81,19 @@ protected:
 	bool _isRegistered;
 }
 
-alias WriteBufferQueue = Queue!(const(void)[], true);
+alias WriteBufferQueue = Queue!(WriteBuffer, true);
+
+struct WriteBuffer {
+	const(void)[] data;
+	DataSentHandler handler;
+	alias data this;
+}
+
+void pop1(ref WriteBufferQueue q) {
+	const buf = q.dequeue();
+	if (buf.handler)
+		buf.handler(buf.data, buf.length);
+}
 
 enum WatcherType : ubyte {
 	None,
