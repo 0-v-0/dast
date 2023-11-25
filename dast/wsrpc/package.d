@@ -1,10 +1,15 @@
 module dast.wsrpc;
-import core.thread,
+import dast.ws.server,
 lmpl4d,
-lockfree.queue,
-dast.ws.server,
 std.traits;
 public import dast.ws.server : PeerID, WSClient;
+
+version (APIDoc) {
+} else {
+	version = Server;
+	import core.thread,
+	lockfree.queue;
+}
 
 struct Action {
 	string name;
@@ -52,7 +57,7 @@ template getActions(T...) {
 		getActions = AliasSeq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
 }
 
-private alias
+version (Server)  : private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 
@@ -122,7 +127,7 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 			switch (action) {
 				static foreach (f; AllActions) {
 					static foreach (attr; getUDAs!(f, Action)) {
-						static if (__traits(compiles, { s = attr.name; })) {
+						static if (__traits(compiles, (string s) { s = attr.name; })) {
 							//pragma(msg, attr.name);
 			case attr.name:
 						} else {
@@ -130,25 +135,26 @@ class WSRPCServer(bool multiThread, T...) : WebSocketServer {
 			case __traits(identifier, f):
 						}
 						{
-							static if (arity!f == 0)
-								f();
-							else static if (is(Unqual!(Parameters!f[0]) == WSRequest)) {
-								static assert(ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_,
+							alias P = Parameters!f;
+							static if (P.length) {
+								enum r = is(Unqual!(P[0]) == WSRequest);
+								static assert(!r || (ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_),
 									`The first parameter of Action "` ~ fullyQualifiedName!f ~ "\" must be `ref`");
-								static if (arity!f == 1)
-									f(req);
-								else {
-									Parameters!f[1 .. $] p;
-									unpacker.unpackTo(p);
+								P[r .. $] p = void;
+								foreach (i, ref x; p)
+									static if (is(ParameterDefaults!f[i + r] == void))
+										x = unpacker.unpack!(P[i + r]);
+									else static if (isArray!(P[i + r])) {
+										x = P[i + r].init;
+										unpacker.unpack(x);
+									} else
+										x = unpacker.unpack(ParameterDefaults!f[i + r]);
+								static if (r)
 									f(req, p);
-								}
-							} else static if (arity!f == 1)
-								f(unpacker.unpack!(Parameters!f));
-							else {
-								Parameters!f p;
-								unpacker.unpackTo(p);
-								f(p);
-							}
+								else
+									f(p);
+							} else
+								f();
 						}
 						break s;
 					}

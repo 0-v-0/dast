@@ -4,25 +4,30 @@ homepage "https://gitee.com/wayd/dast"
 authors "0-v-0"
 copyright "Copyright © 2022-2023, 0-v-0"
 license "MIT"
+
 buildType "debug" {
 	lflags "/incremental" "/opt:noref"
 	debugVersions "DisableCache"
 }
 sourceFiles "dast/package.d"
 importPaths "."
+
 subPackage {
 	name "async"
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
 	dependency "tame" version="~>0.0.5"
+
 	configuration "full" {
 		versions "HaveTimer"
 	}
+
 	configuration "lite" {
 		excludedSourceFiles "dast/async/timer/*.d"
 	}
 }
+
 subPackage {
 	name "config"
 	sourceFiles "dast/config.d"
@@ -30,6 +35,7 @@ subPackage {
 	dependency "dast:util" path="."
 	dependency "lyaml" version="0.1.0"
 }
+
 subPackage {
 	name "fcgi"
 	sourceFiles "dast/fcgi.d"
@@ -38,28 +44,24 @@ subPackage {
 	dependency "tame" version="~>0.0.5"
 	dflags "-preview=in"
 }
+
 subPackage {
 	name "http"
 	sourcePaths "dast/http"
 	importPaths "."
 	dependency "httparsed" version="~>1.2.1"
 	dependency "tame" version="~>0.0.5"
-	dflags "-preview=in"
-}
-subPackage {
-	name "http1"
-	sourceFiles "dast/http1.d"
-	importPaths "."
-	dependency "dast:http" path="."
-	dependency "tame" version="~>0.0.5"
 	dflags "-dip1008" "-preview=in"
 }
+
 subPackage {
 	name "map"
 	sourceFiles "dast/map.d"
 	importPaths "."
 }
+
 subPackage "md2d"
+
 subPackage {
 	name "util"
 	sourceFiles "dast/util.d"
@@ -67,6 +69,7 @@ subPackage {
 	dependency "database:util" version="*" optional=true
 	dependency "tame" version="~>0.0.5"
 }
+
 subPackage {
 	name "uwsgi"
 	sourceFiles "dast/uwsgi.d"
@@ -75,6 +78,7 @@ subPackage {
 	dependency "tame" version="~>0.0.5"
 	dflags "-preview=in" "-dip1008"
 }
+
 subPackage {
 	name "ws"
 	sourcePaths "dast/ws"
@@ -83,21 +87,33 @@ subPackage {
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
 	dependency "tame" version="~>0.0.5"
+
 	configuration "full" {
 		subConfiguration "dast:async" "full"
 	}
+
 	configuration "lite" {
 		subConfiguration "dast:async" "lite"
 	}
 }
+
 subPackage {
 	name "wsrpc"
-	sourceFiles "dast/wsrpc.d"
 	importPaths "."
+	sourcePaths "dast/wsrpc"
 	dflags "-dip1008"
-	dependency "tame:lockfree" version="*"
-	dependency "lmpl4d" version="~>0.0.9"
 	dependency "dast:ws" path="."
+	dependency "lmpl4d" version="~>0.0.10"
+
+	configuration "server" {
+		dependency "tame:lockfree" version="*"
+	}
+
+	configuration "apidoc" {
+		excludedSourceFiles "dast/wsrpc/server.d"
+		dependency "dast:util" path=".."
+		versions "APIDoc"
+	}
 }
 dependency ":config" path="."
 dependency ":util" path="."

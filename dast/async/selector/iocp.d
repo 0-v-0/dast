@@ -26,9 +26,8 @@ alias Selector = Iocp;
 			debug (Log)
 				trace("register on socket: ", fd);
 			CreateIoCompletionPort(cast(HANDLE)fd, _eventHandle, cast(ulong)cast(void*)watcher, 0);
-		} else {
+		} else
 			return false;
-		}
 
 		debug (Log)
 			info("watcher(fd=", fd, ", type=", type, ')');

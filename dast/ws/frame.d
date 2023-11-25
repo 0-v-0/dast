@@ -69,7 +69,7 @@ private union U {
 	ubyte[4] a;
 }
 
-auto read(size_t n = 1)(ref const(ubyte)[] data, size_t m = n)
+private auto read(size_t n = 1)(ref const(ubyte)[] data, size_t m = n)
 in (data.length >= m, "Insufficient data") {
 	static if (n == 1) {
 		ubyte b = data[0];

@@ -54,8 +54,7 @@ bool isTrue(string str) {
 		return false;
 	str = str[0 .. i + 1];
 	if (str.length == 5 && str[4] == 'e') {
-		auto p = cast(int*)str.ptr;
-		if (*p == 1936482662)
+		if (*cast(int*)str.ptr == 1936482662)
 			return false;
 	}
 	return str.length != 1 || str[0] != '0';
@@ -417,10 +416,6 @@ version (WASI) {
 		auto opDispatch(string key)() => this[key];
 
 		auto opDispatch(string key)(const char[] value) => data[key] = value;
-
-		void free() nothrow @nogc {
-			destroy!false(data);
-		}
 	}
 
 	Context[] data;

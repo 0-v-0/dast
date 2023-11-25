@@ -126,21 +126,23 @@ private alias getAttrs(alias symbol, string name) =
 template getSymbols(alias attr, symbols...) {
 	import std.meta;
 
-	bool hasAttr(alias symbol, string name)() {
+	template hasAttr(alias symbol, string name) {
 		static if (is(typeof(getAttrs!(symbol, name))))
-			foreach (a; getAttrs!(symbol, name)) {
-				static if (__traits(isSame, a, attr)) {
-					if (__ctfe)
-						return true;
-				} else static if (__traits(isTemplate, attr)) {
-					if (__ctfe && is(typeof(a) == attr!A, A...))
-						return true;
-				} else {
-					if (__ctfe && is(typeof(a) == attr))
-						return true;
+			static foreach (a; getAttrs!(symbol, name)) {
+				static if (is(typeof(hasAttr) == void)) {
+					static if (__traits(isSame, a, attr))
+						enum hasAttr = true;
+					else static if (__traits(isTemplate, attr)) {
+						static if (is(typeof(a) == attr!A, A...))
+							enum hasAttr = true;
+					} else {
+						static if (is(typeof(a) == attr))
+							enum hasAttr = true;
+					}
 				}
 			}
-		return false;
+		static if (is(typeof(hasAttr) == void))
+			enum hasAttr = false;
 	}
 
 	alias getSymbols = AliasSeq!();

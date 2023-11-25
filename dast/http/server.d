@@ -46,8 +46,8 @@ class Response {
 		bufferLen = 1024,
 		maxHeaderLen = 1024
 	}
-	bool headerSent = void;
-	bool keepConnection = void;
+	bool headerSent;
+	bool keepConnection;
 
 	protected import tame.buffer : Buffer = FixedBuffer;
 
@@ -59,8 +59,8 @@ class Response {
 		buf = typeof(buf)(&send);
 	}
 
-	int requestId = void;
-	protected Socket sock = void;
+	int requestId;
+	protected Socket sock;
 
 	void initialize(Socket socket, int reqId, bool keepConn) pure @nogc nothrow @safe {
 		sock = socket;
@@ -126,7 +126,7 @@ class Response {
 private char* intToHex(char* buf, size_t value) {
 	char* p = buf;
 	for (;;) {
-		int n = cast(int)value & 0xf ^ '0';
+		const n = cast(int)value & 0xf ^ '0';
 		*p++ = cast(char)(n < 58 ? n : n + 39);
 		if (value < 16)
 			break;
@@ -195,7 +195,7 @@ class Server {
 				warning(e);
 				resp.head.clear();
 				resp.buf.clear();
-				resp.writeHeader("HTTP/1.1 500 Internal Server Error");
+				resp.writeHeader("HTTP/1.1 " ~ Status.Error);
 				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
 				resp << e.toString();
 			}
