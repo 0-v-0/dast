@@ -1,6 +1,7 @@
 module dast.async.queue;
 
-struct Queue(T, bool check = false) {
+struct Queue(T, uint N, bool check = false) {
+	enum capacity = N;
 pure nothrow @safe @nogc:
 	@property auto ref front()
 	in (!empty) => arr[_head];
@@ -36,13 +37,12 @@ pure nothrow @safe @nogc:
 	}
 
 private:
-	enum N = 32;
-	uint _head, _tail;
+	package uint _head, _tail;
 	T[N] arr;
 }
 
 unittest {
-	alias Q = Queue!(int, true);
+	alias Q = Queue!(int, 10, true);
 	Q q;
 	assert(q.empty);
 	assert(!q.full);

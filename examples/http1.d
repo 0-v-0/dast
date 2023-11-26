@@ -1,15 +1,19 @@
 import dast.http.server;
+import std.socket;
 
-void handle(Request, Response resp) {
-	resp.writeHeader("HTTP/1.1 200 OK");
-	resp.writeHeader("Content-Type: text/html; charset=UTF-8");
-	resp.writeHeader("Connection: keep-alive");
-	resp << "<h1>Hello world</h1>";
+void handle(HTTPServer server, HTTPClient client, in Request req, scope NextHandler next) {
+	client.writeHeader("HTTP/1.1 200 OK");
+	client.writeHeader("Content-Type: text/html; charset=UTF-8");
+	client.writeHeader("Connection: keep-alive");
+	client.send("<h1>Hello world</h1>");
 }
 
 void main() {
 	import std.parallelism;
 
-	auto server = new Server(&handle);
-	server.start(8080, totalCPUs);
+	scope loop = new EventLoop;
+	scope server = new HTTPServer(loop);
+	server.settings.address = "127.0.0.1:8080";
+	server.use(&handle);
+	server.run();
 }

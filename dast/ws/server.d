@@ -10,7 +10,8 @@ std.conv : text;
 
 alias
 PeerID = int,
-ReqHandler = void function(WebSocketServer, WSClient, in Request);
+NextHandler = void delegate(),
+ReqHandler = void function(WebSocketServer server, WSClient client, in Request req, scope NextHandler next);
 
 class WSClient : TcpStream {
 	const(ubyte)[] data;
@@ -20,7 +21,7 @@ class WSClient : TcpStream {
 @safe:
 	@property id() => cast(int)handle;
 
-	this(EventLoop loop, Socket socket, uint bufferSize = 4 * 1024) {
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
 		super(loop, socket, bufferSize);
 	}
 
@@ -52,56 +53,17 @@ class WSClient : TcpStream {
 }
 
 class WebSocketServer : TcpListener {
-	ReqHandler handler;
-	ServerSettings settings;
-	uint connections;
-
 	this(AddressFamily family = AddressFamily.INET) {
 		super(new EventLoop, family);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
+	this(Selector loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, family);
 	}
 
-	// dfmt off
-	void onOpen(WSClient, in Request) nothrow {}
-	void onClose(WSClient) nothrow {}
-	void onTextMessage(WSClient, string) nothrow {}
-	void onBinaryMessage(WSClient, const(ubyte)[]) nothrow {}
-
-	bool add(TcpStream client) nothrow
-	in (client.handle) {
-		if (!client.isConnected)
-			return false;
-
-		if (settings.maxConnections && connections >= settings.maxConnections) {
-			try
-				warning("Maximum number of connections ", settings.maxConnections, " reached");
-			catch (Exception) {}
-				client.close();
-			return false;
-		}
-		connections++;
-		return true;
-	}
-	// dfmt on
-
-	void remove(WSClient client) nothrow
-	in (client.id) {
-		onClose(client);
-		try
-			info("Closing connection #", client.id);
-		catch (Exception) {
-		}
-		if (client.isConnected)
-			client.close();
-		connections--;
-	}
-
 	void run() {
-		onPeerCreating = (TcpListener sender, Socket socket) {
-			auto client = new WSClient(cast(EventLoop)sender._inLoop, socket, settings.bufferSize);
+		onAccept = (TcpListener sender, Socket socket) {
+			auto client = new WSClient(sender._inLoop, socket, settings.bufferSize);
 			client.onReceived = (in ubyte[] data) @trusted {
 				onReceive(client, data);
 			};
@@ -125,6 +87,41 @@ class WebSocketServer : TcpListener {
 	}
 
 nothrow:
+	// dfmt off
+	void onOpen(WSClient, in Request) {}
+	void onClose(WSClient) {}
+	void onTextMessage(WSClient, string) {}
+	void onBinaryMessage(WSClient, const(ubyte)[]) {}
+
+	bool add(TcpStream client)
+	in (client.handle) {
+		if (!client.isConnected)
+			return false;
+
+		if (settings.maxConnections && connections >= settings.maxConnections) {
+			try
+				warning("Maximum number of connections ", settings.maxConnections, " reached");
+			catch (Exception) {}
+				client.close();
+			return false;
+		}
+		connections++;
+		return true;
+	}
+	// dfmt on
+
+	void remove(WSClient client)
+	in (client.id) {
+		onClose(client);
+		try
+			info("Closing connection #", client.id);
+		catch (Exception) {
+		}
+		if (client.isConnected)
+			client.close();
+		connections--;
+	}
+
 	bool performHandshake(WSClient client, in ubyte[] msg, ref Request req) {
 		import sha1ct : sha1Of;
 		import std.uni : toLower;
@@ -143,11 +140,16 @@ nothrow:
 
 		auto key = KEY in req.headers;
 		if (!key || key.length > KEY_MAXLEN) {
-			if (handler)
-				try
-					handler(this, client, req);
-				catch (Exception) {
-				}
+			try {
+				size_t i;
+				scope NextHandler next;
+				next = () {
+					if (i < handlers.length)
+						handlers[i++](this, client, req, next);
+				};
+				next();
+			} catch (Exception) {
+			}
 			return false;
 		}
 		auto len = key.length;

@@ -9,33 +9,32 @@ alias SimpleHandler = void delegate() nothrow,
 ErrorHandler = void delegate(in char[] msg) nothrow,
 TickedHandler = void delegate(Object sender),
 RecvHandler = void delegate(in ubyte[] data),
-AcceptHandler = void delegate(
-	Socket socket),
-ConnectionHandler = void delegate(bool success),
-AcceptCallback = void delegate(Selector loop, Socket socket);
+AcceptHandler = void delegate(Socket socket),
+ConnectionHandler = void delegate(bool success);
 
-alias DataSentHandler = void function(in void[] data, size_t size);
+alias DataSentHandler = void delegate(in void[] data) nothrow;
 
 abstract class SocketChannel {
 	ErrorHandler onError;
 
 	package WF flags;
+	pure nothrow @nogc {
+		@property {
+			final handle() const => _socket.handle;
 
-	@property pure nothrow @nogc {
-		final handle() const => _socket.handle;
+			final type() const => _type;
 
-		final type() const => _type;
+			final socket() => _socket;
 
-		final socket() => _socket;
+			final bool isClosed() const => !_isRegistered;
 
-		final bool isClosed() const => !_isRegistered;
+			final bool isRegistered() const => _isRegistered;
+		}
 
-		final bool isRegistered() const => _isRegistered;
-	}
-
-	this(Selector loop, WatcherType type = WT.Event) {
-		_inLoop = loop;
-		_type = type;
+		this(Selector loop, WatcherType type = WT.Event) {
+			_inLoop = loop;
+			_type = type;
+		}
 	}
 
 	void start();
@@ -58,7 +57,7 @@ nothrow:
 	}
 
 protected:
-	@property void socket(Socket s) {
+	@property final void socket(Socket s) {
 		version (Posix)
 			s.blocking = false;
 		_socket = s;
@@ -81,19 +80,7 @@ protected:
 	bool _isRegistered;
 }
 
-alias WriteBufferQueue = Queue!(WriteBuffer, true);
-
-struct WriteBuffer {
-	const(void)[] data;
-	DataSentHandler handler;
-	alias data this;
-}
-
-void pop1(ref WriteBufferQueue q) {
-	const buf = q.dequeue();
-	if (buf.handler)
-		buf.handler(buf.data, buf.length);
-}
+alias WriteBufferQueue = Queue!(const(void)[], 16, true);
 
 enum WatcherType : ubyte {
 	None,

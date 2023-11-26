@@ -19,7 +19,7 @@ dast.async.socket;
 	}
 
 	// server side
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) nothrow {
 		super(loop, bufferSize);
 		this.socket = socket;
 		_isConnected = true;
@@ -53,7 +53,7 @@ dast.async.socket;
 
 	@property isConnected() const => _isConnected;
 
-	override void start() {
+	override void start() nothrow {
 		if (_isRegistered)
 			return;
 		_inLoop.register(this);

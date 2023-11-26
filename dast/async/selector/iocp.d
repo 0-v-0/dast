@@ -18,7 +18,7 @@ alias Selector = Iocp;
 		.close(_eventHandle);
 	} +/
 
-	bool register(SocketChannel watcher) @trusted
+	bool register(SocketChannel watcher) @trusted nothrow
 	in (watcher.type <= WT.Event) {
 		const fd = watcher.handle;
 		const type = watcher.type;
@@ -35,12 +35,12 @@ alias Selector = Iocp;
 		return true;
 	}
 
-	bool reregister(SocketChannel watcher) {
+	bool reregister(SocketChannel watcher) nothrow {
 		// IOCP does not support reregister
 		return false;
 	}
 
-	bool unregister(SocketChannel watcher) {
+	bool unregister(SocketChannel watcher) nothrow {
 		// FIXME: Needing refactor or cleanup
 		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
 
@@ -56,6 +56,8 @@ alias Selector = Iocp;
 
 private:
 	void handleEvents() @trusted {
+		import dast.async.tcplistener;
+
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
 		uint n = void;
@@ -75,17 +77,14 @@ private:
 			auto channel = cast(SocketChannel)cast(void*)entry.lpCompletionKey;
 			switch (ev.operation) with (IocpOperation) {
 			case accept:
-				(cast(ListenerBase)channel).onRead();
+				(cast(TcpListener)channel).onRead();
 				break;
 			case read:
-				if (len && !channel.isClosed) {
-					auto io = cast(StreamBase)channel;
-					assert(io);
-					io.onRead(len);
-				}
+				if (len && !channel.isClosed)
+					(cast(StreamBase)channel).onRead(len);
 				break;
 			case write:
-				debug// (Log)
+				debug (Log)
 					info("finishing writing ", len, " bytes");
 				(cast(StreamBase)channel).onWrite(len); // Notify the client about how many bytes actually sent
 				break;

@@ -2,10 +2,9 @@ module dast.http.settings;
 
 import core.time;
 
-
 struct ServerSettings {
-	/// The port to listen on
-	ushort port;
+	/// The address to listen on, default is localhost
+	string listen;
 	/// Enable address reuse in listenTCP()
 	bool reuseAddress = true;
 	/// Enable port reuse in listenTCP()

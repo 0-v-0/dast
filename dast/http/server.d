@@ -1,129 +1,156 @@
 module dast.http.server;
 
-import core.thread,
-std.array,
+import dast.async,
+std.logger,
 std.socket;
-public import dast.http : HTTPRequest = Request, Status;
 
-class Request {
-	enum bufferLen = 4 << 10;
-	ubyte[bufferLen] buffer = void;
-	HTTPRequest request;
+public import dast.async : EventLoop;
+public import dast.http : Request, Status, ServerSettings;
 
-	protected Socket sock;
-	size_t stop;
-	int requestId;
+alias NextHandler = void delegate(),
+ReqHandler = void function(HTTPServer server, HTTPClient client, in Request req, scope NextHandler next);
 
-	@property headers() => request.headers;
-
-	@property socket() => sock;
-
-	@property void socket(Socket socket) {
-		static id = 0;
-		stop = 0;
-		headers.data.clear();
-		sock = socket;
-		if (fillBuffer())
-			requestId = id++;
-	}
-
-	protected bool fillBuffer() {
-		while (!request.tryParse(buffer[0 .. stop])) {
-			auto len = sock.receive(buffer[stop .. $]);
-			if (len <= 0) {
-				if (sock.isAlive)
-					sock.close();
-				return false;
-			}
-			stop += len;
-		}
-		return true;
-	}
-}
-
-class Response {
-	enum {
-		bufferLen = 1024,
-		maxHeaderLen = 1024
-	}
-	bool headerSent;
+class HTTPClient : TcpStream {
 	bool keepConnection;
 
-	protected import tame.buffer : Buffer = FixedBuffer;
+@safe nothrow:
+	@property id() const => cast(int)handle;
+	@property headerSent() const => _headerSent;
+	@property Request* request()
+		=> req.tryParse(buf) ? &req : null;
 
-	Buffer!maxHeaderLen head;
-	Buffer!bufferLen buf;
-
-	this() {
-		head = typeof(head)(&throwErr!"Headers");
-		buf = typeof(buf)(&send);
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
+		super(loop, socket, bufferSize);
 	}
 
-	int requestId;
-	protected Socket sock;
-
-	void initialize(Socket socket, int reqId, bool keepConn) pure @nogc nothrow @safe {
-		sock = socket;
-		requestId = reqId;
-		headerSent = false;
-		keepConnection = keepConn;
-		head.clear();
-		buf.clear();
-	}
-
-	Response opBinary(string op : "<<", T)(T content) {
-		write(content);
-		return this;
+	override void start() {
+		super.start();
+		buf.reserve(bufferSize);
 	}
 
 	void writeHeader(T...)(T args) {
-		static foreach (arg; args)
-			head ~= arg; //.to!string;
-		head ~= "\r\n";
+		foreach (arg; args)
+			header ~= arg;
+		header ~= "\r\n";
 	}
 
-	void write(T...)(T args) {
-		static foreach (arg; args)
-			buf ~= arg;
-	}
-
-	alias put = write;
-
-	void flush() {
-		buf.flush();
-	}
-
-	void send(in char[] s) {
-		if (!headerSent) {
-			if (!head.length)
+	void send(in char[] msg) @trusted {
+		if (!_headerSent) {
+			if (!header.length)
 				writeHeader("Content-Type: text/html");
-			head ~= "Transfer-Encoding: chunked\r\n\r\n";
-			sock.send(head.data);
-			head.clear();
-			headerSent = true;
+			header ~= "Transfer-Encoding: chunked\r\n\r\n";
+			write(header);
+			header.length = 0;
+			_headerSent = true;
 		}
 		char[18] b = void;
-		auto p = intToHex(b.ptr, s.length);
+		auto p = intToHex(b.ptr, msg.length);
 		*p = '\r';
 		*(p + 1) = '\n';
-		sock.send(b[0 .. p - b.ptr + 2]);
-		sock.send(s);
-		sock.send("\r\n");
+		write(b[0 .. p - b.ptr + 2]);
+		write(msg);
+		write("\r\n");
+	}
+
+	private bool put(in ubyte[] data) {
+		if (buf.length + data.length > bufferSize)
+			return false;
+		buf ~= data;
+		return true;
+	}
+
+	private void clear() {
+		clearQueue();
+		header.length = 0;
+		_headerSent = false;
 	}
 
 	void finish() {
-		flush();
-		sock.send("0\r\n\r\n");
-		if (keepConnection)
-			sock.close();
+		write("0\r\n\r\n");
+		_headerSent = false;
+		if (!keepConnection)
+			close();
+	}
+protected:
+	const(ubyte)[] buf;
+	char[] header;
+	Request req;
+	bool _headerSent;
+}
+
+class HTTPServer : TcpListener {
+	private ReqHandler[] handlers;
+	ServerSettings settings;
+	uint connections;
+
+	this(AddressFamily family = AddressFamily.INET) {
+		super(new EventLoop, family);
 	}
 
-	protected void throwErr(string obj)(in char[]) {
-		throw new Exception(obj ~ " too long");
+	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+		super(loop, family);
+	}
+
+	void run() {
+		import std.conv,
+		tame.string;
+
+		_socket.reusePort = settings.reusePort;
+		auto addr = settings.address;
+		ushort port = 80;
+		const i = addr.indexOf(':');
+		if (~i) {
+			port = addr[i + 1 .. $].to!ushort;
+			addr = addr[0 .. i];
+		}
+		socket.bind(new InternetAddress(addr, port));
+		socket.listen(settings.connectionQueueSize);
+		onAccept = (Socket socket) {
+			if (settings.maxConnections && connections >= settings.maxConnections) {
+				socket.close();
+				return;
+			}
+			auto client = new HTTPClient(_inLoop, socket, settings.bufferSize);
+			connections++;
+			client.onReceived = (in ubyte[] data) @trusted {
+				if (!client.put(data))
+					client.close();
+				auto req = client.request;
+				if (!req)
+					return;
+				client.keepConnection = req.headers.connection != "close";
+				try {
+					size_t i;
+					scope NextHandler next;
+					next = () {
+						if (i < handlers.length)
+							handlers[i++](this, client, *req, next);
+					};
+					next();
+				} catch (Exception e) {
+					error(e);
+					client.clear();
+					client.writeHeader("HTTP/1.1 " ~ Status.Error);
+					client.writeHeader("Content-Type: text/html; charset=UTF-8");
+					client.send(e.toString());
+				}
+				client.finish();
+			};
+			client.onClosed = () { connections--; };
+			client.start();
+		};
+		start();
+		(cast(EventLoop)_inLoop).run();
+	}
+
+nothrow:
+	void use(ReqHandler handler)
+	in (handler) {
+		handlers ~= handler;
 	}
 }
 
-private char* intToHex(char* buf, size_t value) {
+private auto intToHex(char* buf, size_t value) {
 	char* p = buf;
 	for (;;) {
 		const n = cast(int)value & 0xf ^ '0';
@@ -152,70 +179,4 @@ unittest {
 	assert(str[0 .. 8] == "12345678", str);
 	assert(intToHex(p, size_t.max) - p == 16, str);
 	assert(str == "ffffffffffffffff", str);
-}
-
-class Server {
-	alias Handler = void delegate(Request req, Response resp);
-	protected Handler handler;
-	bool running;
-	Socket listener;
-	Thread[] threads;
-
-	this(Handler dg) {
-		handler = dg;
-	}
-
-	this(void function(Request req, Response resp) fn) {
-		import std.functional;
-
-		handler = toDelegate(fn);
-	}
-
-	void mainLoop() {
-		import std.logger;
-		import tame.ascii;
-
-		scope req = new Request;
-		scope resp = new Response;
-
-		while (running) {
-			Socket sock = void;
-			synchronized (listener)
-				try
-					sock = listener.accept();
-				catch (SocketAcceptException) {
-					running = false;
-					break;
-				}
-			req.socket = sock;
-			resp.initialize(sock, req.requestId, req.headers.connection == "close");
-			try
-				handler(req, resp);
-			catch (Exception e) {
-				warning(e);
-				resp.head.clear();
-				resp.buf.clear();
-				resp.writeHeader("HTTP/1.1 " ~ Status.Error);
-				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
-				resp << e.toString();
-			}
-			resp.finish();
-		}
-	}
-
-	void start(ushort port = 3031, uint maxThread = 1) {
-		listener = new TcpSocket;
-		listener.bind(new InternetAddress("127.0.0.1", port));
-		listener.listen(128);
-
-		running = true;
-		if (!maxThread)
-			return mainLoop();
-
-		threads = uninitializedArray!(Thread[])(maxThread);
-		foreach (ref thread; threads) {
-			thread = new Thread(&mainLoop);
-			thread.start();
-		}
-	}
 }

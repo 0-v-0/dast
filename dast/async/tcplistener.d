@@ -7,29 +7,20 @@ dast.async.socket,
 dast.async.tcpstream,
 std.logger;
 
-alias AcceptHandler = void delegate(TcpListener sender, TcpStream stream) @safe,
-PeerCreateHandler = TcpStream delegate(TcpListener sender, Socket socket) @safe;
-
-class TcpListener : ListenerBase {
+/** TCP Server */
+@safe class TcpListener : SocketChannel {
 	import tame.meta;
-
-	uint bufferSize = 4 * 1024;
 
 	mixin Forward!"_socket";
 
-	AcceptHandler onAccepted;
+	AcceptHandler onAccept;
 	SimpleHandler onClosed;
-	PeerCreateHandler onPeerCreating;
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
-		super(loop, family);
-	}
-
-	override void start() {
-		_inLoop.register(this);
-		_isRegistered = true;
-		version (Windows)
-			doAccept();
+	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+		super(loop, WT.Accept);
+		flags |= WF.Read;
+		socket = new TcpSocket(family);
+		_ctx.operation = IocpOperation.accept;
 	}
 
 	override void close() {
@@ -38,23 +29,83 @@ class TcpListener : ListenerBase {
 			onClosed();
 	}
 
-	protected override void onRead() {
+	override void start() {
+		_inLoop.register(this);
+		_isRegistered = true;
+		version (Windows)
+			accept();
+	}
+
+	override void onRead() {
 		debug (Log)
 			trace("start listening");
-		if (!onAccept((Socket socket) {
+		if (!tryAccept((Socket socket) {
 				debug (Log)
 					info("new connection from ", socket.remoteAddress, ", fd=", socket.handle);
 
-				auto stream = onPeerCreating ?
-				onPeerCreating(this, socket) : new TcpStream(_inLoop, socket, bufferSize);
-
-				if (onAccepted)
-					onAccepted(this, stream);
-				stream.start();
+				if (onAccept)
+					onAccept(socket);
+				else
+					new TcpStream(_inLoop, socket).start();
 			})) {
 			close();
 		}
 	}
+
+protected:
+	bool tryAccept(scope AcceptHandler handler) {
+		version (Posix) {
+			import core.sys.posix.sys.socket : accept;
+
+			const clientFd = accept(handle, null, null);
+			if (clientFd < 0)
+				return false;
+
+			debug (Log)
+				trace("listener fd=", handle, ", client fd=", clientFd);
+
+			if (handler)
+				handler(new Socket(clientFd, _socket.addressFamily));
+			return true;
+		}
+
+		version (Windows) {
+			import core.sys.windows.mswsock;
+
+			debug (Log)
+				trace("listener fd=", handle, ", client fd=", _clientSock.handle);
+			socket_t[1] fd = [handle];
+			_clientSock.setOption(SocketOptionLevel.SOCKET,
+				cast(SocketOption)SO_UPDATE_ACCEPT_CONTENT, fd);
+			if (handler)
+				handler(_clientSock);
+
+			debug (Log)
+				trace("accept next connection...");
+			return _isRegistered && accept();
+		}
+	}
+
+version (Windows) :
+private:
+
+	bool accept() @trusted {
+		_clientSock = new TcpSocket(_socket.addressFamily);
+		//_clientSock = new Socket(WSASocket(_socket.addressFamily, SocketType.STREAM,
+		//ProtocolType.TCP, null, 0, WSA_FLAG_OVERLAPPED), _socket.addressFamily);
+		uint dwBytesReceived = void;
+
+		debug (Log)
+			trace("client socket=", _clientSock.handle, ", server socket=", handle);
+		return !checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
+				&dwBytesReceived, &_ctx.overlapped), "listener");
+	}
+
+	mixin checkErro;
+	enum size = sockaddr_in.sizeof + 16;
+	Socket _clientSock;
+	IocpContext _ctx;
+	ubyte[size * 4] _buf;
 }
 
 @property:
