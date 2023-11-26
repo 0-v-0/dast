@@ -1,4 +1,4 @@
-module dast.async.socket.iocp;
+module dast.async.iocp;
 
 version (Windows)  : import core.sys.windows.windows,
 core.sys.windows.mswsock,

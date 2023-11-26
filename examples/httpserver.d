@@ -15,17 +15,18 @@ void main() {
 	scope loop = new EventLoop;
 	scope listener = new TcpListener(loop);
 
-	listener.socket.reusePort = true;
+	listener.reusePort = true;
 	listener.bind(new InternetAddress("127.0.0.1", port));
 	listener.listen(128);
 	enum writeData = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n" ~
-		"Connection: keep-alive\r\nContent-Type: text/plain\r\n\r\nHello, World!";
+		"Content-Type: text/plain\r\n\r\nHello, World!";
 	listener.onAccept = (Socket socket) {
 		auto client = new TcpStream(loop, socket);
 		client.onReceived = (in ubyte[] data) {
 			//debug writeln("received: ", cast(string)data);
 
 			client.write(writeData);
+			client.flush();
 		};
 		client.onClosed = {
 			debug writeln("The connection is closed!");
@@ -36,6 +37,7 @@ void main() {
 			catch (Exception) {
 			}
 		};
+		client.start();
 	};
 	listener.start();
 

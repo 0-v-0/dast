@@ -8,24 +8,20 @@ public import dast.async : EventLoop;
 public import dast.http : Request, Status, ServerSettings;
 
 alias NextHandler = void delegate(),
-ReqHandler = void function(HTTPServer server, HTTPClient client, in Request req, scope NextHandler next);
+ReqHandler = void function(HTTPServer server, HTTPClient client, scope NextHandler next);
 
-class HTTPClient : TcpStream {
+@safe class HTTPClient : TcpStream {
+	Request request;
 	bool keepConnection;
 
-@safe nothrow:
+nothrow:
 	@property id() const => cast(int)handle;
 	@property headerSent() const => _headerSent;
-	@property Request* request()
-		=> req.tryParse(buf) ? &req : null;
+	private bool tryParse() => request.tryParse(data);
 
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
 		super(loop, socket, bufferSize);
-	}
-
-	override void start() {
-		super.start();
-		buf.reserve(bufferSize);
+		p = _rBuf.ptr;
 	}
 
 	void writeHeader(T...)(T args) {
@@ -47,16 +43,9 @@ class HTTPClient : TcpStream {
 		auto p = intToHex(b.ptr, msg.length);
 		*p = '\r';
 		*(p + 1) = '\n';
-		write(b[0 .. p - b.ptr + 2]);
+		write(b[0 .. p - b.ptr + 2].dup);
 		write(msg);
 		write("\r\n");
-	}
-
-	private bool put(in ubyte[] data) {
-		if (buf.length + data.length > bufferSize)
-			return false;
-		buf ~= data;
-		return true;
 	}
 
 	private void clear() {
@@ -67,14 +56,29 @@ class HTTPClient : TcpStream {
 
 	void finish() {
 		write("0\r\n\r\n");
-		_headerSent = false;
+		flush();
+		reset();
 		if (!keepConnection)
 			close();
 	}
+
+	void reset() @trusted {
+		_headerSent = false;
+		_rBuf = p[0 .. _rBuf.ptr - p + _rBuf.length];
+	}
+
 protected:
-	const(ubyte)[] buf;
+	@property data() const @trusted => p[0 .. _rBuf.ptr - p];
+
+	bool put(size_t len) @trusted {
+		if (_rBuf.ptr - p + len >= bufferSize)
+			return false;
+		_rBuf = _rBuf[len .. $];
+		return true;
+	}
+
+	const(ubyte)* p;
 	char[] header;
-	Request req;
 	bool _headerSent;
 }
 
@@ -92,20 +96,9 @@ class HTTPServer : TcpListener {
 	}
 
 	void run() {
-		import std.conv,
-		tame.string;
-
-		_socket.reusePort = settings.reusePort;
-		auto addr = settings.address;
-		ushort port = 80;
-		const i = addr.indexOf(':');
-		if (~i) {
-			port = addr[i + 1 .. $].to!ushort;
-			addr = addr[0 .. i];
-		}
-		socket.bind(new InternetAddress(addr, port));
-		socket.listen(settings.connectionQueueSize);
-		onAccept = (Socket socket) {
+		bindAndListen(_socket, settings);
+		if (!onAccept)
+			onAccept = (Socket socket) {
 			if (settings.maxConnections && connections >= settings.maxConnections) {
 				socket.close();
 				return;
@@ -113,18 +106,17 @@ class HTTPServer : TcpListener {
 			auto client = new HTTPClient(_inLoop, socket, settings.bufferSize);
 			connections++;
 			client.onReceived = (in ubyte[] data) @trusted {
-				if (!client.put(data))
+				if (!client.put(data.length))
 					client.close();
-				auto req = client.request;
-				if (!req)
+				if (!client.tryParse())
 					return;
-				client.keepConnection = req.headers.connection != "close";
+				client.keepConnection = client.request.headers.connection != "close";
 				try {
 					size_t i;
 					scope NextHandler next;
 					next = () {
 						if (i < handlers.length)
-							handlers[i++](this, client, *req, next);
+							handlers[i++](this, client, next);
 					};
 					next();
 				} catch (Exception e) {
@@ -148,6 +140,26 @@ nothrow:
 	in (handler) {
 		handlers ~= handler;
 	}
+}
+
+package(dast) void bindAndListen(Socket socket, in ServerSettings settings) @safe {
+	import tame.string;
+
+	socket.reusePort = settings.reusePort;
+	foreach (host; splitter(settings.listen, ';')) {
+		host = host.stripLeft();
+		const(char)[] port;
+		const i = host.indexOf(':');
+		if (~i) {
+			port = host[i + 1 .. $];
+			host = host[0 .. i];
+		}
+		foreach (addr; getAddress(host.length ? host : "localhost", port)) {
+			if (addr.addressFamily == socket.addressFamily)
+				socket.bind(addr);
+		}
+	}
+	socket.listen(settings.connectionQueueSize);
 }
 
 private auto intToHex(char* buf, size_t value) {

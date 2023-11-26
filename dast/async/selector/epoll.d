@@ -1,7 +1,6 @@
 module dast.async.selector.epoll;
 
 version (linux)  : import dast.async.core,
-dast.async.socket,
 core.time,
 core.stdc.string,
 core.stdc.errno,

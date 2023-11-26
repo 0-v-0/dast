@@ -1,7 +1,6 @@
 module dast.ws.server;
 
 import dast.async,
-dast.async.socket,
 dast.http,
 dast.ws.frame,
 std.socket,
@@ -13,16 +12,16 @@ PeerID = int,
 NextHandler = void delegate(),
 ReqHandler = void function(WebSocketServer server, WSClient client, in Request req, scope NextHandler next);
 
-class WSClient : TcpStream {
+@safe class WSClient : TcpStream {
 	const(ubyte)[] data;
 	Frame[] frames;
 	Frame frame;
-
-@safe:
+nothrow:
 	@property id() => cast(int)handle;
 
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) {
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
 		super(loop, socket, bufferSize);
+		p = _rBuf.ptr;
 	}
 
 	void send(T)(in T msg) {
@@ -36,23 +35,43 @@ class WSClient : TcpStream {
 			alias bytes = msg;
 			enum op = Op.BINARY;
 		}
-		auto data = Frame(true, op, false, State.done, [0, 0, 0, 0], bytes.length, bytes).serialize;
-		try {
-			trace("Sending ", bytes.length, " bytes to #", id, " in one frame of ", data.length, " bytes long");
-			return write(data);
-		} catch (Exception) {
-		}
+		const data = Frame(true, op, false, State.done, [0, 0, 0, 0], bytes.length, bytes).serialize;
+		debug trace("Sending ", bytes.length, " bytes to #", id, " in one frame of ", data.length, " bytes long");
+		write(data);
+		return flush();
 	}
 
-	override void close() nothrow {
+	override void close() {
 		super.close();
 		data = [];
 		frames = [];
 		frame = Frame();
 	}
+
+private:
+	bool put(size_t len) @trusted {
+		if (_rBuf.ptr - p + len >= bufferSize)
+			return false;
+		_rBuf = _rBuf[len .. $];
+		return true;
+	}
+
+	void reset() @trusted {
+		_rBuf = p[0 .. _rBuf.ptr - p + _rBuf.length];
+		data.length = 0;
+	}
+
+	bool tryParse(ref Request req) @trusted
+		=> req.tryParse(p[0 .. _rBuf.ptr - p]);
+
+	const(ubyte)* p;
 }
 
 class WebSocketServer : TcpListener {
+	ReqHandler[] handlers;
+	ServerSettings settings;
+	uint connections;
+
 	this(AddressFamily family = AddressFamily.INET) {
 		super(new EventLoop, family);
 	}
@@ -62,8 +81,12 @@ class WebSocketServer : TcpListener {
 	}
 
 	void run() {
-		onAccept = (TcpListener sender, Socket socket) {
-			auto client = new WSClient(sender._inLoop, socket, settings.bufferSize);
+		import dast.http.server;
+
+		bindAndListen(_socket, settings);
+		if (!onAccept)
+			onAccept = (Socket socket) {
+			auto client = new WSClient(_inLoop, socket, settings.bufferSize);
 			client.onReceived = (in ubyte[] data) @trusted {
 				onReceive(client, data);
 			};
@@ -71,13 +94,10 @@ class WebSocketServer : TcpListener {
 				if (client.id)
 					remove(client);
 			};
-			return client;
+			client.start();
 		};
-		this.reusePort = settings.reusePort;
-		socket.bind(new InternetAddress("127.0.0.1", settings.port));
-		socket.listen(settings.connectionQueueSize);
 
-		info("Listening on port: ", settings.port);
+		info("Listening on ", settings.listen);
 		if (settings.maxConnections)
 			info("Maximum allowed connections: ", settings.maxConnections);
 		else
@@ -130,12 +150,11 @@ nothrow:
 		enum MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
 			KEY = "Sec-WebSocket-Key".toLower(),
 			KEY_MAXLEN = 192 - MAGIC.length;
-		client.data ~= msg;
-		if (client.data.length > 2048) {
+		if (!client.put(msg.length)) {
 			remove(client);
 			return false;
 		}
-		if (!req.tryParse(client.data))
+		if (!client.tryParse(req))
 			return false;
 
 		auto key = KEY in req.headers;
@@ -170,11 +189,16 @@ nothrow:
 			frames.reserve(1);
 			client.frames = frames;
 		}
-		client.data = [];
+		client.reset();
 		return true;
 	}
 
-	private
+	void use(ReqHandler handler)
+	in (handler) {
+		handlers ~= handler;
+	}
+
+private:
 	void onReceive(WSClient client, in ubyte[] data) {
 		import std.algorithm : swap;
 
@@ -199,6 +223,7 @@ nothrow:
 					info("Handshake with ", client.id, " done (path=", req.path, ")");
 				catch (Exception) {
 				}
+				client.flush();
 				onOpen(client, req);
 			}
 		}
@@ -218,11 +243,9 @@ nothrow:
 		// dfmt on
 		case Op.PING:
 			enum pong = Frame(true, Op.PONG, false, State.done, [0, 0, 0, 0], 0, [
-			]).serialize;
-			try
-				client.write(pong);
-			catch (Exception) {
-			}
+					]).serialize;
+			client.write(pong);
+			client.flush();
 			return;
 		case Op.PONG:
 			try

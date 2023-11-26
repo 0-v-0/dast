@@ -3,9 +3,10 @@ module dast.async.tcplistener;
 import dast.async.core,
 dast.async.eventloop,
 dast.async.selector,
-dast.async.socket,
 dast.async.tcpstream,
 std.logger;
+
+version (Windows) import dast.async.iocp;
 
 /** TCP Server */
 @safe class TcpListener : SocketChannel {
@@ -20,7 +21,6 @@ std.logger;
 		super(loop, WT.Accept);
 		flags |= WF.Read;
 		socket = new TcpSocket(family);
-		_ctx.operation = IocpOperation.accept;
 	}
 
 	override void close() {
@@ -104,11 +104,11 @@ private:
 	mixin checkErro;
 	enum size = sockaddr_in.sizeof + 16;
 	Socket _clientSock;
-	IocpContext _ctx;
+	IocpContext _ctx = {operation: IocpOperation.accept};
 	ubyte[size * 4] _buf;
 }
 
-@property:
+@property @safe:
 bool reusePort(Socket socket) {
 	int result = void;
 	socket.getOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, result);

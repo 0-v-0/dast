@@ -1,9 +1,8 @@
 module dast.async.selector.iocp;
 
 version (Windows)  : import core.sys.windows.windows,
-dast.async.socket,
 dast.async.core,
-dast.async.socket.iocp;
+dast.async.iocp;
 
 alias Selector = Iocp;
 
@@ -56,7 +55,8 @@ alias Selector = Iocp;
 
 private:
 	void handleEvents() @trusted {
-		import dast.async.tcplistener;
+		import dast.async.tcplistener,
+		dast.async.tcpstream;
 
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
@@ -81,12 +81,12 @@ private:
 				break;
 			case read:
 				if (len && !channel.isClosed)
-					(cast(StreamBase)channel).onRead(len);
+					(cast(TcpStream)channel).onRead(len);
 				break;
 			case write:
 				debug (Log)
 					info("finishing writing ", len, " bytes");
-				(cast(StreamBase)channel).onWrite(len); // Notify the client about how many bytes actually sent
+				(cast(TcpStream)channel).onWrite(len); // Notify the client about how many bytes actually sent
 				break;
 			case event:
 				channel.onRead(); // TODO

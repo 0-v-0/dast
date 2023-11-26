@@ -49,6 +49,7 @@ subPackage {
 	name "http"
 	sourcePaths "dast/http"
 	importPaths "."
+	dependency "dast:async" path="."
 	dependency "httparsed" version="~>1.2.1"
 	dependency "tame" version="~>0.0.5"
 	dflags "-dip1008" "-preview=in"
@@ -103,7 +104,7 @@ subPackage {
 	sourcePaths "dast/wsrpc"
 	dflags "-dip1008"
 	dependency "dast:ws" path="."
-	dependency "lmpl4d" version="~>0.0.10"
+	dependency "lmpl4d" version="~>0.0.11"
 
 	configuration "server" {
 		dependency "tame:lockfree" version="*"

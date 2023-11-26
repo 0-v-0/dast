@@ -73,6 +73,6 @@ void main() {
 		server.handler = &handle;
 		server.settings.maxConnections = 90_000;
 	}
-	server.settings.port = 10301;
+	server.settings.listen = ":10301";
 	server.run();
 }
