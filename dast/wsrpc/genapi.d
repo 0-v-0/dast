@@ -70,16 +70,18 @@ void getDoc(alias f, R)(ref R sink) {
 	static if (is(FunctionTypeOf!f P == __parameters)) {
 		alias PIT = ParameterIdentifierTuple!f;
 		alias set = Filter!(isString, __traits(getAttributes, f));
-		static foreach (i, _; P) {
-			{
-				alias p = P[i .. i + 1];
-				sink ~= " * @param ";
-				sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
-				sink ~= ' ';
-				static foreach (attr; __traits(getAttributes, p))
-					static if (isString!attr && staticIndexOf!(attr, set) == -1)
-						sink ~= attr;
-				sink ~= '\n';
+		static foreach (i, T; P) {
+			static if (!is(T : WSRequest)) {
+				{
+					alias p = P[i .. i + 1];
+					sink ~= " * @param ";
+					sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
+					sink ~= ' ';
+					static foreach (attr; __traits(getAttributes, p))
+						static if (isString!attr && staticIndexOf!(attr, set) == -1)
+							sink ~= attr;
+					sink ~= '\n';
+				}
 			}
 		}
 		if (set.length)
@@ -110,20 +112,22 @@ template getParamUDAs(alias attr, alias f, attrs...) {
 void getArgs(alias f, R)(ref R sink) {
 	static if (is(typeof(f) P == __parameters)) {
 		alias PIT = ParameterIdentifierTuple!f;
-		static foreach (i, _; P) {
-			{
-				alias p = P[i .. i + 1];
-				sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
-				static if (!is(ParameterDefaults!f[i] == void))
-					sink ~= '?';
-				sink ~= ": ";
-				alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
-				static if (a.length)
-					sink ~= a[0].name;
-				else
-					sink ~= getType!p;
-				static if (i + 1 < P.length)
-					sink ~= ", ";
+		static foreach (i, T; P) {
+			static if (!is(T : WSRequest)) {
+				{
+					alias p = P[i .. i + 1];
+					sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
+					static if (!is(ParameterDefaults!f[i] == void))
+						sink ~= '?';
+					sink ~= ": ";
+					alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
+					static if (a.length)
+						sink ~= a[0].name;
+					else
+						sink ~= getType!p;
+					static if (i + 1 < P.length)
+						sink ~= ", ";
+				}
 			}
 		}
 	} else
@@ -173,7 +177,8 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	return null;
 }
 
-version (unittest)  : @Action:
+version (unittest) :
+@Action:
 @ignore void foo(int a) {
 }
 

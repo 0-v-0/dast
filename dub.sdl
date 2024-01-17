@@ -61,6 +61,22 @@ subPackage {
 	importPaths "."
 }
 
+subPackage {
+	name "session"
+	description "A session manager for D programming language."
+	sourceFiles "dast/session.d"
+	importPaths "."
+	dependency "encrypt" version="~>0.1.0"
+}
+
+subPackage {
+	name "ssr"
+	description "A server-side rendering engine for D programming language."
+	sourceFiles "dast/ssr.d"
+	importPaths "."
+	dependency "simpletpl" path="simpletpl"
+	dependency "tame" version="~>0.0.5"
+}
 subPackage "md2d"
 
 subPackage {
@@ -112,7 +128,7 @@ subPackage {
 
 	configuration "apidoc" {
 		excludedSourceFiles "dast/wsrpc/server.d"
-		dependency "dast:util" path=".."
+		dependency "dast:util" path="."
 		versions "APIDoc"
 	}
 }

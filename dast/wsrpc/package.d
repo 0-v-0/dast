@@ -61,46 +61,58 @@ version (Server)  : private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 
-class WSRPCServer(bool multiThread, T...) : WebSocketServer {
+class WSRPCServer(bool useFiber, T...) : WebSocketServer {
 	public import dast.ws : Request;
+	import std.socket;
 
 	alias AllActions = getActions!T;
 
-	static if (multiThread) {
+	static if (useFiber) {
 		LFQ queue = LFQ(SReq());
-		Thread[] threads;
+		Fiber[] fibers;
 		@property {
-			size_t threadCount() const => threads.length;
+			size_t fiberCount() const => fibers.length;
 
-			size_t threadCount(size_t n) {
-				synchronized {
-					auto i = threads.length;
-					threads.length = n;
-					for (; i < n; i++) {
-						auto thread = new Thread(&mainLoop);
-						thread.start();
-						threads[i] = thread;
-					}
-					return n;
-				}
+			size_t fiberCount(size_t n) {
+				auto i = fibers.length;
+				fibers.length = n;
+				for (; i < n; i++)
+					fibers[i] = new Fiber(&mainLoop);
+				return n;
 			}
 		}
 	}
 
+	this(AddressFamily family = AddressFamily.INET) {
+		static if (useFiber)
+			super(new class EventLoop {
+				override void onWeakUp() {
+					foreach (fiber; fibers)
+						fiber.call();
+				}
+			}, family);
+		else
+			super(family);
+	}
+
+	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+		super(loop, family);
+	}
+
 	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
 		auto req = WSRequest(src, unpacker(msg));
-		static if (multiThread)
+		static if (useFiber)
 			queue.enqueue(cast(shared)req);
 		else
 			handleRequest(req);
 	}
 
-	static if (multiThread)
+	static if (useFiber)
 		noreturn mainLoop() {
 			for (;;) {
 				SReq req = void;
 				while (!queue.dequeue(req))
-					Thread.yield();
+					Fiber.yield();
 				handleRequest(cast()req);
 			}
 		}

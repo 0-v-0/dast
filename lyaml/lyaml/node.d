@@ -442,7 +442,7 @@ struct Node {
 	 * Params:  key   = Key to _add.
 	 *          value = Value to _add.
 	 */
-	void add(K, V)(K key, V value) {
+	void add(K, V)(K key, V value) @trusted {
 		if (empty) {
 			type_ = NodeType.map;
 			map = null;

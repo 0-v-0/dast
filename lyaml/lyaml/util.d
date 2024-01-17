@@ -2,7 +2,7 @@ module lyaml.util;
 
 import std.conv;
 
-private auto toStr(T)(T x) {
+package auto toStr(T)(T x) {
 	static if (is(T == string))
 		return x;
 	else

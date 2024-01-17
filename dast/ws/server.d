@@ -7,6 +7,8 @@ std.socket,
 std.logger,
 std.conv : text;
 
+public import dast.async : EventLoop, Selector;
+
 alias
 PeerID = int,
 NextHandler = void delegate(),
