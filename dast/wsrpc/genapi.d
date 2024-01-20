@@ -167,7 +167,7 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	--col;
 	uint i;
 	foreach (l; File(filename).byLine()) {
-		if (i == line && l.length >= col) {
+		if ((i + 1 == line || i == line) && l.length >= col) {
 			l = l[col .. $].stripLeft;
 			if (l.startsWith("///"))
 				return l[3 .. $];

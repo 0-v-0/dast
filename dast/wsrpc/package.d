@@ -61,13 +61,14 @@ version (Server)  : private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 
-class WSRPCServer(bool useFiber, T...) : WebSocketServer {
+class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 	public import dast.ws : Request;
-	import std.socket;
+	import core.memory,
+std.socket;
 
 	alias AllActions = getActions!T;
 
-	static if (useFiber) {
+	static if (pageCount) {
 		LFQ queue = LFQ(SReq());
 		Fiber[] fibers;
 		@property {
@@ -77,14 +78,14 @@ class WSRPCServer(bool useFiber, T...) : WebSocketServer {
 				auto i = fibers.length;
 				fibers.length = n;
 				for (; i < n; i++)
-					fibers[i] = new Fiber(&mainLoop);
+					fibers[i] = new Fiber(&mainLoop, pageCount * pageSize);
 				return n;
 			}
 		}
 	}
 
 	this(AddressFamily family = AddressFamily.INET) {
-		static if (useFiber)
+		static if (pageCount)
 			super(new class EventLoop {
 				override void onWeakUp() {
 					foreach (fiber; fibers)
@@ -101,13 +102,13 @@ class WSRPCServer(bool useFiber, T...) : WebSocketServer {
 
 	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
 		auto req = WSRequest(src, unpacker(msg));
-		static if (useFiber)
+		static if (pageCount)
 			queue.enqueue(cast(shared)req);
 		else
 			handleRequest(req);
 	}
 
-	static if (useFiber)
+	static if (pageCount)
 		noreturn mainLoop() {
 			for (;;) {
 				SReq req = void;
