@@ -27,8 +27,8 @@ template AllActionNames(T...) {
 }
 
 void gendts(R, T...)(ref R sink) {
-	static foreach (f; AllActions!T) {
-		static foreach (attr; getUDAs!(f, Action)) {
+	foreach (f; AllActions!T) {
+		foreach (attr; getUDAs!(f, Action)) {
 			sink ~= "/**\n";
 			getDoc!f(sink);
 			sink ~= " */\n";
@@ -45,6 +45,33 @@ void gendts(R, T...)(ref R sink) {
 				sink ~= getType!(ReturnType!f);
 			sink ~= '\n';
 		}
+	}
+}
+
+void genTypeDef(R, T...)(ref R sink) {
+	foreach (t; getTables!T) {
+		sink ~= "export type ";
+		sink ~= __traits(identifier, t);
+		sink ~= " = {\n\t";
+		foreach (i, alias f; t.tupleof) {
+			alias loc = __traits(getLocation, f);
+			const comment = getComment(loc[0], loc[1] - 1);
+			if (comment) {
+				sink ~= "/**";
+				sink ~= comment;
+				sink ~= " */\n\t";
+			}
+			sink ~= __traits(identifier, f);
+			sink ~= ": ";
+			static if (hasUDA!(f, type))
+				sink ~= getUDAs!(f, type)[0].name;
+			else
+				sink ~= getType!(typeof(f));
+			sink ~= '\n';
+			static if (i + 1 < t.tupleof.length)
+				sink ~= '\t';
+		}
+		sink ~= "}\n";
 	}
 }
 

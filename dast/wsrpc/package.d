@@ -158,7 +158,7 @@ std.socket;
 									static if (is(ParameterDefaults!f[i + r] == void))
 										x = unpacker.unpack!(P[i + r]);
 									else static if (isArray!(P[i + r])) {
-										x = P[i + r].init;
+										x = ParameterDefaults!f[i + r];
 										unpacker.unpack(x);
 									} else
 										x = unpacker.unpack(ParameterDefaults!f[i + r]);

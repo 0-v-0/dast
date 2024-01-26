@@ -120,7 +120,7 @@ subPackage {
 	sourcePaths "dast/wsrpc"
 	dflags "-dip1008"
 	dependency "dast:ws" path="."
-	dependency "lmpl4d" version="~>0.0.11"
+	dependency "lmpl4d" version="~>0.0.13"
 
 	configuration "server" {
 		dependency "tame:lockfree" version="*"
