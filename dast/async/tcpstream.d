@@ -92,7 +92,7 @@ version (Posix) import core.stdc.errno;
 			return errorOccurred("The connection has been closed");
 		if (data.length)
 			_writeQueue.enqueue(data);
-		if (_writeQueue.full)
+		if (_writeQueue.size >= _writeQueue.capacity / 2)
 			flush();
 	}
 

@@ -9,7 +9,7 @@ struct type { // @suppress(dscanner.style.phobos_naming_convention)
 }
 
 enum ignored(alias x) = hasUDA!(x, ignore);
-enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
+private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
 enum isString(alias x) = is(typeof(x) : const(char)[]);
 
 alias AllActions(T...) = Filter!(templateNot!ignored, getActions!T);
@@ -26,52 +26,54 @@ template AllActionNames(T...) {
 	}
 }
 
-void gendts(R, T...)(ref R sink) {
-	foreach (f; AllActions!T) {
-		foreach (attr; getUDAs!(f, Action)) {
-			sink ~= "/**\n";
-			getDoc!f(sink);
-			sink ~= " */\n";
-			static if (hasName!attr)
-				sink ~= attr.name;
-			else
-				sink ~= __traits(identifier, f);
-			sink ~= '(';
-			getArgs!f(sink);
-			sink ~= "): ";
-			static if (hasUDA!(f, type))
-				sink ~= getUDAs!(f, type)[0].name;
-			else
-				sink ~= getType!(ReturnType!f);
-			sink ~= '\n';
+template ForModules(T...) {
+	void genAPIDef(alias getType = TSTypeOf, R)(ref R sink) {
+		foreach (f; AllActions!T) {
+			foreach (attr; getUDAs!(f, Action)) {
+				sink ~= "/**\n";
+				getDoc!f(sink);
+				sink ~= " */\n";
+				static if (hasName!attr)
+					sink ~= attr.name;
+				else
+					sink ~= __traits(identifier, f);
+				sink ~= '(';
+				getArgs!(f, getType)(sink);
+				sink ~= "): ";
+				static if (hasUDA!(f, type))
+					sink ~= getUDAs!(f, type)[0].name;
+				else
+					sink ~= getType!(ReturnType!f);
+				sink ~= '\n';
+			}
 		}
 	}
-}
 
-void genTypeDef(R, T...)(ref R sink) {
-	foreach (t; getTables!T) {
-		sink ~= "export type ";
-		sink ~= __traits(identifier, t);
-		sink ~= " = {\n\t";
-		foreach (i, alias f; t.tupleof) {
-			alias loc = __traits(getLocation, f);
-			const comment = getComment(loc[0], loc[1] - 1);
-			if (comment) {
-				sink ~= "/**";
-				sink ~= comment;
-				sink ~= " */\n\t";
+	void genTypeDef(alias getType = TSTypeOf, R)(ref R sink) {
+		foreach (t; getTables!T) {
+			sink ~= "export type ";
+			sink ~= __traits(identifier, t);
+			sink ~= " = {\n\t";
+			foreach (i, alias f; t.tupleof) {
+				alias loc = __traits(getLocation, f);
+				const comment = getComment(loc[0], loc[1] - 1);
+				if (comment) {
+					sink ~= "/**";
+					sink ~= comment;
+					sink ~= " */\n\t";
+				}
+				sink ~= __traits(identifier, f);
+				sink ~= ": ";
+				static if (hasUDA!(f, type))
+					sink ~= getUDAs!(f, type)[0].name;
+				else
+					sink ~= getType!(typeof(f));
+				sink ~= '\n';
+				static if (i + 1 < t.tupleof.length)
+					sink ~= '\t';
 			}
-			sink ~= __traits(identifier, f);
-			sink ~= ": ";
-			static if (hasUDA!(f, type))
-				sink ~= getUDAs!(f, type)[0].name;
-			else
-				sink ~= getType!(typeof(f));
-			sink ~= '\n';
-			static if (i + 1 < t.tupleof.length)
-				sink ~= '\t';
+			sink ~= "}\n";
 		}
-		sink ~= "}\n";
 	}
 }
 
@@ -83,7 +85,7 @@ unittest {
 	writeln([AllActionNames!mod]);
 
 	auto app = appender!string;
-	gendts!(typeof(app), mod)(app);
+	ForModules!mod.genAPIDef(app);
 	writeln(app[]);
 }
 
@@ -136,7 +138,7 @@ template getParamUDAs(alias attr, alias f, attrs...) {
 	}
 }
 
-void getArgs(alias f, R)(ref R sink) {
+void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 	static if (is(typeof(f) P == __parameters)) {
 		alias PIT = ParameterIdentifierTuple!f;
 		static foreach (i, T; P) {
@@ -161,28 +163,29 @@ void getArgs(alias f, R)(ref R sink) {
 		static assert(0, f.stringof ~ " is not a function");
 }
 
-template getType(T) {
+/// Get the type name of the given type.
+template TSTypeOf(T) {
 	static if (hasUDA!(T, type) && hasName!(getUDAs!(T, type)[0]))
-		enum getType = getUDAs!(T, type)[0].name;
+		enum TSTypeOf = getUDAs!(T, type)[0].name;
 	else static if (is(T == U[], U)) {
 		static if (is(T : const(char)[]))
-			enum getType = "string";
+			enum TSTypeOf = "string";
 		else
-			enum getType = getType!U ~ "[]";
+			enum TSTypeOf = TSTypeOf!U ~ "[]";
 	} else static if (isNumeric!T)
-		enum getType = "number";
+		enum TSTypeOf = "number";
 	else static if (isBoolean!T)
-		enum getType = "boolean";
+		enum TSTypeOf = "boolean";
 	else static if (isSomeChar!T)
-		enum getType = "string";
+		enum TSTypeOf = "string";
 	else static if (is(T == void))
-		enum getType = "void";
+		enum TSTypeOf = "void";
 	else static if (is(T : typeof(null)))
-		enum getType = "null";
+		enum TSTypeOf = "null";
 	else static if (is(T : Throwable))
-		enum getType = "Error";
+		enum TSTypeOf = "Error";
 	else
-		enum getType = "any";
+		enum TSTypeOf = "any";
 }
 
 /// Get the comment at the given line and column.
