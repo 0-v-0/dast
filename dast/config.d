@@ -8,6 +8,8 @@ version (Have_ctfepp)
 else
 	private enum PP = false;
 
+public import lyaml : Node;
+
 Node readyml(string content, bool preprocess = PP) {
 	if (preprocess) {
 		static if (PP) {
