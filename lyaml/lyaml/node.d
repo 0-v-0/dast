@@ -242,6 +242,14 @@ struct Node {
 		return map;
 	}
 
+	T get(T : string[string])() const @trusted if (!is(T == enum)) {
+		string[string] m;
+		foreach (key, val; get!(Node[string])) {
+			m[key] = val.get!string;
+		}
+		return m;
+	}
+
 	@safe unittest {
 		assertThrown(Node("foo").get!int);
 		assertThrown(Node("4.2").get!int);
