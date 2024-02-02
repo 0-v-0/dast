@@ -1,6 +1,12 @@
 name "examples"
 importPaths "."
 targetType "executable"
+buildOptions "debugInfoC" platform="windows"
+configuration "httpserver" {
+	dependency "dast:async" path=".."
+	sourceFiles "httpserver.d"
+	subConfiguration "dast:async" "lite"
+}
 configuration "fcgi" {
 	dependency "dast:fcgi" path=".."
 	sourceFiles "fcgi.d"
@@ -8,10 +14,6 @@ configuration "fcgi" {
 configuration "http1" {
 	dependency "dast:http" path=".."
 	sourceFiles "http1.d"
-}
-configuration "httpserver" {
-	dependency "dast:async" path=".."
-	sourceFiles "httpserver.d"
 }
 configuration "uwsgi" {
 	dependency "dast:uwsgi" path=".."

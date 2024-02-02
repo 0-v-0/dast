@@ -4,11 +4,7 @@ import dast.async.core,
 dast.async.selector,
 std.exception;
 
-version (Windows) {
-	import core.sys.windows.windows,
-	core.sys.windows.mswsock,
-	dast.async.iocp;
-}
+version (Windows) import dast.async.iocp;
 
 version (Posix) import core.stdc.errno;
 
@@ -268,7 +264,7 @@ protected:
 
 	bool _isConnected;
 
-	WriteBufferQueue _writeQueue;
+	WriteQueue _writeQueue;
 version (Windows) :
 nothrow:
 	const(ubyte)[] _rBuf;

@@ -1,8 +1,8 @@
 module dast.async.iocp;
 
-version (Windows)  : import core.sys.windows.windows,
-core.sys.windows.mswsock,
-dast.async.tcplistener;
+version (Windows)  : import dast.async.tcplistener;
+package import core.sys.windows.windows,
+core.sys.windows.mswsock;
 
 package(dast.async) bool checkErro()(int ret, string prefix = null) nothrow {
 	import core.sys.windows.winerror;

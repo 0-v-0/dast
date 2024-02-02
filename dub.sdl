@@ -17,7 +17,7 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 
 	configuration "full" {
 		versions "HaveTimer"
@@ -42,7 +42,7 @@ subPackage {
 	sourceFiles "dast/fcgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 	dflags "-preview=in"
 }
 
@@ -52,7 +52,7 @@ subPackage {
 	importPaths "."
 	dependency "dast:async" path="."
 	dependency "httparsed" version="~>1.2.1"
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 	dflags "-dip1008" "-preview=in"
 }
 
@@ -61,6 +61,8 @@ subPackage {
 	sourceFiles "dast/map.d"
 	importPaths "."
 }
+
+subPackage "./dast/net"
 
 subPackage {
 	name "session"
@@ -76,7 +78,7 @@ subPackage {
 	sourceFiles "dast/ssr.d"
 	importPaths "."
 	dependency "simpletpl" path="simpletpl"
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 }
 subPackage "md2d"
 
@@ -85,7 +87,7 @@ subPackage {
 	sourceFiles "dast/util.d"
 	importPaths "."
 	dependency "database:util" version="*" optional=true
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 }
 
 subPackage {
@@ -93,7 +95,7 @@ subPackage {
 	sourceFiles "dast/uwsgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -104,7 +106,7 @@ subPackage {
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
-	dependency "tame" version="~>0.0.5"
+	dependency "tame" version="~>0.0.7"
 
 	configuration "full" {
 		subConfiguration "dast:async" "full"

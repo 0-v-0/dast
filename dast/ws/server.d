@@ -7,13 +7,14 @@ std.socket,
 std.logger,
 std.conv : text;
 
-public import dast.async : EventLoop, Selector;
+public import dast.async : EventLoop, FiberEventLoop, Selector;
 
 alias
 PeerID = int,
 NextHandler = void delegate(),
 ReqHandler = void function(WebSocketServer server, WSClient client, in Request req, scope NextHandler next);
 
+///
 @safe class WSClient : TcpStream {
 	const(ubyte)[] data;
 	Frame[] frames;
@@ -37,8 +38,8 @@ nothrow:
 			alias bytes = msg;
 			enum op = Op.BINARY;
 		}
-		const data = Frame(true, op, false, State.done, [0, 0, 0, 0], bytes.length, bytes).serialize;
-		debug trace("Sending ", bytes.length, " bytes to #", id, " in one frame of ", data.length, " bytes long");
+		const data = Frame(true, op, false, State.done, [0, 0, 0, 0],
+			bytes.length, bytes).serialize;
 		write(data);
 		return flush();
 	}
@@ -75,7 +76,7 @@ class WebSocketServer : TcpListener {
 	uint connections;
 
 	this(AddressFamily family = AddressFamily.INET) {
-		super(new EventLoop, family);
+		super(new FiberEventLoop, family);
 	}
 
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {
@@ -204,11 +205,6 @@ private:
 	void onReceive(WSClient client, in ubyte[] data) {
 		import std.algorithm : swap;
 
-		try
-			trace("Received ", data.length, " bytes from ", client.id);
-		catch (Exception) {
-		}
-
 		if (client.frames) {
 			Frame frame = client.parse(data);
 			for (;;) {
@@ -245,7 +241,7 @@ private:
 		// dfmt on
 		case Op.PING:
 			enum pong = Frame(true, Op.PONG, false, State.done, [0, 0, 0, 0], 0, [
-					]).serialize;
+			]).serialize;
 			client.write(pong);
 			client.flush();
 			return;

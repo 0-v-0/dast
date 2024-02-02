@@ -11,10 +11,6 @@ version (APIDoc) {
 	lockfree.queue;
 }
 
-struct Action {
-	string name;
-}
-
 struct WSRequest {
 	WSClient src;
 	Unpacker!() unpacker;
@@ -48,6 +44,10 @@ struct WSRequest {
 	}
 }
 
+struct Action {
+	string name;
+}
+
 /// get all functions with @Action
 template getActions(T...) {
 	import std.meta;
@@ -64,34 +64,24 @@ LFQ = LockFreeQueue!SReq;
 class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 	public import dast.ws : Request;
 	import core.memory,
-std.socket;
+	std.socket;
 
 	alias AllActions = getActions!T;
 
 	static if (pageCount) {
 		LFQ queue = LFQ(SReq());
-		Fiber[] fibers;
-		@property {
-			size_t fiberCount() const => fibers.length;
 
-			size_t fiberCount(size_t n) {
-				auto i = fibers.length;
-				fibers.length = n;
-				for (; i < n; i++)
-					fibers[i] = new Fiber(&mainLoop, pageCount * pageSize);
-				return n;
+		void initWorkers(uint n) {
+			auto loop = cast(FiberEventLoop)_inLoop;
+			while (n--) {
+				loop.queueTask(new Fiber(&mainLoop, pageCount * pageSize));
 			}
 		}
 	}
 
 	this(AddressFamily family = AddressFamily.INET) {
 		static if (pageCount)
-			super(new class EventLoop {
-				override void onWeakUp() {
-					foreach (fiber; fibers)
-						fiber.call();
-				}
-			}, family);
+			super(new FiberEventLoop, family);
 		else
 			super(family);
 	}

@@ -1,16 +1,19 @@
 module dast.async.selector.iocp;
 
-version (Windows)  : import core.sys.windows.windows,
-dast.async.core,
-dast.async.iocp;
+version (Windows)  : import dast.async.core,
+dast.async.iocp,
+dast.async.tcpstream,
+dast.async.thread;
 
 alias Selector = Iocp;
 
 @safe class Iocp {
+	ThreadPool workerPool;
 	this() @trusted {
 		_eventHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
 		if (!_eventHandle)
 			throw new Exception("CreateIoCompletionPort failed");
+		workerPool = new ThreadPool();
 	}
 
 	/+ ~this() {
@@ -51,12 +54,8 @@ alias Selector = Iocp;
 		PostQueuedCompletionStatus(_eventHandle, 0, 0, &ctx.overlapped);
 	}
 
-	mixin Loop;
-
-private:
-	void handleEvents() @trusted {
-		import dast.async.tcplistener,
-		dast.async.tcpstream;
+	final void handleEvents() @trusted {
+		import dast.async.tcplistener;
 
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
@@ -81,7 +80,7 @@ private:
 				break;
 			case read:
 				if (len && !channel.isClosed)
-					(cast(TcpStream)channel).onRead(len);
+					workerPool.run!onRead(cast(TcpStream)channel, len);
 				break;
 			case write:
 				debug (Log)
@@ -96,6 +95,11 @@ private:
 		}
 	}
 
+private:
 	HANDLE _eventHandle;
 	SocketChannel[] _watchers;
+}
+
+private void onRead(TcpStream client, uint len) {
+	client.onRead(len);
 }

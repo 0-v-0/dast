@@ -80,7 +80,7 @@ protected:
 	bool _isRegistered;
 }
 
-alias WriteBufferQueue = Queue!(const(void)[], 16, true);
+alias WriteQueue = Queue!(const(void)[], 16, true);
 
 enum WatcherType : ubyte {
 	None,
@@ -123,7 +123,7 @@ template Loop() {
 
 	void stop() nothrow {
 		running = false;
-		if (is(typeof(weakUp())))
+		static if (is(typeof(weakUp())))
 			weakUp();
 	}
 }
