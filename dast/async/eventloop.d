@@ -4,22 +4,14 @@ import dast.async.selector;
 
 class EventLoop : Selector {
 	void run() {
-		onLoop(&onWeakUp);
-	}
-
-	protected void onWeakUp() {
-	}
-
-	private bool running;
-
-	void onLoop(scope void delegate() handler) @system {
 		running = true;
 		do {
-			handler();
-			handleEvents();
+			onWeakUp();
 		}
 		while (running);
 	}
+
+	private bool running;
 
 	void stop() nothrow {
 		running = false;
@@ -28,20 +20,28 @@ class EventLoop : Selector {
 	}
 }
 
-class FiberEventLoop : EventLoop {
+class EventExecutor : EventLoop {
 	import core.thread,
 	dast.async.queue;
 
 	private Queue!(Fiber, 64, true) tasks;
+	private Fiber task;
 
-	void queueTask(Fiber fiber)
-	in (fiber.state == Fiber.State.HOLD) {
+	void queueTask(Fiber fiber) {
 		if (tasks.full)
-			throw new Exception("FiberEventLoop: tasks queue is full");
+			throw new Exception("EventExecutor: tasks queue is full");
 		tasks.enqueue(fiber);
 	}
 
+	override void run() {
+		task = new Fiber(&super.onWeakUp);
+		super.run();
+	}
+
 	override void onWeakUp() {
+		if (task.state == Fiber.State.TERM)
+			task.reset();
+		task.call();
 		for (uint count = tasks.size; count--;) {
 			auto t = tasks.dequeue();
 			if (t.state == Fiber.State.HOLD) {

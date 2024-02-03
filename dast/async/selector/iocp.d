@@ -54,9 +54,7 @@ alias Selector = Iocp;
 		PostQueuedCompletionStatus(_eventHandle, 0, 0, &ctx.overlapped);
 	}
 
-	final void handleEvents() @trusted {
-		import dast.async.tcplistener;
-
+	void onWeakUp() @trusted {
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
 		uint n = void;
@@ -69,29 +67,7 @@ alias Selector = Iocp;
 		}
 		foreach (i; 0 .. n) {
 			auto entry = entries[i];
-			const len = entry.dwNumberOfBytesTransferred;
-			auto ev = cast(IocpContext*)entry.lpOverlapped;
-			assert(ev, "ev is null");
-
-			auto channel = cast(SocketChannel)cast(void*)entry.lpCompletionKey;
-			switch (ev.operation) with (IocpOperation) {
-			case accept:
-				(cast(TcpListener)channel).onRead();
-				break;
-			case read:
-				if (len && !channel.isClosed)
-					workerPool.run!onRead(cast(TcpStream)channel, len);
-				break;
-			case write:
-				debug (Log)
-					info("finishing writing ", len, " bytes");
-				(cast(TcpStream)channel).onWrite(len); // Notify the client about how many bytes actually sent
-				break;
-			case event:
-				channel.onRead(); // TODO
-				break;
-			default:
-			}
+			workerPool.run!handleEvent(entry);
 		}
 	}
 
@@ -100,6 +76,29 @@ private:
 	SocketChannel[] _watchers;
 }
 
-private void onRead(TcpStream client, uint len) {
-	client.onRead(len);
+private void handleEvent(OVERLAPPED_ENTRY entry) {
+	import dast.async.tcplistener;
+
+	const len = entry.dwNumberOfBytesTransferred;
+	auto ev = cast(IocpContext*)entry.lpOverlapped;
+	auto channel = cast(void*)entry.lpCompletionKey;
+	switch (ev.operation) with (IocpOperation) {
+	case accept:
+		(cast(TcpListener)channel).onRead();
+		break;
+	case read:
+		if (len && !(cast(SocketChannel)channel).isClosed)
+			(cast(TcpStream)channel).onRead(len);
+		break;
+	case write:
+		debug (Log)
+			info("finishing writing ", len, " bytes");
+		// Notify the client about how many bytes actually sent
+		(cast(TcpStream)channel).onWrite(len);
+		break;
+	case event:
+		(cast(SocketChannel)channel).onRead(); // TODO
+		break;
+	default:
+	}
 }

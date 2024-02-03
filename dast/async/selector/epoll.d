@@ -76,7 +76,7 @@ class Epoll : EpollEventChannel {
 
 	mixin Loop;
 
-	private void handleEvents() {
+	void onWeakUp() {
 		epoll_event[64] events;
 		const len = epoll_wait(_eventHandle, events.ptr, events.length, 10);
 		foreach (i; 0 .. len) {

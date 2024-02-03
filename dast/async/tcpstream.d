@@ -1,8 +1,10 @@
 module dast.async.tcpstream;
 
-import dast.async.core,
+import core.sync,
+dast.async.core,
 dast.async.selector,
-std.exception;
+std.exception,
+tame.meta;
 
 version (Windows) import dast.async.iocp;
 
@@ -10,8 +12,6 @@ version (Posix) import core.stdc.errno;
 
 /** TCP Client */
 @safe class TcpStream : SocketChannel {
-	import tame.meta;
-
 	mixin Forward!"_socket";
 
 	ConnectionHandler onConnected;
@@ -23,6 +23,7 @@ version (Posix) import core.stdc.errno;
 	RecvHandler onReceived;
 	SimpleHandler onDisconnected;
 	DataSentHandler onSent;
+	Mutex inMutex;
 
 	@property final bufferSize() const => _rBuf.length;
 
@@ -43,6 +44,7 @@ version (Posix) import core.stdc.errno;
 			_isConnected = socket.isAlive;
 		catch (Exception) {
 		}
+		inMutex = new Mutex(this);
 	}
 
 	void connect(Address addr) @trusted {
@@ -141,16 +143,20 @@ version (Posix) import core.stdc.errno;
 	version (Windows) {
 		/// Called by selector after data sent
 		final onWrite(uint len) {
+			inMutex.lock_nothrow();
+			scope (exit)
+				inMutex.unlock_nothrow();
 			if (isWriteCancelling) {
 				clearQueue();
 				isWriteCancelling = false;
 				return;
 			}
-			_writeQueue.front = _writeQueue.front[len .. $];
-			if (!_writeQueue.front.length) {
-				const data = _writeQueue.pop();
+			auto data = _writeQueue.front;
+			data = data[len .. $];
+			if (!data.length) {
+				const sent = _writeQueue.pop();
 				if (onSent)
-					onSent(data);
+					onSent(sent);
 				_isWriting = false;
 				debug (Log)
 					info("written ", len, " bytes");
@@ -172,6 +178,9 @@ version (Posix) import core.stdc.errno;
 				trace("data reading ", len, " bytes");
 
 			if (len) {
+				inMutex.lock_nothrow();
+				scope (exit)
+					inMutex.unlock_nothrow();
 				if (onReceived)
 					onReceived(_rBuf[0 .. len]);
 				debug (Log)

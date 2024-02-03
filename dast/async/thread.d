@@ -8,8 +8,9 @@ struct TaskBase {
 }
 
 struct Task(alias fun, Args...) {
-	private TaskBase base = TaskBase(&impl);
-	Args _args;
+private:
+	TaskBase base = TaskBase(&impl);
+	public Args _args;
 
 	static if (Args.length) {
 		private this(Args args) {
@@ -17,7 +18,7 @@ struct Task(alias fun, Args...) {
 		}
 	}
 
-	private static void impl(void* p) {
+	static void impl(void* p) {
 		fun((cast(typeof(this)*)p)._args);
 	}
 }
@@ -88,34 +89,29 @@ final class ThreadPool {
 
 	void workLoop() {
 		loop: while (atomicLoad(status) != State.stop) {
-			while (queue.empty) {
+			TaskBase* task;
+			while (status == State.running) {
 				inMutex.lock_nothrow();
 				scope (exit)
 					inMutex.unlock_nothrow();
+				if (!queue.empty) {
+					task = queue.pop();
+					{
+						outMutex.lock_nothrow();
+						scope (exit)
+							outMutex.unlock_nothrow();
+						outCond.notify();
+					}
+					break;
+				}
 				if (timeoutMs) {
 					if (!inCond.wait(timeoutMs.msecs))
 						break loop;
 				} else
 					inCond.wait();
-				if (status != State.running)
-					break;
 			}
-			TaskBase* task = void;
-			{
-				inMutex.lock_nothrow();
-				scope (exit)
-					inMutex.unlock_nothrow();
-				if (queue.empty)
-					continue;
-				task = queue.dequeue();
-			}
-			{
-				outMutex.lock_nothrow();
-				scope (exit)
-					outMutex.unlock_nothrow();
-				outCond.notify();
-			}
-			task.run(task);
+			if (task)
+				task.run(task);
 		}
 		auto tthis = Thread.getThis();
 		foreach (t; pool) {
@@ -165,7 +161,7 @@ final class ThreadPool {
 				outMutex.unlock_nothrow();
 			outCond.wait();
 		}
-		queue.enqueue(task);
+		queue.push(task);
 		if (timeoutMs && atomicLoad(nWorkers) < pool.length) {
 			foreach (t; pool) {
 				if (!atomicLoad(t.running)) {

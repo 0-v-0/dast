@@ -4,7 +4,7 @@ import dast.async,
 std.logger,
 std.socket;
 
-public import dast.async : EventLoop;
+public import dast.async : EventLoop, EventExecutor;
 public import dast.http : Request, Status, ServerSettings;
 
 alias NextHandler = void delegate(),

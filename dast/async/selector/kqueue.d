@@ -120,8 +120,7 @@ class Kqueue : KqueueEventChannel {
 
 	mixin Loop;
 
-private:
-	void handleEvents() @trusted {
+	void onWeakUp() @trusted {
 		kevent_t[64] events;
 		const len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
 		if (len < 1)
@@ -149,7 +148,7 @@ private:
 		}
 	}
 
-	int _eventHandle;
+	private int _eventHandle;
 }
 
 private immutable tspec = timespec(1, 1000 * 10);

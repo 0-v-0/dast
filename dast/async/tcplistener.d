@@ -4,14 +4,13 @@ import dast.async.core,
 dast.async.eventloop,
 dast.async.selector,
 dast.async.tcpstream,
-std.logger;
+std.logger,
+tame.meta;
 
 version (Windows) import dast.async.iocp;
 
 /** TCP Server */
 @safe class TcpListener : SocketChannel {
-	import tame.meta;
-
 	mixin Forward!"_socket";
 
 	AcceptHandler onAccept;
