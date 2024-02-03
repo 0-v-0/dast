@@ -87,8 +87,8 @@ version (Posix) import core.stdc.errno;
 		if (!_isConnected)
 			return errorOccurred("The connection has been closed");
 		if (data.length)
-			_writeQueue.enqueue(data);
-		if (_writeQueue.size >= _writeQueue.capacity / 2)
+			_writeQueue.push(data);
+		if (_writeQueue.length >= _writeQueue.capacity / 2)
 			flush();
 	}
 
@@ -148,7 +148,7 @@ version (Posix) import core.stdc.errno;
 			}
 			_writeQueue.front = _writeQueue.front[len .. $];
 			if (!_writeQueue.front.length) {
-				const data = _writeQueue.dequeue();
+				const data = _writeQueue.pop();
 				if (onSent)
 					onSent(data);
 				_isWriting = false;

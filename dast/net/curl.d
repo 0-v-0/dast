@@ -2,7 +2,7 @@ module dast.net.curl;
 
 import std.stdio,
 dast.net.curlapi : C = Curl, CurlInf, curl = curlAPI;
-public import etc.c.curl : CurlError, CurlOption, CURL, CURLcode;
+public import etc.c.curl : CurlError, CurlOption, CurlProto, CURL, CURLcode;
 
 struct Curl {
 	C c;

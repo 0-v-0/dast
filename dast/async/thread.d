@@ -100,17 +100,22 @@ final class ThreadPool {
 				if (status != State.running)
 					break;
 			}
-			inMutex.lock_nothrow();
-			scope (exit)
-				inMutex.unlock_nothrow();
-			if (!queue.empty) {
-				auto task = queue.dequeue();
-				task.run(task);
+			TaskBase* task = void;
+			{
+				inMutex.lock_nothrow();
+				scope (exit)
+					inMutex.unlock_nothrow();
+				if (queue.empty)
+					continue;
+				task = queue.dequeue();
+			}
+			{
 				outMutex.lock_nothrow();
 				scope (exit)
 					outMutex.unlock_nothrow();
 				outCond.notify();
 			}
+			task.run(task);
 		}
 		auto tthis = Thread.getThis();
 		foreach (t; pool) {
@@ -150,7 +155,7 @@ final class ThreadPool {
 	}
 
 	private void run(TaskBase* task)
-	in (task !is null) {
+	in (task) {
 		inMutex.lock_nothrow();
 		scope (exit)
 			inMutex.unlock_nothrow();

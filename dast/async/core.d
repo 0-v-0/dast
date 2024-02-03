@@ -80,7 +80,7 @@ protected:
 	bool _isRegistered;
 }
 
-alias WriteQueue = Queue!(const(void)[], 16, true);
+alias WriteQueue = Queue!(const(void)[], 256, true);
 
 enum WatcherType : ubyte {
 	None,

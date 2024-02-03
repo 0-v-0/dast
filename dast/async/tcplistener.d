@@ -52,7 +52,7 @@ version (Windows) import dast.async.iocp;
 		}
 	}
 
-protected:
+private:
 	bool tryAccept(scope AcceptHandler handler) {
 		version (Posix) {
 			import core.sys.posix.sys.socket : accept;
@@ -64,8 +64,7 @@ protected:
 			debug (Log)
 				trace("listener fd=", handle, ", client fd=", clientFd);
 
-			if (handler)
-				handler(new Socket(clientFd, _socket.addressFamily));
+			handler(new Socket(clientFd, _socket.addressFamily));
 			return true;
 		}
 
@@ -77,8 +76,7 @@ protected:
 			socket_t[1] fd = [handle];
 			_clientSock.setOption(SocketOptionLevel.SOCKET,
 				cast(SocketOption)SO_UPDATE_ACCEPT_CONTENT, fd);
-			if (handler)
-				handler(_clientSock);
+			handler(_clientSock);
 
 			debug (Log)
 				trace("accept next connection...");
@@ -86,10 +84,7 @@ protected:
 		}
 	}
 
-version (Windows) :
-private:
-
-	bool accept() @trusted {
+	version (Windows)  : bool accept() @trusted {
 		_clientSock = new TcpSocket(_socket.addressFamily);
 		//_clientSock = new Socket(WSASocket(_socket.addressFamily, SocketType.STREAM,
 		//ProtocolType.TCP, null, 0, WSA_FLAG_OVERLAPPED), _socket.addressFamily);
