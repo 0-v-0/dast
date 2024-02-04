@@ -3,6 +3,8 @@ module dast.async.eventloop;
 import dast.async.selector;
 
 class EventLoop : Selector {
+	private bool running;
+
 	void run() {
 		running = true;
 		do {
@@ -10,8 +12,6 @@ class EventLoop : Selector {
 		}
 		while (running);
 	}
-
-	private bool running;
 
 	void stop() nothrow {
 		running = false;

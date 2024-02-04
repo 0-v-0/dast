@@ -23,7 +23,8 @@ version (Posix) import core.stdc.errno;
 	RecvHandler onReceived;
 	SimpleHandler onDisconnected;
 	DataSentHandler onSent;
-	Mutex inMutex;
+	protected Mutex inMutex;
+	protected Condition inCond;
 
 	@property final bufferSize() const => _rBuf.length;
 
@@ -45,6 +46,7 @@ version (Posix) import core.stdc.errno;
 		catch (Exception) {
 		}
 		inMutex = new Mutex(this);
+		inCond = new Condition(inMutex);
 	}
 
 	void connect(Address addr) @trusted {
@@ -85,13 +87,23 @@ version (Posix) import core.stdc.errno;
 	}
 
 	/// safe for big data sending
-	void write(const void[] data) nothrow {
+	void write(const void[] data) nothrow @trusted {
 		if (!_isConnected)
 			return errorOccurred("The connection has been closed");
-		if (data.length)
+		if (data.length) {
+			inMutex.lock_nothrow();
+			scope (exit)
+				inMutex.unlock_nothrow();
+			if (_writeQueue.full) {
+				try
+					inCond.wait();
+				catch (Exception) {
+				}
+			}
 			_writeQueue.push(data);
-		if (_writeQueue.length >= _writeQueue.capacity / 2)
-			flush();
+			if (_writeQueue.length >= _writeQueue.capacity / 2)
+				flush();
+		}
 	}
 
 	override void close() {
@@ -142,7 +154,7 @@ version (Posix) import core.stdc.errno;
 
 	version (Windows) {
 		/// Called by selector after data sent
-		final onWrite(uint len) {
+		final onWrite(uint len) @trusted {
 			inMutex.lock_nothrow();
 			scope (exit)
 				inMutex.unlock_nothrow();
@@ -151,12 +163,13 @@ version (Posix) import core.stdc.errno;
 				isWriteCancelling = false;
 				return;
 			}
-			auto data = _writeQueue.front;
-			data = data[len .. $];
-			if (!data.length) {
+			auto data = &_writeQueue.front();
+			*data = (*data)[len .. $];
+			if (!(*data).length) {
 				const sent = _writeQueue.pop();
 				if (onSent)
 					onSent(sent);
+				inCond.notify();
 				_isWriting = false;
 				debug (Log)
 					info("written ", len, " bytes");
@@ -178,9 +191,6 @@ version (Posix) import core.stdc.errno;
 				trace("data reading ", len, " bytes");
 
 			if (len) {
-				inMutex.lock_nothrow();
-				scope (exit)
-					inMutex.unlock_nothrow();
 				if (onReceived)
 					onReceived(_rBuf[0 .. len]);
 				debug (Log)
@@ -227,7 +237,7 @@ protected:
 	}
 
 	version (Posix) {
-		final flush() {
+		final flush() @trusted {
 			size_t len;
 			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
 				const data = _writeQueue.front;
@@ -237,10 +247,14 @@ protected:
 				if (data.length == n) {
 					debug (Log)
 						trace("written ", n, " bytes");
-					_writeQueue.dequeue();
+					_writeQueue.pop();
 					if (onSent)
 						onSent(data);
 					len += n;
+					inMutex.lock_nothrow();
+					scope (exit)
+						inMutex.unlock_nothrow();
+					inCond.notify();
 				}
 			}
 			return len;
@@ -274,8 +288,7 @@ protected:
 	bool _isConnected;
 
 	WriteQueue _writeQueue;
-version (Windows) :
-nothrow:
+	version (Windows)  : nothrow:
 	const(ubyte)[] _rBuf;
 private:
 	void recv() @trusted {

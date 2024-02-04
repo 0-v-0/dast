@@ -7,7 +7,7 @@ std.socket,
 std.logger,
 std.conv : text;
 
-public import dast.async : EventLoop, FiberEventLoop, Selector;
+public import dast.async : EventLoop, EventExecutor, Selector;
 
 alias
 PeerID = int,
@@ -76,7 +76,7 @@ class WebSocketServer : TcpListener {
 	uint connections;
 
 	this(AddressFamily family = AddressFamily.INET) {
-		super(new FiberEventLoop, family);
+		super(new EventExecutor, family);
 	}
 
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {

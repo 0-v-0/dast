@@ -108,22 +108,3 @@ std.conv : text;
 alias WT = WatcherType,
 WF = WatchFlag,
 BUF = uninitializedArray!(ubyte[], size_t);
-
-template Loop() {
-	private bool running;
-
-	void onLoop(scope void delegate() handler) @system {
-		running = true;
-		do {
-			handler();
-			handleEvents();
-		}
-		while (running);
-	}
-
-	void stop() nothrow {
-		running = false;
-		static if (is(typeof(weakUp())))
-			weakUp();
-	}
-}

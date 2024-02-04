@@ -54,7 +54,7 @@ alias Selector = Iocp;
 		PostQueuedCompletionStatus(_eventHandle, 0, 0, &ctx.overlapped);
 	}
 
-	void onWeakUp() @trusted {
+	void onWeakUp() @system {
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
 		uint n = void;
@@ -67,7 +67,10 @@ alias Selector = Iocp;
 		}
 		foreach (i; 0 .. n) {
 			auto entry = entries[i];
-			workerPool.run!handleEvent(entry);
+			if (workerPool)
+				workerPool.run!handleEvent(entry);
+			else
+				handleEvent(entry);
 		}
 	}
 

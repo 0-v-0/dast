@@ -72,7 +72,7 @@ class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 		LFQ queue = LFQ(SReq());
 
 		void initWorkers(uint n) {
-			auto loop = cast(FiberEventLoop)_inLoop;
+			auto loop = cast(EventExecutor)_inLoop;
 			while (n--) {
 				loop.queueTask(new Fiber(&mainLoop, pageCount * pageSize));
 			}
@@ -81,7 +81,7 @@ class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 
 	this(AddressFamily family = AddressFamily.INET) {
 		static if (pageCount)
-			super(new FiberEventLoop, family);
+			super(new EventExecutor, family);
 		else
 			super(family);
 	}

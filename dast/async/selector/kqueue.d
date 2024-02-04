@@ -118,9 +118,7 @@ class Kqueue : KqueueEventChannel {
 	//     return true;
 	// }
 
-	mixin Loop;
-
-	void onWeakUp() @trusted {
+	void onWeakUp() @system {
 		kevent_t[64] events;
 		const len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
 		if (len < 1)
