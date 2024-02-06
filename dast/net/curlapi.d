@@ -314,7 +314,7 @@ struct Curl {
 	*/
 	void pause(bool sendingPaused, bool receivingPaused) {
 		throwOnStopped();
-		_check(curl.easy_pause(ch,
+		check(curl.easy_pause(ch,
 				(sendingPaused ? CurlPause.send_cont
 				: CurlPause.send) |
 				(receivingPaused ? CurlPause.recv_cont : CurlPause.recv)));
@@ -330,7 +330,7 @@ struct Curl {
 		import std.internal.cstring : tempCString;
 
 		throwOnStopped();
-		_check(curl.easy_setopt(ch, option, value.tempCString().buffPtr));
+		check(curl.easy_setopt(ch, option, value.tempCString().buffPtr));
 	}
 
 	/**
@@ -341,7 +341,7 @@ struct Curl {
 	*/
 	void set(CurlOption option, long value) {
 		throwOnStopped();
-		_check(curl.easy_setopt(ch, option, value));
+		check(curl.easy_setopt(ch, option, value));
 	}
 
 	/**
@@ -352,7 +352,7 @@ struct Curl {
 	*/
 	void set(CurlOption option, void* value) {
 		throwOnStopped();
-		_check(curl.easy_setopt(ch, option, value));
+		check(curl.easy_setopt(ch, option, value));
 	}
 
 	/**
@@ -362,7 +362,7 @@ struct Curl {
 	*/
 	void clear(CurlOption option) {
 		throwOnStopped();
-		_check(curl.easy_setopt(ch, option, null));
+		check(curl.easy_setopt(ch, option, null));
 	}
 
 	/**
@@ -375,7 +375,7 @@ struct Curl {
 		throwOnStopped();
 		auto rval = curl.easy_setopt(ch, option, null);
 		if (rval != CurlError.unknown_option && rval != CurlError.not_built_in)
-			_check(rval);
+			check(rval);
 	}
 
 	/**
@@ -389,7 +389,7 @@ struct Curl {
 		throwOnStopped();
 		CURLcode code = curl.easy_perform(ch);
 		if (throwOnError)
-			_check(code);
+			check(code);
 		return code;
 	}
 
@@ -619,7 +619,7 @@ struct Curl {
 
 private:
 
-	void _check(CURLcode code) {
+	void check(CURLcode code) {
 		enforce!CurlTimeoutException(code != CurlError.operation_timedout,
 			errorString(code));
 

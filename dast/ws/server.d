@@ -159,7 +159,8 @@ nothrow:
 		}
 		if (!client.tryParse(req))
 			return false;
-
+		scope (exit)
+			client.reset();
 		auto key = KEY in req.headers;
 		if (!key || key.length > KEY_MAXLEN) {
 			try {
@@ -192,7 +193,6 @@ nothrow:
 			frames.reserve(1);
 			client.frames = frames;
 		}
-		client.reset();
 		return true;
 	}
 

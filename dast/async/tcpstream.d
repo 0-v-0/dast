@@ -163,6 +163,10 @@ version (Posix) import core.stdc.errno;
 				isWriteCancelling = false;
 				return;
 			}
+			if (_writeQueue.empty) {
+				_isWriting = false;
+				return;
+			}
 			auto data = &_writeQueue.front();
 			*data = (*data)[len .. $];
 			if (!(*data).length) {
@@ -288,7 +292,8 @@ protected:
 	bool _isConnected;
 
 	WriteQueue _writeQueue;
-	version (Windows)  : nothrow:
+version (Windows) :
+nothrow:
 	const(ubyte)[] _rBuf;
 private:
 	void recv() @trusted {
