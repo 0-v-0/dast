@@ -21,13 +21,21 @@ unittest {
 private void addField(S)(ref S r, S name, S type = null,
 	S val = null, S comment = null) {
 	r ~= '\t';
-	if (comment.length)
-		r ~= "/++\n\t\t" ~ comment ~ "\n\t  +/\n\t";
-	if (type.length)
-		r ~= type ~ " ";
+	if (comment.length) {
+		bool multiline = comment.canFind('\n');
+		r ~= multiline ? "/++\n\t\t" : "/// ";
+		r ~= comment;
+		r ~= multiline ? "\n\t  +/\n\t" : "\n\t";
+	}
+	if (type.length) {
+		r ~= type;
+		r ~= ' ';
+	}
 	r ~= name.replace(' ', '_');
-	if (val.length)
-		r ~= " = " ~ val;
+	if (val.length) {
+		r ~= " = ";
+		r ~= val;
+	}
 	r ~= type ? ";\n" : ",\n";
 }
 
@@ -128,8 +136,8 @@ string md2d(bool noComment = true)(string md_source, MarkdownSettings settings =
 									val = c.text[0];
 								else {
 									static if (!noComment)
-										if (i == crow1 || i == crow2)
-											comment ~= c.text[0].strip;
+										if (i == crow1)
+											comment = c.text[0].strip;
 								}
 							}
 						}

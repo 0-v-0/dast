@@ -49,8 +49,8 @@ final class ThreadPool {
 
 	private {
 		TaskThread[] pool;
-		Mutex inMutex, outMutex;
-		Condition full, empty;
+		Mutex mutex;
+		Condition cond;
 		State status;
 		Queue!(TaskBase*, 2048 / size_t.sizeof, true) queue;
 		shared uint nWorkers;
@@ -67,10 +67,8 @@ final class ThreadPool {
 		timeoutMs = timeout_ms;
 		pool = uninitializedArray!(TaskThread[])(size);
 		nWorkers = size;
-		inMutex = new Mutex(this);
-		outMutex = new Mutex;
-		full = new Condition(inMutex);
-		empty = new Condition(outMutex);
+		mutex = new Mutex(this);
+		cond = new Condition(mutex);
 		foreach (ref t; pool) {
 			t = new TaskThread(&workLoop);
 			t.run();
@@ -87,29 +85,20 @@ final class ThreadPool {
 
 	void workLoop() {
 		loop: while (atomicLoad(status) != State.stop) {
-			TaskBase* task;
-			while (status == State.running) {
-				inMutex.lock_nothrow();
-				scope (exit)
-					inMutex.unlock_nothrow();
-				if (!queue.empty) {
-					task = queue.pop();
-					{
-						outMutex.lock_nothrow();
-						scope (exit)
-							outMutex.unlock_nothrow();
-						empty.notify();
-					}
-					break;
-				}
+			mutex.lock_nothrow();
+			while (queue.empty) {
 				if (timeoutMs) {
-					if (!full.wait(timeoutMs.msecs))
+					if (!cond.wait(timeoutMs.msecs)) {
+						mutex.unlock_nothrow();
 						break loop;
+					}
 				} else
-					full.wait();
+					cond.wait();
 			}
-			if (task)
-				task.run(task);
+			auto task = queue.pop();
+			cond.notify();
+			mutex.unlock_nothrow();
+			task.run(task);
 		}
 		auto tthis = Thread.getThis();
 		foreach (t; pool) {
@@ -123,11 +112,11 @@ final class ThreadPool {
 
 	void finish(bool blocking = false) @trusted {
 		{
-			inMutex.lock_nothrow();
+			mutex.lock_nothrow();
 			scope (exit)
-				inMutex.unlock_nothrow();
+				mutex.unlock_nothrow();
 			cas(cast(shared)&status, State.running, State.done);
-			full.notifyAll();
+			cond.notifyAll();
 		}
 		if (blocking) {
 			foreach (t; pool) {
@@ -137,11 +126,11 @@ final class ThreadPool {
 	}
 
 	void stop() @trusted {
-		inMutex.lock_nothrow();
+		mutex.lock_nothrow();
 		scope (exit)
-			inMutex.unlock_nothrow();
+			mutex.unlock_nothrow();
 		cas(cast(shared)&status, State.running, State.stop);
-		full.notifyAll();
+		cond.notifyAll();
 	}
 
 	void run(alias fn, Args...)(Args args) {
@@ -150,15 +139,13 @@ final class ThreadPool {
 
 	private void run(TaskBase* task)
 	in (task) {
-		inMutex.lock_nothrow();
+		mutex.lock_nothrow();
 		scope (exit)
-			inMutex.unlock_nothrow();
-		if (queue.full) {
-			outMutex.lock_nothrow();
-			scope (exit)
-				outMutex.unlock_nothrow();
-			empty.wait();
-		}
+			mutex.unlock_nothrow();
+		if (queue.full)
+			cond.wait();
+		if (status != State.running)
+			return;
 		queue.push(task);
 		if (timeoutMs && atomicLoad(nWorkers) < pool.length) {
 			foreach (t; pool) {
@@ -169,6 +156,6 @@ final class ThreadPool {
 				}
 			}
 		}
-		full.notify();
+		cond.notify();
 	}
 }

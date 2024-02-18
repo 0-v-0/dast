@@ -23,8 +23,8 @@ version (Posix) import core.stdc.errno;
 	RecvHandler onReceived;
 	SimpleHandler onDisconnected;
 	DataSentHandler onSent;
-	protected Mutex inMutex;
-	protected Condition inCond;
+	protected Mutex mutex;
+	protected Condition cond;
 
 	@property final bufferSize() const => _rBuf.length;
 
@@ -34,19 +34,19 @@ version (Posix) import core.stdc.errno;
 	}
 
 	// server side
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) nothrow {
+	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) nothrow @trusted {
 		super(loop, WT.TCP);
 		flags |= WF.Read | WF.Write | WF.ETMode;
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
 		_rBuf = BUF(bufferSize);
 		this.socket = socket;
-		try
+		try {
 			_isConnected = socket.isAlive;
-		catch (Exception) {
+		} catch (Exception) {
 		}
-		inMutex = new Mutex(this);
-		inCond = new Condition(inMutex);
+		mutex = new Mutex(this);
+		cond = new Condition(mutex);
 	}
 
 	void connect(Address addr) @trusted {
@@ -91,16 +91,20 @@ version (Posix) import core.stdc.errno;
 		if (!_isConnected)
 			return errorOccurred("The connection has been closed");
 		if (data.length) {
-			inMutex.lock_nothrow();
+			mutex.lock_nothrow();
 			scope (exit)
-				inMutex.unlock_nothrow();
-			if (_writeQueue.full) {
-				try
-					inCond.wait();
-				catch (Exception) {
+				mutex.unlock_nothrow();
+			if (_writeQueue.full)
+				try {
+					flush();
+					cond.wait();
+				} catch (Exception) {
 				}
-			}
 			_writeQueue.push(data);
+			try {
+				cond.notify();
+			} catch (Exception) {
+			}
 			if (_writeQueue.length >= _writeQueue.capacity / 2)
 				flush();
 		}
@@ -155,39 +159,34 @@ version (Posix) import core.stdc.errno;
 	version (Windows) {
 		/// Called by selector after data sent
 		final onWrite(uint len) @trusted {
-			inMutex.lock_nothrow();
-			scope (exit)
-				inMutex.unlock_nothrow();
 			if (isWriteCancelling) {
 				clearQueue();
 				isWriteCancelling = false;
 				return;
 			}
+			mutex.lock_nothrow();
 			if (_writeQueue.empty) {
 				_isWriting = false;
-				return;
+				cond.wait();
 			}
 			auto data = &_writeQueue.front();
 			*data = (*data)[len .. $];
 			if (!(*data).length) {
 				const sent = _writeQueue.pop();
+				_isWriting = false;
+				cond.notify();
+				mutex.unlock_nothrow();
 				if (onSent)
 					onSent(sent);
-				inCond.notify();
-				_isWriting = false;
 				debug (Log)
 					info("written ", len, " bytes");
 
 				if (!_writeQueue.empty)
 					flush();
-			} else // if (sendDataBuf.length > len)
-			{
-				debug (Log)
-					trace("remaining ", _wBuf.length - len, " bytes");
-				// FIXME: sendDataBuf corrupted
-				// tracef("%(%02X %)", sendDataBuf);
-				flush(); // send remaining
+				return;
 			}
+			mutex.unlock_nothrow();
+			assert(0);
 		}
 
 		void onRead(uint len) {
@@ -236,6 +235,9 @@ version (Posix) import core.stdc.errno;
 
 protected:
 	final clearQueue() {
+		mutex.lock_nothrow();
+		scope (exit)
+			mutex.unlock_nothrow();
 		_writeQueue.clear();
 		_isWriting = false;
 	}
@@ -255,10 +257,10 @@ protected:
 					if (onSent)
 						onSent(data);
 					len += n;
-					inMutex.lock_nothrow();
+					mutex.lock_nothrow();
 					scope (exit)
-						inMutex.unlock_nothrow();
-					inCond.notify();
+						mutex.unlock_nothrow();
+					cond.notify();
 				}
 			}
 			return len;

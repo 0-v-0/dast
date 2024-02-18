@@ -8,6 +8,11 @@ struct type { // @suppress(dscanner.style.phobos_naming_convention)
 	string name;
 }
 
+/// The summary of the function.
+struct summary { // @suppress(dscanner.style.phobos_naming_convention)
+	string content;
+}
+
 enum ignored(alias x) = hasUDA!(x, ignore);
 private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
 enum isString(alias x) = is(typeof(x) : const(char)[]);
@@ -30,49 +35,75 @@ template ForModules(T...) {
 	void genAPIDef(alias getType = TSTypeOf, R)(ref R sink) {
 		foreach (f; AllActions!T) {
 			foreach (attr; getUDAs!(f, Action)) {
-				sink ~= "/**\n";
+				sink.put("/**\n");
 				getDoc!f(sink);
-				sink ~= " */\n";
+				sink.put(" */\n");
 				static if (hasName!attr)
-					sink ~= attr.name;
+					sink.put(attr.name);
 				else
-					sink ~= __traits(identifier, f);
-				sink ~= '(';
+					sink.put(__traits(identifier, f));
+				sink.put('(');
 				getArgs!(f, getType)(sink);
-				sink ~= "): ";
+				sink.put("): ");
 				static if (hasUDA!(f, type))
-					sink ~= getUDAs!(f, type)[0].name;
+					sink.put(getUDAs!(f, type)[0].name);
 				else
-					sink ~= getType!(ReturnType!f);
-				sink ~= '\n';
+					sink.put(getType!(ReturnType!f));
+				sink.put('\n');
 			}
 		}
 	}
 
 	void genTypeDef(alias getType = TSTypeOf, R)(ref R sink) {
-		foreach (t; getTables!T) {
-			sink ~= "export type ";
-			sink ~= __traits(identifier, t);
-			sink ~= " = {\n\t";
+		foreach (t; T) {
+			sink.put("export type ");
+			sink.put(__traits(identifier, t));
+			sink.put(" = {\n\t");
 			foreach (i, alias f; t.tupleof) {
 				alias loc = __traits(getLocation, f);
 				const comment = getComment(loc[0], loc[1] - 1);
 				if (comment) {
-					sink ~= "/**";
-					sink ~= comment;
-					sink ~= " */\n\t";
+					sink.put("/**");
+					sink.put(comment);
+					sink.put(" */\n\t");
 				}
-				sink ~= __traits(identifier, f);
-				sink ~= ": ";
+				sink.put(__traits(identifier, f));
+				sink.put(": ");
 				static if (hasUDA!(f, type))
-					sink ~= getUDAs!(f, type)[0].name;
+					sink.put(getUDAs!(f, type)[0].name);
 				else
-					sink ~= getType!(typeof(f));
-				sink ~= '\n';
+					sink.put(getType!(typeof(f)));
+				sink.put('\n');
 				static if (i + 1 < t.tupleof.length)
-					sink ~= '\t';
+					sink.put('\t');
 			}
-			sink ~= "}\n";
+			sink.put("}\n");
+		}
+	}
+
+	void genEnum(R)(ref R sink) {
+		import std.string,
+		std.conv : text;
+
+		foreach (m; T) {
+			foreach (name; __traits(allMembers, m)) {
+				alias Enum = __traits(getMember, m, name);
+				static if (is(Enum == enum)) {
+					sink.put("export const ");
+					sink.put(Enum.stringof);
+					sink.put(": Record<string, string> = {\n");
+					foreach (member; __traits(allMembers, Enum)) {
+						sink.put("\t'");
+						alias f = __traits(getMember, Enum, member);
+						sink.put(text(cast(OriginalType!Enum)f));
+						sink.put("': '");
+						alias loc = __traits(getLocation, f);
+						sink.put(getComment(loc[0], loc[1] - 1).strip());
+						sink.put("',\n");
+					}
+					sink.put("}\n");
+				}
+			}
 		}
 	}
 }
@@ -92,9 +123,12 @@ unittest {
 void getDoc(alias f, R)(ref R sink) {
 	alias loc = __traits(getLocation, f);
 	if (loc[1] > 1) {
-		sink ~= " *";
-		sink ~= getComment(loc[0], loc[1] - 1);
-		sink ~= '\n';
+		sink.put(" *");
+		foreach (attr; getUDAs!(f, summary)) {
+			sink.put(attr.content);
+		}
+		sink.put(getComment(loc[0], loc[1] - 1));
+		sink.put('\n');
 	}
 	static if (is(FunctionTypeOf!f P == __parameters)) {
 		alias PIT = ParameterIdentifierTuple!f;
@@ -103,23 +137,23 @@ void getDoc(alias f, R)(ref R sink) {
 			static if (!is(T : WSRequest)) {
 				{
 					alias p = P[i .. i + 1];
-					sink ~= " * @param ";
-					sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
-					sink ~= ' ';
+					sink.put(" * @param ");
+					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
+					sink.put(' ');
 					static foreach (attr; __traits(getAttributes, p))
 						static if (isString!attr && staticIndexOf!(attr, set) == -1)
-							sink ~= attr;
-					sink ~= '\n';
+							sink.put(attr);
+					sink.put('\n');
 				}
 			}
 		}
 		if (set.length)
-			sink ~= " * @returns ";
+			sink.put(" * @returns ");
 		foreach (attr; set)
 			static if (isString!attr)
-				sink ~= attr;
+				sink.put(attr);
 		if (set.length)
-			sink ~= '\n';
+			sink.put('\n');
 	} else
 		static assert(0, f.stringof ~ " is not a function");
 }
@@ -145,17 +179,17 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 			static if (!is(T : WSRequest)) {
 				{
 					alias p = P[i .. i + 1];
-					sink ~= KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof);
+					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					static if (!is(ParameterDefaults!f[i] == void))
-						sink ~= '?';
-					sink ~= ": ";
+						sink.put('?');
+					sink.put(": ");
 					alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
 					static if (a.length)
-						sink ~= a[0].name;
+						sink.put(a[0].name);
 					else
-						sink ~= getType!p;
+						sink.put(getType!p);
 					static if (i + 1 < P.length)
-						sink ~= ", ";
+						sink.put(", ");
 				}
 			}
 		}
@@ -196,13 +230,16 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	--line;
 	--col;
 	uint i;
-	foreach (l; File(filename).byLine()) {
-		if ((i + 1 == line || i == line) && l.length >= col) {
-			l = l[col .. $].stripLeft;
-			if (l.startsWith("///"))
-				return l[3 .. $];
+	try {
+		foreach (l; File(filename).byLine) {
+			if ((i + 1 == line || i == line) && l.length >= col) {
+				l = l[col .. $].stripLeft;
+				if (l.startsWith("///"))
+					return l[3 .. $];
+			}
+			++i;
 		}
-		++i;
+	} catch (Exception) {
 	}
 	return null;
 }
