@@ -89,7 +89,14 @@ template ForModules(T...) {
 			foreach (name; __traits(allMembers, m)) {
 				alias Enum = __traits(getMember, m, name);
 				static if (is(Enum == enum)) {
-					sink.put("export const ");
+					sink.put("export type ");
+					sink.put(Enum.stringof);
+					sink.put(" = ");
+					{
+						alias toOriginal(alias x) = AliasSeq!(cast(OriginalType!Enum)x, " | ");
+						sink.put(text(staticMap!(toOriginal, EnumMembers!Enum)[0 .. $ - 1]));
+					}
+					sink.put("\nexport const ");
 					sink.put(Enum.stringof);
 					sink.put(": Record<string, string> = {\n");
 					foreach (member; __traits(allMembers, Enum)) {
@@ -244,8 +251,7 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	return null;
 }
 
-version (unittest) :
-@Action:
+version (unittest)  : @Action:
 @ignore void foo(int a) {
 }
 
