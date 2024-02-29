@@ -9,17 +9,17 @@ alias SimpleHandler = void delegate() nothrow,
 ErrorHandler = void delegate(in char[] msg) nothrow,
 TickedHandler = void delegate(Object sender),
 RecvHandler = void delegate(in ubyte[] data),
-AcceptHandler = void delegate(Socket socket),
-ConnectionHandler = void delegate(bool success);
-
-alias DataSentHandler = void delegate(in void[] data) nothrow;
+AcceptHandler = void delegate(
+	Socket socket),
+ConnectionHandler = void delegate(bool success),
+DataSentHandler = void delegate(in void[] data) nothrow;
 
 abstract class SocketChannel {
 	ErrorHandler onError;
 
 	package WF flags;
-	pure nothrow @nogc {
-		@property {
+	pure nothrow {
+		@property @nogc {
 			final handle() const => _socket.handle;
 
 			final type() const => _type;
@@ -34,6 +34,12 @@ abstract class SocketChannel {
 		this(Selector loop, WatcherType type = WT.Event) {
 			_inLoop = loop;
 			_type = type;
+			onError = (msg) {
+				try
+					error(msg);
+				catch (Exception) {
+				}
+			};
 		}
 	}
 
@@ -63,15 +69,6 @@ protected:
 		_socket = s;
 		debug (Log)
 			trace("new socket fd: ", handle);
-	}
-
-	void errorOccurred(in char[] msg) {
-		try
-			error(msg);
-		catch (Exception) {
-		}
-		if (onError)
-			onError(msg);
 	}
 
 	Selector _inLoop;

@@ -16,7 +16,7 @@ package(dast.async) bool checkErro()(int ret, string prefix = null) nothrow {
 
 	if (err == WSAEWOULDBLOCK || err == ERROR_IO_PENDING)
 		return false;
-	errorOccurred(text(prefix, " error: code=", err));
+	onError(text(prefix, " error: code=", err));
 	return true;
 }
 

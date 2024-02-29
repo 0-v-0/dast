@@ -10,12 +10,14 @@ public import dast.http : Request, Status, ServerSettings;
 alias NextHandler = void delegate(),
 ReqHandler = void function(HTTPServer server, HTTPClient client, scope NextHandler next);
 
+///
 @safe class HTTPClient : TcpStream {
 	Request request;
 	bool keepConnection;
 
 nothrow:
 	@property id() const => cast(int)handle;
+	/// Whether the header has been sent
 	@property headerSent() const => _headerSent;
 	private bool tryParse() => request.tryParse(data);
 

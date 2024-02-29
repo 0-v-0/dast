@@ -1,13 +1,10 @@
 module md2d.parser;
 
-// dfmt off
-import
-	md2d.link,
-	md2d.util,
-	std.array,
-	std.range,
-	std.string;
-// dfmt on
+import md2d.link,
+md2d.util,
+std.array,
+std.range,
+std.string;
 import std.algorithm : canFind, countUntil, min;
 import std.ascii : isAlpha, isWhite;
 
@@ -99,8 +96,6 @@ struct Section {
 	Returns the hierarchy of sections
 +/
 Section[] getMarkdownOutline(string md_source, scope MarkdownSettings settings = MarkdownSettings()) {
-	import std.conv : to;
-
 	auto all_lines = splitLines(md_source);
 	auto lines = parseLines(all_lines, settings);
 	Block root_block;

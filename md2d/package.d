@@ -39,21 +39,21 @@ private void addField(S)(ref S r, S name, S type = null,
 	r ~= type ? ";\n" : ",\n";
 }
 
-void parseMD(string md_source, ref Block block, MarkdownSettings settings = MarkdownSettings()) {
+void parseMD(string src, ref Block block, MarkdownSettings settings = MarkdownSettings()) {
 	import md2d.parser;
 
-	auto allLines = md_source.splitLines;
+	auto allLines = src.splitLines;
 	auto lines = parseLines(allLines, settings);
 	parseBlocks(block, lines, null, settings);
 }
 
-string md2d(bool noComment = true)(string md_source, MarkdownSettings settings = MarkdownSettings()) {
+string md2d(bool noComment = true)(string src, MarkdownSettings settings = MarkdownSettings()) {
 	import md2d.parser : BT = BlockType;
 
-	Block root_block;
-	parseMD(md_source, root_block, settings);
+	Block root;
+	parseMD(src, root, settings);
 	string str, header;
-	foreach (b; root_block.blocks) {
+	foreach (b; root.blocks) {
 		if (b.type == BT.Header && b.headerLevel > 1) {
 			string cls, t = b.text[0].strip;
 			if (t[0] == '`')

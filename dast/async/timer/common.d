@@ -11,15 +11,15 @@ alias TimeoutHandler = void delegate(Object sender);
 
 nothrow:
 
-/**
+/++
 	Timing Wheel manger Class
-*/
++/
 class TimingWheel {
-	/**
+	/++
 		constructor
 		Params:
 			wheelSize = the Wheel's element router
-	*/
+	+/
 	this(uint wheelSize) {
 		if (wheelSize == 0)
 			wheelSize = 2;
@@ -28,11 +28,11 @@ class TimingWheel {
 			timer = new NullWheelTimer;
 	}
 
-	/**
+	/++
 		add a Timer into the Wheel
 		Params:
 			tm = the timer
-	*/
+	+/
 	void addNewTimer(WheelTimer tm, size_t wheel = 0) {
 		size_t index;
 		if (wheel > 0)
@@ -49,13 +49,13 @@ class TimingWheel {
 		tm._tw = this;
 	}
 
-	/**
+	/++
 		The Wheel go forward
 		Params:
 			size = forward's element size;
 		Notes:
 			all forward's element will timeout
-	*/
+	+/
 	void prevWheel(uint size = 1) {
 		if (size == 0)
 			return;
@@ -101,16 +101,16 @@ private:
 	size_t _now;
 }
 
-/**
+/++
 	The timer parent's class
-*/
++/
 abstract class WheelTimer {
 	~this() {
 		stop();
 	}
-	/**
+	/++
 		the function will be called when the timer timeout
-	*/
+	+/
 	void onTimeout();
 
 	pragma(inline, true) final {

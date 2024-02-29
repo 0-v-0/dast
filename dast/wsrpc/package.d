@@ -11,6 +11,7 @@ version (APIDoc) {
 	lockfree.queue;
 }
 
+/// A WebSocket RPC request
 struct WSRequest {
 	WSClient src;
 	Unpacker!() unpacker;
@@ -137,28 +138,7 @@ class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 							//pragma(msg, __traits(identifier, f));
 			case __traits(identifier, f):
 						}
-						{
-							alias P = Parameters!f;
-							static if (P.length) {
-								enum r = is(Unqual!(P[0]) == WSRequest);
-								static assert(!r || (ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_),
-									`The first parameter of Action "` ~ fullyQualifiedName!f ~ "\" must be `ref`");
-								P[r .. $] p = void;
-								foreach (i, ref x; p)
-									static if (is(ParameterDefaults!f[i + r] == void))
-										x = unpacker.unpack!(P[i + r]);
-									else static if (isArray!(P[i + r])) {
-										x = ParameterDefaults!f[i + r];
-										unpacker.unpack(x);
-									} else
-										x = unpacker.unpack(ParameterDefaults!f[i + r]);
-								static if (r)
-									f(req, p);
-								else
-									f(p);
-							} else
-								f();
-						}
+						callAction!f(req, unpacker);
 						break s;
 					}
 				}
@@ -170,5 +150,29 @@ class WSRPCServer(uint pageCount, T...) : WebSocketServer {
 			req.send(id, e.msg);
 		}
 		req.src.send(req.packer[]);
+	}
+
+	pragma(inline, true)
+	private void callAction(alias f)(ref WSRequest req, Unpacker!()* unpacker) {
+		alias P = Parameters!f;
+		static if (P.length) {
+			enum r = is(Unqual!(P[0]) == WSRequest);
+			static assert(!r || (ParameterStorageClassTuple!f[0] & ParameterStorageClass.ref_),
+				`The first parameter of Action "` ~ fullyQualifiedName!f ~ "\" must be `ref`");
+			P[r .. $] p = void;
+			foreach (i, ref x; p)
+				static if (is(ParameterDefaults!f[i + r] == void))
+					x = unpacker.unpack!(P[i + r]);
+				else static if (isArray!(P[i + r])) {
+					x = ParameterDefaults!f[i + r];
+					unpacker.unpack(x);
+				} else
+					x = unpacker.unpack(ParameterDefaults!f[i + r]);
+			static if (r)
+				f(req, p);
+			else
+				f(p);
+		} else
+			f();
 	}
 }

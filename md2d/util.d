@@ -4,81 +4,11 @@
 +/
 module md2d.util;
 
-import std.range, std.string;
-
+import std.range,
+std.string;
 import std.algorithm : canFind;
-
-/++
-	Generates an identifier suitable to use as within a URL.
-
-	The resulting string will contain only ASCII lower case alphabetic or
-	numeric characters, as well as dashes (-). Every sequence of
-	non-alphanumeric characters will be replaced by a single dash. No dashes
-	will be at either the front or the back of the result string.
-+/
-struct SlugRange(R) if (isInputRange!R && is(typeof(R.init.front) == dchar)) {
-	private {
-		R _input;
-		bool _dash;
-	}
-
-	this(R input) {
-		_input = input;
-		skipNonAlphaNum();
-	}
-
-	@property {
-		bool empty() const => !_dash && _input.empty;
-
-		char front() const {
-			if (_dash)
-				return '-';
-
-			char r = cast(char)_input.front;
-			if (r >= 'A' && r <= 'Z')
-				return cast(char)(r + ('a' - 'A'));
-			return r;
-		}
-	}
-
-	void popFront() {
-		if (_dash) {
-			_dash = false;
-			return;
-		}
-
-		_input.popFront();
-		auto na = skipNonAlphaNum();
-		if (na && !_input.empty)
-			_dash = true;
-	}
-
-	private bool skipNonAlphaNum() {
-		import std.ascii;
-
-		bool skip;
-		while (!_input.empty) {
-			auto c = _input.front;
-			if (isAlphaNum(c))
-				return skip;
-			_input.popFront();
-			skip = true;
-		}
-		return skip;
-	}
-}
-
-auto asSlug(R)(R text) => SlugRange!R(text);
-
-unittest {
-	import std.algorithm : equal;
-
-	assert("".asSlug.equal(""));
-	assert(".,-".asSlug.equal(""));
-	assert("abc".asSlug.equal("abc"));
-	assert("aBc123".asSlug.equal("abc123"));
-	assert("....aBc...123...".asSlug.equal("abc-123"));
-}
+public import std.conv : to;
+public import tame.uri : asSlug;
 
 @safe pure:
 /++
@@ -180,15 +110,10 @@ bool isSetextHeaderLine(S)(S ln, char subHeaderChar) {
 	return false;
 }
 
-// dfmt off
-
-bool isHlineLine(S)(S ln) {
-	if(allOf(ln, " -") && count(ln, '-') >= 3) return true;
-	if(allOf(ln, " *") && count(ln, '*') >= 3) return true;
-	if(allOf(ln, " _") && count(ln, '_') >= 3) return true;
-	return false;
-}
-// dfmt on
+bool isHlineLine(S)(S ln) =>
+	(allOf(ln, " -") && count(ln, '-') >= 3) ||
+	(allOf(ln, " *") && count(ln, '*') >= 3) ||
+	(allOf(ln, " _") && count(ln, '_') >= 3);
 
 bool isQuoteLine(S)(S ln) => ln.stripLeft().startsWith(">");
 

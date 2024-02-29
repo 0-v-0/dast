@@ -6,14 +6,12 @@ auto cb(char* data, size_t size, size_t nmemb, void* strm) {
 }
 
 int main(string[] args) {
-	// dfmt off
 	import core.stdc.stdio,
-		core.stdc.string,
-		etc.c.curl,
-		std.parallelism,
-		std.string,
-		std.stdio;
-	// dfmt on
+	core.stdc.string,
+	etc.c.curl,
+	std.parallelism,
+	std.string,
+	std.stdio;
 	import std.conv : to;
 	import std.range : iota;
 
@@ -34,11 +32,9 @@ int main(string[] args) {
 			printf("%lld\n", i * 1L);
 		auto url = "http://" ~ i.to!string(36) ~ ".com";
 		auto ch = curl_easy_init();
-		char[] resp;
-		scope (exit) {
+		scope (exit)
 			curl_easy_cleanup(ch);
-			destroy(resp);
-		}
+		char[] resp;
 		curl_easy_setopt(ch, CurlOption.url, url.toStringz);
 		curl_easy_setopt(ch, CurlOption.connecttimeout, 8L);
 		curl_easy_setopt(ch, CurlOption.writedata, &resp);
