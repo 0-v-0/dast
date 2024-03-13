@@ -198,7 +198,9 @@ LinkRef[string] scanForReferences(ref string[] lines) pure {
 
 		string title;
 		if (ln.length >= 3) {
-			if (ln[0] == '(' && ln[$ - 1] == ')' || ln[0] == '\"' && ln[$ - 1] == '\"' || ln[0] == '\'' && ln[$ - 1] == '\'')
+			if (ln[0] == '(' && ln[$ - 1] == ')' ||
+				ln[0] == '\"' && ln[$ - 1] == '\"' ||
+				ln[0] == '\'' && ln[$ - 1] == '\'')
 				title = ln[1 .. $ - 1];
 		}
 

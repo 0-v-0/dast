@@ -6,6 +6,7 @@ license "MIT"
 sourcePaths "."
 importPaths ".."
 mainSourceFile "app.d"
+dependency "tame" version="~>0.0.9"
 configuration "lib" {
 	targetType "library"
 }
