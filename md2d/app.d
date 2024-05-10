@@ -11,6 +11,6 @@ int main(string[] args) {
 	}
 
 	auto file = args[1];
-	write(args.length > 2 ? args[2] : setExtension(file, "d"), md2d!false(cast(string)read(file)));
+	write(args.length > 2 ? args[2] : setExtension(file, "d"), md2d(cast(string)read(file)));
 	return 0;
 }

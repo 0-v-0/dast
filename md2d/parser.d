@@ -24,6 +24,7 @@ struct MarkdownSettings {
 	 +/
 	string delegate(string) @safe nothrow processCode = null;
 +/
+	bool noComment;
 }
 
 enum MarkdownFlags {

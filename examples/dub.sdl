@@ -19,6 +19,13 @@ configuration "uwsgi" {
 	dependency "dast:uwsgi" path=".."
 	sourceFiles "uwsgi.d"
 }
+configuration "usockets" {
+	dependency "dast:usockets" path=".."
+	sourceFiles "usockets.d"
+	dflags "-dip1008" "-betterC"
+	libs "druntime-ldc"
+	lflags "/force:multiple"
+}
 configuration "echo" {
 	dependency "dast:ws" path=".."
 	sourceFiles "ws.d"

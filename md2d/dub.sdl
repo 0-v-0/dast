@@ -5,11 +5,12 @@ copyright "Copyright © 2022, 0-v-0"
 license "MIT"
 sourcePaths "."
 importPaths ".."
-mainSourceFile "app.d"
 dependency "tame" version="~>0.0.9"
 configuration "lib" {
 	targetType "library"
+	excludedSourceFiles "app.d"
 }
 configuration "exe" {
 	targetType "executable"
+	mainSourceFile "app.d"
 }

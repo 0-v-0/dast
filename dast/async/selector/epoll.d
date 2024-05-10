@@ -14,13 +14,16 @@ version (HaveTimer) import dast.async.timer;
 
 alias Selector = Epoll;
 
-class Epoll : EpollEventChannel {
+class Epoll {
 	this() {
 		_eventHandle = epoll_create1(0);
+		flags |= WF.Read;
+		handle = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		register(this);
 	}
 
 	~this() {
+		close();
 		dispose();
 	}
 
@@ -74,6 +77,12 @@ class Epoll : EpollEventChannel {
 		return true;
 	}
 
+	void onRead() @system {
+		ulong value = void;
+		read(handle, &value, value.sizeof);
+		_rBuf.data = value;
+	}
+
 	void onWeakUp() @system {
 		epoll_event[64] events;
 		const len = epoll_wait(_eventHandle, events.ptr, events.length, 10);
@@ -114,27 +123,4 @@ epoll_event buildEvent(SocketChannel watch) {
 	if (flags & WF.ETMode)
 		events |= EPOLLET;
 	return epoll_event(events, epoll_data_t(watch));
-}
-
-class EpollEventChannel {
-	this(Selector loop) {
-		flags |= WF.Read;
-		handle = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	}
-
-	~this() {
-		close();
-	}
-
-	/+void call() {
-		ulong value = 1;
-		write(handle, &value, value.sizeof);
-	}+/
-
-	void onRead() {
-		ulong value = void;
-		read(handle, &value, value.sizeof);
-		_rBuf.data = value;
-		//super.onRead();
-	}
 }

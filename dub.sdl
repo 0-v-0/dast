@@ -100,6 +100,14 @@ subPackage {
 }
 
 subPackage {
+	name "usockets"
+	sourceFiles "dast/usockets.d" "libusockets.d"
+	libs "usockets"
+	importPaths "."
+	dflags "-preview=in" "-dip1008"
+}
+
+subPackage {
 	name "ws"
 	sourcePaths "dast/ws"
 	importPaths "."

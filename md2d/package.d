@@ -47,7 +47,7 @@ void parseMD(string src, ref Block block, MarkdownSettings settings = MarkdownSe
 	parseBlocks(block, lines, null, settings);
 }
 
-string md2d(bool noComment = true)(string src, MarkdownSettings settings = MarkdownSettings()) {
+string md2d(string src, MarkdownSettings settings = MarkdownSettings()) {
 	import md2d.parser : BT = BlockType;
 
 	Block root;
@@ -91,52 +91,51 @@ string md2d(bool noComment = true)(string src, MarkdownSettings settings = Markd
 			if (!t.canFind(' ')) {
 				if (header)
 					str ~= "}\n\n";
-				if (!cls)
-					header = t ~ " {\n";
-				else {
+				if (cls) {
 					char c = t[0];
 					if (c >= 'A' && c <= 'Z')
 						header = "/// " ~ t ~ "\n" ~ cls ~ " " ~ t ~ "\n{\n";
 					else if (cls.length == 4)
 						header = "/// " ~ t ~ "\n" ~ cls ~ "\n{\n";
-				}
+				} else
+					header = t ~ " {\n";
 			}
 		} else if (header) {
 			if (b.type == BT.Table) {
 				str ~= header;
-				int nrow = -1,
-				trow = -1,
-				vrow = -1,
-				crow1 = -1,
-				crow2 = -1;
+				int nRow = -1,
+				tRow = -1,
+				vRow = -1,
+				cRow1 = -1,
+				cRow2 = -1;
 				foreach (r; b.blocks)
 					if (r.type == BT.TableRow) {
 						string name, type, val, comment;
-						for (int i = 0; i < r.blocks.length; i++) {
+						for (int i; i < r.blocks.length; i++) {
 							auto c = r.blocks[i];
 							if (c.type == BT.TableHeader) {
 								string t = c.text[0];
 								if (t.startsWith("Field") || t.startsWith("字段"))
-									nrow = i;
+									nRow = i;
 								else if (t == "Type" || t.endsWith("类型"))
-									trow = i;
+									tRow = i;
 								else if (t == "Value" || t.endsWith("值") || t == "Index" || t == "序号")
-									vrow = i;
+									vRow = i;
 								else if (t == "Name" || t.endsWith("名称") || t.startsWith(
 										"中文"))
-									crow1 = i;
+									cRow1 = i;
 								else if (t == "Description" || t.endsWith("说明"))
-									crow2 = i;
+									cRow2 = i;
 							} else if (c.type == BT.TableData) {
-								if (i == nrow)
+								if (i == nRow)
 									name = c.text[0];
-								else if (i == trow)
+								else if (i == tRow)
 									type = c.text[0];
-								else if (i == vrow)
+								else if (i == vRow)
 									val = c.text[0];
 								else {
-									static if (!noComment)
-										if (i == crow1)
+									if (!settings.noComment)
+										if (i == cRow1)
 											comment = c.text[0].strip;
 								}
 							}
