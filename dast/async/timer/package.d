@@ -2,6 +2,15 @@ module dast.async.timer;
 
 public import dast.async.timer.common;
 
+version (OSX)
+    version = Kqueue;
+else version (iOS)
+    version = Kqueue;
+else version (TVOS)
+    version = Kqueue;
+else version (WatchOS)
+    version = Kqueue;
+
 version (linux)
 	public import dast.async.timer.epoll;
 else version (Kqueue)

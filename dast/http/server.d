@@ -79,7 +79,7 @@ protected:
 		return true;
 	}
 
-	const(ubyte)* p;
+	typeof(_rBuf.ptr) p;
 	char[] header;
 	bool _headerSent;
 }

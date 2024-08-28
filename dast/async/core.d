@@ -64,8 +64,12 @@ nothrow:
 
 protected:
 	@property final void socket(Socket s) {
-		version (Posix)
-			s.blocking = false;
+		version (Posix) {
+			try
+				s.blocking = false;
+			catch (Exception) {
+			}
+		}
 		_socket = s;
 		debug (Log)
 			trace("new socket fd: ", handle);

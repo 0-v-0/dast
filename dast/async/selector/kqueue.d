@@ -2,6 +2,15 @@ module dast.async.selector.kqueue;
 
 import dast.async.core;
 
+version (OSX)
+    version = Kqueue;
+else version (iOS)
+    version = Kqueue;
+else version (TVOS)
+    version = Kqueue;
+else version (WatchOS)
+    version = Kqueue;
+
 version (Kqueue)  : import core.time,
 core.stdc.string,
 core.stdc.errno,
@@ -122,7 +131,7 @@ class Kqueue : KqueueEventChannel {
 		kevent_t[64] events;
 		const len = kevent(_eventHandle, null, 0, events.ptr, events.length, &tspec);
 		if (len < 1)
-			continue;
+			return;
 		foreach (i; 0 .. len) {
 			auto watch = cast(SocketChannel)(events[i].udata);
 			if (events[i].flags & (EV_EOF | EV_ERROR)) {
@@ -151,8 +160,9 @@ class Kqueue : KqueueEventChannel {
 
 private immutable tspec = timespec(1, 1000 * 10);
 
-class KqueueEventChannel {
-	this() {
+class KqueueEventChannel : Channel {
+    this(Selector loop) {
+        super(loop);
 		flags |= WF.Read;
 		_pair = socketPair();
 		_pair[0].blocking = false;

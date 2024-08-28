@@ -67,7 +67,7 @@ private:
 	bool tryParse(ref Request req) @trusted
 		=> req.tryParse(p[0 .. _rBuf.ptr - p]);
 
-	const(ubyte)* p;
+	typeof(_rBuf.ptr) p;
 }
 
 class WebSocketServer : TcpListener {

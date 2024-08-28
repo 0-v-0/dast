@@ -1,5 +1,14 @@
 module dast.async.selector;
 
+version (OSX)
+    version = Kqueue;
+else version (iOS)
+    version = Kqueue;
+else version (TVOS)
+    version = Kqueue;
+else version (WatchOS)
+    version = Kqueue;
+
 version (linux)
 	public import dast.async.selector.epoll;
 

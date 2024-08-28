@@ -89,7 +89,7 @@ version (Posix) import core.stdc.errno;
 	/// safe for big data sending
 	void write(const void[] data) nothrow @trusted {
 		if (!_isConnected)
-			return errorOccurred("The connection has been closed");
+			return onError("The connection has been closed");
 		if (data.length) {
 			mutex.lock_nothrow();
 			scope (exit)
@@ -145,7 +145,7 @@ version (Posix) import core.stdc.errno;
 				// FIXME: Needing refactor or cleanup
 				// check more error status
 				if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK)
-					errorOccurred(text("Socket error on write: fd=", handle, ", message=", lastSocketError()));
+					onError(text("Socket error on write: fd=", handle, ", message=", lastSocketError()));
 			} else {
 				debug (Log)
 					warning("connection broken: ", _socket.remoteAddress);
@@ -239,11 +239,12 @@ protected:
 		scope (exit)
 			mutex.unlock_nothrow();
 		_writeQueue.clear();
-		_isWriting = false;
+		version (Windows)
+			_isWriting = false;
 	}
 
 	version (Posix) {
-		final flush() @trusted {
+		public final flush() nothrow @trusted {
 			size_t len;
 			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
 				const data = _writeQueue.front;
@@ -260,16 +261,25 @@ protected:
 					mutex.lock_nothrow();
 					scope (exit)
 						mutex.unlock_nothrow();
-					cond.notify();
+					try
+						cond.notify();
+					catch (Exception) {
+						assert(0);
+					}
 				}
 			}
 			return len;
 		}
 
 		/// Try to write a block of data.
-		final size_t tryWrite(in void[] data)
+		final size_t tryWrite(in void[] data) nothrow
 		in (data.length) {
-			const len = _socket.send(data);
+			size_t len = void;
+			try
+				len = _socket.send(data);
+			catch (Exception e) {
+				return 0;
+			}
 			debug (Log)
 				trace("actually sent bytes: ", len, " / ", data.length);
 
@@ -278,9 +288,13 @@ protected:
 
 			// FIXME: check more error status
 			const err = errno;
-			if (err != EINTR && err != EAGAIN && err != EWOULDBLOCK)
-				errorOccurred(text("Socket error on write: fd=", handle,
-						", errno=", err, ", message: ", lastSocketError()));
+			if (err != EINTR && err != EAGAIN && err != EWOULDBLOCK) {
+				try
+					onError(text("Socket error on write: fd=", handle,
+							", errno=", err, ", message: ", lastSocketError()));
+				catch (Exception) {
+				}
+			}
 			return 0;
 		}
 
