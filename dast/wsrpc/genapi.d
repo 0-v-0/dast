@@ -1,6 +1,5 @@
 module dast.wsrpc.genapi;
 import dast.util,
-dast.wsrpc,
 std.meta,
 std.traits;
 
@@ -13,11 +12,11 @@ struct summary { // @suppress(dscanner.style.phobos_naming_convention)
 	string content;
 }
 
-enum ignored(alias x) = hasUDA!(x, ignore);
+private enum shouldInclude(alias x) = !hasUDA!(x, ignore);
 private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
 enum isString(alias x) = is(typeof(x) : const(char)[]);
 
-alias AllActions(T...) = Filter!(templateNot!ignored, getActions!T);
+alias AllActions(T...) = Filter!(shouldInclude, getActions!T);
 
 template AllActionNames(T...) {
 	alias AllActionNames = AliasSeq!();
@@ -36,7 +35,7 @@ template ForModules(T...) {
 		foreach (f; AllActions!T) {
 			foreach (attr; getUDAs!(f, Action)) {
 				sink.put("/**\n");
-				getDoc!f(sink);
+				getDoc!(f, getType)(sink);
 				sink.put(" */\n");
 				static if (hasName!attr)
 					sink.put(attr.name);
@@ -127,7 +126,7 @@ unittest {
 	writeln(app[]);
 }
 
-void getDoc(alias f, R)(ref R sink) {
+void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 	alias loc = __traits(getLocation, f);
 	if (loc[1] > 1) {
 		sink.put(" *");
@@ -141,9 +140,11 @@ void getDoc(alias f, R)(ref R sink) {
 		alias PIT = ParameterIdentifierTuple!f;
 		alias set = Filter!(isString, __traits(getAttributes, f));
 		static foreach (i, T; P) {
-			static if (!is(T : WSRequest)) {
-				{
-					alias p = P[i .. i + 1];
+			{
+				alias p = P[i .. i + 1];
+				alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
+				enum typeName = a.length ? a[0].name : getType!p;
+				static if (typeName.length) {
 					sink.put(" * @param ");
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					sink.put(' ');
@@ -183,18 +184,16 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 	static if (is(typeof(f) P == __parameters)) {
 		alias PIT = ParameterIdentifierTuple!f;
 		static foreach (i, T; P) {
-			static if (!is(T : WSRequest)) {
-				{
-					alias p = P[i .. i + 1];
+			{
+				alias p = P[i .. i + 1];
+				alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
+				enum typeName = a.length ? a[0].name : getType!p;
+				static if (typeName.length) {
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					static if (!is(ParameterDefaults!f[i] == void))
 						sink.put('?');
 					sink.put(": ");
-					alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
-					static if (a.length)
-						sink.put(a[0].name);
-					else
-						sink.put(getType!p);
+					sink.put(typeName);
 					static if (i + 1 < P.length)
 						sink.put(", ");
 				}
@@ -204,7 +203,7 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 		static assert(0, f.stringof ~ " is not a function");
 }
 
-/// Get the type name of the given type.
+/// Get the type name of the given type, empty string if to omit.
 template TSTypeOf(T) {
 	static if (hasUDA!(T, type) && hasName!(getUDAs!(T, type)[0]))
 		enum TSTypeOf = getUDAs!(T, type)[0].name;
@@ -251,7 +250,8 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	return null;
 }
 
-version (unittest)  : @Action:
+version (unittest) :
+@Action:
 @ignore void foo(int a) {
 }
 
