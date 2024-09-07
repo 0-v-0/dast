@@ -1,14 +1,19 @@
-# wsrpc.genapi
+# dast.gen.tsapi
 
 TypeScript接口声明生成器
 
 ## Usage
 ```d
-import dast.wsrpc.genapi,
-std.array;
+import dast.gen.tsapi,
+std.array,
+std.stdio;
+
+alias m = ForModules!(modules);
+writeln([m.allActionNames!Action]);
 
 auto app = appender!string;
-ForModules!modules.genAPIDef(app);
+m.genAPIDef!Action(app);
+writeln(app[]);
 ```
 其中`modules`为模块的`AliasSeq`序列，为模块中所有`@Action`修饰的函数生成对应的ts声明，每个函数只能修饰一次`@Action`
 
@@ -33,7 +38,7 @@ ForModules!modules.genAPIDef(app);
  */
 func(a: number, b: number[], limit?: 自定义参数类型): 自定义返回类型
 ```
-`WSRequest`类型的参数会被忽略
+其中函数说明可以有多行，类型为空串的参数会被忽略
 
 目前函数说明只支持一行，其中函数说明所在行和函数所在行间隔不能超过1行，一般将返回值说明和自定义返回类型放在同一行，若返回值说明有多行，在代码中使用`\n`转义字符代替换行符
 可选参数后自动添加`?`

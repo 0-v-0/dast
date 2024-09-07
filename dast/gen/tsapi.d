@@ -1,4 +1,4 @@
-module dast.wsrpc.genapi;
+module dast.gen.tsapi;
 import dast.util,
 std.meta,
 std.traits;
@@ -12,35 +12,36 @@ struct summary { // @suppress(dscanner.style.phobos_naming_convention)
 	string content;
 }
 
-private enum shouldInclude(alias x) = !hasUDA!(x, ignore);
+private enum shouldInclude(alias x) = isCallable!x && !hasUDA!(x, ignore);
 private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
-enum isString(alias x) = is(typeof(x) : const(char)[]);
-
-alias AllActions(T...) = Filter!(shouldInclude, getActions!T);
-
-template AllActionNames(T...) {
-	alias AllActionNames = AliasSeq!();
-	static foreach (f; AllActions!T) {
-		static foreach (attr; getUDAs!(f, Action)) {
-			static if (hasName!attr)
-				AllActionNames = AliasSeq!(AllActionNames, attr.name);
-			else
-				AllActionNames = AliasSeq!(AllActionNames, __traits(identifier, f));
-		}
-	}
+private template getName(alias x, string defaultName = "") {
+	static if (hasName!x)
+		enum getName = x.name;
+	else
+		enum getName = defaultName;
 }
 
-template ForModules(T...) {
-	void genAPIDef(alias getType = TSTypeOf, R)(ref R sink) {
-		foreach (f; AllActions!T) {
+enum isString(alias x) = is(typeof(x) : const(char)[]);
+
+alias AllActions(alias attr, modules...) = Filter!(shouldInclude, getSymbols!(attr, modules));
+
+template ForModules(modules...) {
+	template allActionNames(alias attr) {
+		alias allActionNames = AliasSeq!();
+		static foreach (f; AllActions!(attr, modules)) {
+			static foreach (attr; getUDAs!(f, Action)) {
+				allActionNames = AliasSeq!(allActionNames, getName!(attr, __traits(identifier, f)));
+			}
+		}
+	}
+
+	void genAPIDef(alias attr, alias getType = TSTypeOf, R)(ref R sink) {
+		foreach (f; AllActions!(attr, modules)) {
 			foreach (attr; getUDAs!(f, Action)) {
 				sink.put("/**\n");
 				getDoc!(f, getType)(sink);
 				sink.put(" */\n");
-				static if (hasName!attr)
-					sink.put(attr.name);
-				else
-					sink.put(__traits(identifier, f));
+				sink.put(getName!(attr, __traits(identifier, f)));
 				sink.put('(');
 				getArgs!(f, getType)(sink);
 				sink.put("): ");
@@ -54,7 +55,7 @@ template ForModules(T...) {
 	}
 
 	void genTypeDef(alias getType = TSTypeOf, R)(ref R sink) {
-		foreach (t; T) {
+		foreach (t; modules) {
 			sink.put("export type ");
 			sink.put(__traits(identifier, t));
 			sink.put(" = {\n\t");
@@ -84,7 +85,7 @@ template ForModules(T...) {
 		import std.string,
 		std.conv : text;
 
-		foreach (m; T) {
+		foreach (m; modules) {
 			foreach (name; __traits(allMembers, m)) {
 				alias Enum = __traits(getMember, m, name);
 				static if (is(Enum == enum)) {
@@ -118,11 +119,11 @@ unittest {
 	import std.stdio;
 	import std.array;
 
-	alias mod = dast.wsrpc.genapi;
-	writeln([AllActionNames!mod]);
+	alias m = ForModules!(dast.gen.tsapi);
+	writeln([m.allActionNames!Action]);
 
 	auto app = appender!string;
-	ForModules!mod.genAPIDef(app);
+	m.genAPIDef!Action(app);
 	writeln(app[]);
 }
 
@@ -143,7 +144,11 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 			{
 				alias p = P[i .. i + 1];
 				alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
-				enum typeName = a.length ? a[0].name : getType!p;
+				static if (a.length) {
+					enum typeName = a[0].name;
+				} else {
+					enum typeName = getType!p;
+				}
 				static if (typeName.length) {
 					sink.put(" * @param ");
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
@@ -187,7 +192,11 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 			{
 				alias p = P[i .. i + 1];
 				alias a = getParamUDAs!(type, f, __traits(getAttributes, p));
-				enum typeName = a.length ? a[0].name : getType!p;
+				static if (a.length) {
+					enum typeName = a[0].name;
+				} else {
+					enum typeName = getType!p;
+				}
 				static if (typeName.length) {
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					static if (!is(ParameterDefaults!f[i] == void))
@@ -236,21 +245,30 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	--line;
 	--col;
 	uint i;
+	char[] result;
 	try {
 		foreach (l; File(filename).byLine) {
 			if ((i + 1 == line || i == line) && l.length >= col) {
 				l = l[col .. $].stripLeft;
-				if (l.startsWith("///"))
-					return l[3 .. $];
+				if (l.startsWith("///")) {
+					if (result.length)
+						result ~= "\n *";
+					result ~= l[3 .. $];
+				} else
+					result = null;
 			}
 			++i;
 		}
 	} catch (Exception) {
 	}
-	return null;
+	return result;
 }
 
-version (unittest) :
+version (unittest):
+struct Action {
+	string name;
+}
+
 @Action:
 @ignore void foo(int a) {
 }
@@ -263,5 +281,6 @@ uint[] search(string query, string order = "relevance", uint offset = 0, @"max r
 @"user info"@type("User") Object getUserInfo(@"uid"long id, @type("false") bool details = false) => null;
 
 uint count(@type("Uint32Array") uint[] ids) => 0;
-
+/// multiline
+/// comment
 uint countNums(uint[] arr, size_t start, size_t end) => 0;

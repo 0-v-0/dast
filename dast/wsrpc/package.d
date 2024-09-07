@@ -3,13 +3,8 @@ import dast.ws.server,
 lmpl4d,
 std.traits;
 public import dast.ws.server : PeerID, WSClient;
-
-version (APIDoc) {
-} else {
-	version = Server;
-	import core.thread,
-	lockfree.queue;
-}
+import core.thread,
+lockfree.queue;
 
 /// A WebSocket RPC request
 struct WSRequest {
@@ -58,16 +53,17 @@ template getActions(T...) {
 		getActions = AliasSeq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
 }
 
-version (Server)  : private alias
+private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 
-class WSRPCServer(uint pageCount, T...) : WebSocketServer {
+class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
 	public import dast.ws : Request;
 	import core.memory,
-	std.socket;
+	std.socket,
+	dast.util;
 
-	alias AllActions = getActions!T;
+	alias AllActions = Filter!(isCallable, getSymbols!(Action, modules));
 
 	static if (pageCount) {
 		LFQ queue = LFQ(SReq());

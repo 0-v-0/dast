@@ -47,6 +47,14 @@ subPackage {
 }
 
 subPackage {
+	name "gen"
+	sourcePaths "dast/gen"
+	importPaths "."
+	dependency "dast:util" path="."
+	dflags "-preview=in" "-dip1008"
+}
+
+subPackage {
 	name "http"
 	sourcePaths "dast/http"
 	importPaths "."
@@ -131,17 +139,9 @@ subPackage {
 	sourcePaths "dast/wsrpc"
 	dflags "-dip1008"
 	dependency "dast:ws" path="."
+	dependency "dast:util" path="."
 	dependency "lmpl4d" version="~>0.0.13"
-
-	configuration "server" {
-		dependency "tame:lockfree" version="*"
-	}
-
-	configuration "apidoc" {
-		excludedSourceFiles "dast/wsrpc/server.d"
-		dependency "dast:util" path="."
-		versions "APIDoc"
-	}
+	dependency "tame:lockfree" version="*"
 }
 dependency ":config" path="."
 dependency ":util" path="."
