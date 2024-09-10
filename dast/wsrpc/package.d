@@ -61,9 +61,9 @@ class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
 	public import dast.ws : Request;
 	import core.memory,
 	std.socket,
-	dast.util;
+	tame.meta;
 
-	alias AllActions = Filter!(isCallable, getSymbols!(Action, modules));
+	alias AllActions = Filter!(isCallable, getSymbolsWith!(Action, modules));
 
 	static if (pageCount) {
 		LFQ queue = LFQ(SReq());

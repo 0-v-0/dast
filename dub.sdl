@@ -11,6 +11,7 @@ buildType "debug" {
 }
 sourceFiles "dast/package.d"
 importPaths "."
+targetType "library"
 
 subPackage {
 	name "async"
@@ -50,7 +51,7 @@ subPackage {
 	name "gen"
 	sourcePaths "dast/gen"
 	importPaths "."
-	dependency "dast:util" path="."
+	dependency "tame" version="~>0.0.9"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -141,6 +142,7 @@ subPackage {
 	dependency "dast:ws" path="."
 	dependency "dast:util" path="."
 	dependency "lmpl4d" version="~>0.0.13"
+	dependency "tame" version="~>0.0.9"
 	dependency "tame:lockfree" version="*"
 }
 dependency ":config" path="."

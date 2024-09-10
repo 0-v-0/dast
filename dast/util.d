@@ -1,7 +1,5 @@
 module dast.util;
 
-import tame.meta;
-
 version (Have_database_util) {
 	public import database.util : as, ignore, snakeCase, camelCase, KeyName;
 } else {
@@ -119,77 +117,3 @@ version (Have_database_util) {
 
 	alias SQLName = KeyName;
 }
-
-private alias getAttrs(alias symbol, string name) =
-	__traits(getAttributes, __traits(getMember, symbol, name));
-
-template getSymbols(alias attr, symbols...) {
-	import std.meta;
-
-	template hasAttr(alias symbol, string name) {
-		static if (is(typeof(getAttrs!(symbol, name))))
-			static foreach (a; getAttrs!(symbol, name)) {
-				static if (is(typeof(hasAttr) == void)) {
-					static if (__traits(isSame, a, attr))
-						enum hasAttr = true;
-					else static if (__traits(isTemplate, attr)) {
-						static if (is(typeof(a) == attr!A, A...))
-							enum hasAttr = true;
-					} else {
-						static if (is(typeof(a) == attr))
-							enum hasAttr = true;
-					}
-				}
-			}
-		static if (is(typeof(hasAttr) == void))
-			enum hasAttr = false;
-	}
-
-	alias getSymbols = AliasSeq!();
-	static foreach (symbol; symbols) {
-		static foreach (name; __traits(derivedMembers, symbol))
-			static if (hasAttr!(symbol, name))
-				getSymbols = AliasSeq!(getSymbols, __traits(getMember, symbol, name));
-	}
-}
-
-enum isStruct(T) = is(T == struct);
-
-/// Get all structs with @as or @snakeCase
-template getTables(T...) {
-	import std.meta;
-
-	alias getTables = Filter!(isStruct, getSymbols!(as, T), getSymbols!(snakeCase, T));
-}
-
-size_t intToStr(char* buf, size_t value) pure @nogc nothrow @trusted {
-	char* p = buf;
-	for (;;) {
-		*p++ = value % 10 ^ '0';
-		if (value < 10)
-			break;
-		value /= 10;
-	}
-	for (char* i = buf, j = p - 1; i < j; i++, j--) {
-		char t = *i;
-		*i = *j;
-		*j = t;
-	}
-	return p - buf;
-}
-
-alias std = Import!"std";
-
-long getST() @trusted {
-	import std.datetime.systime;
-
-	static last_st = 0L;
-	long st = Clock.currStdTime;
-	return st <= last_st ? (last_st += 100) : (last_st = st);
-}
-
-unittest {
-	assert(getST() != getST());
-}
-
-auto toStr(inout(char)* ptr) => std.string.fromStringz(ptr).idup;

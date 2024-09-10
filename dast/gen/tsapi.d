@@ -1,7 +1,7 @@
 module dast.gen.tsapi;
-import dast.util,
-std.meta,
-std.traits;
+import std.meta,
+std.traits,
+tame.meta;
 
 struct type { // @suppress(dscanner.style.phobos_naming_convention)
 	string name;
@@ -23,7 +23,7 @@ private template getName(alias x, string defaultName = "") {
 
 enum isString(alias x) = is(typeof(x) : const(char)[]);
 
-alias AllActions(alias attr, modules...) = Filter!(shouldInclude, getSymbols!(attr, modules));
+alias AllActions(alias attr, modules...) = Filter!(shouldInclude, getSymbolsWith!(attr, modules));
 
 template ForModules(modules...) {
 	template allActionNames(alias attr) {
