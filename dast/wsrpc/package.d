@@ -127,12 +127,12 @@ class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
 			switch (action) {
 				static foreach (f; AllActions) {
 					static foreach (attr; getUDAs!(f, Action)) {
-						static if (__traits(compiles, (string s) { s = attr.name; })) {
-							//pragma(msg, attr.name);
-			case attr.name:
-						} else {
+						static if (is(attr)) {
 							//pragma(msg, __traits(identifier, f));
 			case __traits(identifier, f):
+						} else {
+							//pragma(msg, attr.name);
+			case attr.name:
 						}
 						callAction!f(req, unpacker);
 						break s;

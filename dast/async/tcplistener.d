@@ -56,7 +56,7 @@ private:
 		version (Posix) {
 			import core.sys.posix.sys.socket : accept;
 
-			const clientFd = accept(handle, null, null);
+			auto clientFd = accept(handle, null, null);
 			if (clientFd < 0)
 				return false;
 

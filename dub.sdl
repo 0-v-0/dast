@@ -18,7 +18,7 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 
 	configuration "full" {
 		versions "HaveTimer"
@@ -43,7 +43,7 @@ subPackage {
 	sourceFiles "dast/fcgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 	dflags "-preview=in"
 }
 
@@ -51,7 +51,7 @@ subPackage {
 	name "gen"
 	sourcePaths "dast/gen"
 	importPaths "."
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -61,7 +61,7 @@ subPackage {
 	importPaths "."
 	dependency "dast:async" path="."
 	dependency "httparsed" version="~>1.2.1"
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 	dflags "-dip1008" "-preview=in"
 }
 
@@ -87,7 +87,7 @@ subPackage {
 	sourceFiles "dast/ssr.d"
 	importPaths "."
 	dependency "simpletpl" path="simpletpl"
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 }
 subPackage "md2d"
 
@@ -96,7 +96,7 @@ subPackage {
 	sourceFiles "dast/util.d"
 	importPaths "."
 	dependency "database:util" version="*" optional=true
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 }
 
 subPackage {
@@ -104,7 +104,7 @@ subPackage {
 	sourceFiles "dast/uwsgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -123,7 +123,7 @@ subPackage {
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 
 	configuration "full" {
 		subConfiguration "dast:async" "full"
@@ -142,7 +142,7 @@ subPackage {
 	dependency "dast:ws" path="."
 	dependency "dast:util" path="."
 	dependency "lmpl4d" version="~>0.0.13"
-	dependency "tame" version="~>0.0.9"
+	dependency "tame" version="~>0.0.10"
 	dependency "tame:lockfree" version="*"
 }
 dependency ":config" path="."

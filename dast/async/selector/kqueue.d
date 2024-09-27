@@ -79,9 +79,7 @@ class Kqueue : KqueueEventChannel {
 				err = kevent(_eventHandle, &ev, 1, null, 0, null);
 			}
 		}
-		if (err < 0)
-			return false;
-		return true;
+		return err >= 0;
 	}
 
 	bool reregister(SocketChannel watcher)
