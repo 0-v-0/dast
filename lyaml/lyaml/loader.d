@@ -4,11 +4,10 @@ module lyaml.loader;
 import lyaml.node;
 import lyaml.util;
 import std.datetime;
-import std.range.primitives;
-import std.string;
-
 import tame.ascii;
-import std.format : format;
+import tame.string;
+import std.ascii : isWhite;
+import std.string : replace, toStringz;
 
 /// Base class for all exceptions thrown by D:YAML
 class YAMLException : Exception {
@@ -24,7 +23,6 @@ Node loadyml(string str) @safe => loadyml(str, 0, 0);
 
 Node loadyml(ref string str, int n, uint ln) @safe {
 	import std.array;
-	import std.ascii : isWhite;
 	import std.conv : text;
 
 	if (n > 63)
@@ -43,7 +41,7 @@ Node loadyml(ref string str, int n, uint ln) @safe {
 		}
 
 		{
-			int level = getTabLevel(line, ln, p);
+			const level = getTabLevel(line, ln, p);
 			node.mark_ = mark;
 			int d = level - n;
 			if (d < 0)
@@ -143,7 +141,7 @@ int getTabLevel(in char[] line, uint ln, ref uint p) @safe pure {
 	int i;
 	while (i < line.length && line[i] == ' ')
 		++i;
-	int level = i / p;
+	const level = i / p;
 	if (i % p)
 		throw new NodeException("Bad indentation", Mark(ln, i));
 	p = i;
@@ -152,7 +150,6 @@ int getTabLevel(in char[] line, uint ln, ref uint p) @safe pure {
 
 Node parseValue(ref string str, ref uint ln, ref uint col, uint level = 0) @safe {
 	import std.array;
-	import std.uni : isWhite;
 
 	dchar state = '\0';
 	uint lineBreaks, n;
@@ -267,13 +264,12 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 	import lyaml.util;
 	import std.array;
 	import std.conv : parse;
-	import std.uni : isWhite;
 
 	bool inEscape, trim;
 	auto app = appender!string;
 	for (; str.length; col++) {
-		auto c = str.front;
-		str.popFront();
+		auto c = str[0];
+		str = str[1 .. $];
 		if (c == '\n') {
 			col = 0;
 			ln++;
@@ -285,7 +281,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 			app ~= ' ';
 			continue;
 		}
-		if (!isWhite(c))
+		if (!c.isWhite)
 			trim = false;
 
 		if (!inEscape) {
@@ -305,11 +301,9 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 			inEscape = false;
 			continue;
 		}
-		import std.ascii : toLower;
 
-		ch = toLower(c);
-		if (ch != 'x' && ch != 'u')
-			throw new NodeException("Invalid escape '\\%s'".format(c), Mark(ln, col));
+		if (c != 'x' && c != 'u')
+			throw new NodeException("Invalid escape '\\"~ c~ "'", Mark(ln, col));
 
 		// Unicode char written in hexadecimal in an escape sequence
 		const hexLen = escapeHexLength(c);
@@ -318,7 +312,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 			import std.ascii : isHexDigit;
 
 			if (!hexDigit.isHexDigit)
-				throw new NodeException("Invalid escape '%s'".format(hex), Mark(ln, col));
+				throw new NodeException("Invalid escape '" ~ hex ~ "'", Mark(ln, col));
 		}
 		str = str[hexLen .. $];
 
@@ -382,19 +376,14 @@ ulong convert(T)(const(T[]) digits, uint radix = 10, size_t* ate = null) {
 }
 
 auto tryParse(in char[] str, out bool result) {
-
-	if (icompare(str, "true") == 0) {
+	if (str == "true") {
 		result = true;
 		return true;
 	}
-	if (icompare(str, "false") == 0)
-		return true;
-	return false;
+	return str == "false";
 }
 
 auto tryParse(scope const(char)[] value, out long result) {
-	import std.algorithm;
-
 	if (!value.length) {
 		result = 0;
 		return false;
@@ -421,16 +410,13 @@ auto tryParse(scope const(char)[] value, out long result) {
 		len = eaten;
 	} else if (value.canFind(':')) { // Sexagesimal
 		long val;
-		long base = 1;
-		foreach_reverse (digit; value.splitter(':')) {
-			val += cast(long)convert(digit, 10, &eaten) * base;
-			base *= 60;
+		foreach (digit; value.splitter(':')) {
+			val = val * 60 + cast(long)convert(digit, 10, &eaten);
 			len += eaten + 1;
 		}
 		result *= val;
 		--len;
-	}  //Decimal
-	else {
+	} else { //Decimal
 		result *= cast(long)convert(value, 10, &eaten);
 		len = eaten;
 	}
@@ -445,11 +431,13 @@ unittest {
 	test("0x_0A_74_AE", 685230L); // hexadecimal
 	test("0b1010_0111_0100_1010_1110", 685230L); // binary
 	test("190:20:30", 685230L); // sexagesimal
+	test("-1:3", -63L);
 	test("-0b1", -1L);
 }
 
 auto tryParse(in char[] str, out double result) @trusted {
 	import std.algorithm;
+	import core.stdc.stdio : sscanf;
 
 	auto value = str.replace("_", "");
 	if (value.length) {
@@ -457,13 +445,11 @@ auto tryParse(in char[] str, out double result) @trusted {
 		result = c != '-' ? 1.0 : -1.0;
 		if (c == '-' || c == '+')
 			value = value[1 .. $];
-		import core.stdc.stdio : sscanf;
 
 		double n = void;
-
-		if (icompare(value, ".inf") == 0) // Infinity
+		if (value == ".inf" || value == ".Inf" || value == ".INF") // Infinity
 			result *= double.infinity;
-		else if (icompare(value, ".nan") == 0) // NaN
+		else if (value == ".nan" || value == ".NaN" || value == ".NAN") // NaN
 			result = double.nan;
 		else if (value.indexOf(':') >= 0) { //Sexagesimal
 			double val = 0.0;

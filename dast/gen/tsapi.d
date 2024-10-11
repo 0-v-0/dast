@@ -14,7 +14,7 @@ struct summary { // @suppress(dscanner.style.phobos_naming_convention)
 
 private enum shouldInclude(alias x) = isCallable!x && !hasUDA!(x, ignore);
 private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
-private template getName(alias x, string defaultName = "") {
+template getName(alias x, string defaultName = "") {
 	static if (hasName!x)
 		enum getName = x.name;
 	else
@@ -26,18 +26,16 @@ enum isString(alias x) = is(typeof(x) : const(char)[]);
 alias AllActions(alias attr, modules...) = Filter!(shouldInclude, getSymbolsWith!(attr, modules));
 
 template ForModules(modules...) {
-	template allActionNames(alias attr) {
-		alias allActionNames = AliasSeq!();
+	template allActions(alias attr) {
+		alias allActions = AliasSeq!();
 		static foreach (f; AllActions!(attr, modules)) {
-			static foreach (attr; getUDAs!(f, Action)) {
-				allActionNames = AliasSeq!(allActionNames, getName!(attr, __traits(identifier, f)));
-			}
+			allActions = AliasSeq!(allActions, getUDAs!(f, attr));
 		}
 	}
 
 	void genAPIDef(alias attr, alias getType = TSTypeOf, R)(ref R sink) {
 		foreach (f; AllActions!(attr, modules)) {
-			foreach (attr; getUDAs!(f, Action)) {
+			foreach (attr; getUDAs!(f, attr)) {
 				sink.put("/**\n");
 				getDoc!(f, getType)(sink);
 				sink.put(" */\n");
@@ -120,7 +118,7 @@ unittest {
 	import std.array;
 
 	alias m = ForModules!(dast.gen.tsapi);
-	writeln([m.allActionNames!Action]);
+	pragma(msg, m.allActions!Action);
 
 	auto app = appender!string;
 	m.genAPIDef!Action(app);
