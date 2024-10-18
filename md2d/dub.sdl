@@ -5,7 +5,7 @@ copyright "Copyright © 2022, 0-v-0"
 license "MIT"
 sourcePaths "."
 importPaths ".."
-dependency "tame" version="~>0.0.9"
+dependency "tame" version="~>0.0.10"
 configuration "lib" {
 	targetType "library"
 	excludedSourceFiles "app.d"

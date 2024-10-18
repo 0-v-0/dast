@@ -51,6 +51,7 @@ subPackage {
 	name "gen"
 	sourcePaths "dast/gen"
 	importPaths "."
+	dependency "dast:util" path="."
 	dependency "tame" version="~>0.0.11"
 	dflags "-preview=in" "-dip1008"
 }

@@ -40,11 +40,11 @@ class Kqueue : KqueueEventChannel {
 		if (!_eventHandle)
 			return;
 		unregister(this);
-		close(_eventHandle);
+		.close(_eventHandle);
 		_eventHandle = 0;
 	}
 
-	bool register(SocketChannel watcher)
+	bool register(SocketChannel watcher) @trusted nothrow
 	in (watcher) {
 		int err = -1;
 		if (watcher.type != WT.Timer) {
@@ -88,7 +88,7 @@ class Kqueue : KqueueEventChannel {
 		return false;
 	}
 
-	bool unregister(SocketChannel watcher)
+	bool unregister(SocketChannel watcher) @trusted nothrow
 	in (watcher) {
 		const fd = watcher.handle;
 		if (fd < 0)
@@ -158,7 +158,7 @@ class Kqueue : KqueueEventChannel {
 
 private immutable tspec = timespec(1, 1000 * 10);
 
-class KqueueEventChannel : Channel {
+class KqueueEventChannel : SocketChannel {
     this(Selector loop) {
         super(loop);
 		flags |= WF.Read;
@@ -176,7 +176,7 @@ class KqueueEventChannel : Channel {
 		_pair[0].send("call");
 	}+/
 
-	void onRead() {
+	override void onRead() {
 		ubyte[128] data = void;
 		while (_pair[1].receive(data) > 0) {
 		}

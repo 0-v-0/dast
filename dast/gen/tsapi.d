@@ -1,5 +1,6 @@
 module dast.gen.tsapi;
-import std.meta,
+import dast.util,
+std.meta,
 std.traits,
 tame.meta;
 
