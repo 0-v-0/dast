@@ -1,7 +1,6 @@
 module dast.http.server;
 
 import dast.async,
-std.logger,
 std.socket;
 
 public import dast.async : EventLoop, EventExecutor;

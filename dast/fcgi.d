@@ -328,6 +328,7 @@ class FCGIServer {
 
 	alias Handler = void delegate(Request req, Response resp);
 	protected Handler handler;
+	void delegate(Exception e) onError;
 	bool running;
 	Socket listener;
 	Socket sock;
@@ -359,8 +360,6 @@ class FCGIServer {
 	}
 
 	void mainLoop() {
-		import std.logger;
-
 		scope req = new Request;
 		scope resp = new Response;
 
@@ -370,7 +369,7 @@ class FCGIServer {
 			try
 				handler(req, resp);
 			catch (Exception e) {
-				warning(e);
+				onError(e);
 				resp.writeHeader("Status: 500");
 				resp << e.toString;
 			}

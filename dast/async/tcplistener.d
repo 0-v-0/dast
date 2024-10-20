@@ -4,7 +4,6 @@ import dast.async.core,
 dast.async.eventloop,
 dast.async.selector,
 dast.async.tcpstream,
-std.logger,
 tame.meta;
 
 version (Windows) import dast.async.iocp;

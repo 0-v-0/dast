@@ -147,6 +147,7 @@ class Server {
 
 	alias Handler = void delegate(Request req, Response resp);
 	protected Handler handler;
+	void delegate(Exception e) onError;
 	bool running;
 	Socket listener;
 	Thread[] threads;
@@ -162,8 +163,6 @@ class Server {
 	}
 
 	void mainLoop() {
-		import std.logger;
-
 		scope req = new Request;
 		scope resp = new Response;
 
@@ -181,7 +180,8 @@ class Server {
 			try
 				handler(req, resp);
 			catch (Exception e) {
-				warning(e);
+				if (onError)
+					onError(e);
 				resp.writeHeader("HTTP/1.1 500 Internal Server Error");
 				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
 				resp << e.toString;

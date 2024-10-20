@@ -4,8 +4,9 @@ import dast.async,
 dast.http,
 dast.ws.frame,
 std.socket,
-std.logger,
 std.conv : text;
+
+debug (Log) import std.logger;
 
 public import dast.async : EventLoop, EventExecutor, Selector;
 
@@ -100,11 +101,6 @@ class WebSocketServer : TcpListener {
 			client.start();
 		};
 
-		info("Listening on ", settings.listen);
-		if (settings.maxConnections)
-			info("Maximum allowed connections: ", settings.maxConnections);
-		else
-			info("Maximum allowed connections: unlimited");
 		start();
 		(cast(EventLoop)_inLoop).run();
 	}
@@ -136,10 +132,6 @@ nothrow:
 	void remove(WSClient client)
 	in (client.id) {
 		onClose(client);
-		try
-			info("Closing connection #", client.id);
-		catch (Exception) {
-		}
 		if (client.isConnected)
 			client.close();
 		connections--;
@@ -246,10 +238,8 @@ private:
 			client.flush();
 			return;
 		case Op.PONG:
-			try
+			debug (Log)
 				trace("Received pong from ", client.id);
-			catch (Exception) {
-			}
 			return;
 		default:
 			return remove(client);
