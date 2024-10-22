@@ -256,7 +256,7 @@ public auto createNode(in char[] str) @trusted {
 }
 
 auto peekLine(in char[] s) {
-	auto i = s.indexOf('\n');
+	const i = s.indexOf('\n');
 	return i < 0 ? s : s[0 .. i + 1];
 }
 
@@ -268,7 +268,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 	bool inEscape, trim;
 	auto app = appender!string;
 	for (; str.length; col++) {
-		auto c = str[0];
+		const c = str[0];
 		str = str[1 .. $];
 		if (c == '\n') {
 			col = 0;
@@ -308,7 +308,7 @@ auto parseStr(ref string str, ref uint ln, ref uint col) {
 		// Unicode char written in hexadecimal in an escape sequence
 		const hexLen = escapeHexLength(c);
 		auto hex = str[0 .. hexLen];
-		foreach (dchar hexDigit; hex) {
+		foreach (hexDigit; hex) {
 			import std.ascii : isHexDigit;
 
 			if (!hexDigit.isHexDigit)
@@ -343,9 +343,9 @@ version (unittest) {
 	}
 }
 
-ulong convert(T)(const(T[]) digits, uint radix = 10, size_t* ate = null) {
+long convert(T)(const(T[]) digits, uint radix = 10, out size_t ate) {
 	size_t eaten;
-	ulong value;
+	long value;
 
 	foreach (char c; digits) {
 		if (c < '0' || c > '9') {
@@ -369,8 +369,7 @@ ulong convert(T)(const(T[]) digits, uint radix = 10, size_t* ate = null) {
 			break;
 	}
 
-	if (ate)
-		*ate = eaten;
+	ate = eaten;
 
 	return value;
 }
@@ -383,7 +382,7 @@ auto tryParse(in char[] str, out bool result) {
 	return str == "false";
 }
 
-auto tryParse(scope const(char)[] value, out long result) {
+auto tryParse(scope const(char)[] value, out long result) @trusted {
 	if (!value.length) {
 		result = 0;
 		return false;
@@ -398,33 +397,33 @@ auto tryParse(scope const(char)[] value, out long result) {
 		return false;
 	}
 
-	size_t len, eaten;
+	size_t len, eaten = void;
 	if (value.startsWith("0b")) { // Binary
-		result *= cast(long)convert(value[2 .. $], 2, &eaten);
+		result *= convert(value[2 .. $], 2, eaten);
 		len = eaten + 2;
 	} else if (value.startsWith("0x")) { // Hexadecimal
-		result *= cast(long)convert(value[2 .. $], 16, &eaten);
+		result *= convert(value[2 .. $], 16, eaten);
 		len = eaten + 2;
 	} else if (value[0] == '0') { // Octal or zero
-		result *= cast(long)convert(value, 8, &eaten);
+		result *= convert(value, 8, eaten);
 		len = eaten;
 	} else if (value.canFind(':')) { // Sexagesimal
 		long val;
 		foreach (digit; value.splitter(':')) {
-			val = val * 60 + cast(long)convert(digit, 10, &eaten);
+			val = val * 60 + convert(digit, 10, eaten);
 			len += eaten + 1;
 		}
 		result *= val;
 		--len;
 	} else { //Decimal
-		result *= cast(long)convert(value, 10, &eaten);
+		result *= convert(value, 10, eaten);
 		len = eaten;
 	}
 
 	return len == value.length;
 }
 
-unittest {
+@safe unittest {
 	test("685230", 685230L); // canonical
 	test("+685_230", 685230L); // decimal
 	test("02472256", 685230L); // octal
@@ -436,7 +435,6 @@ unittest {
 }
 
 auto tryParse(in char[] str, out double result) @trusted {
-	import std.algorithm;
 	import core.stdc.stdio : sscanf;
 
 	auto value = str.replace("_", "");
@@ -452,13 +450,11 @@ auto tryParse(in char[] str, out double result) @trusted {
 		else if (value == ".nan" || value == ".NaN" || value == ".NAN") // NaN
 			result = double.nan;
 		else if (value.indexOf(':') >= 0) { //Sexagesimal
-			double val = 0.0;
-			double base = 1.0;
-			foreach_reverse (digit; value.splitter(':')) {
+			double val = 0.;
+			foreach (digit; value.splitter(':')) {
 				if (sscanf(digit.toStringz, "%lf", &n) != 1)
 					goto err;
-				val += n * base;
-				base *= 60.0;
+				val = val * 60 + n;
 			}
 			result *= val;
 		} else { // Plain floating point

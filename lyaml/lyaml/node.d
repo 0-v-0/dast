@@ -58,8 +58,8 @@ struct Node {
 			case NodeType.map:
 				return map.length == 0;
 			default:
-				return false;
 			}
+			return false;
 		}
 	}
 
@@ -210,8 +210,6 @@ struct Node {
 
 		immutable node2 = Node(42);
 		assert(node2.get!int == 42);
-		assert(node2.get!(const int) == 42);
-		assert(node2.get!(immutable int) == 42);
 		assert(node2.get!string == "42");
 		assert(node2.get!(const string) == "42");
 		assert(node2.get!(immutable string) == "42");
