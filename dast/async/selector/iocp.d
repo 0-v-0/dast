@@ -60,9 +60,11 @@ alias Selector = Iocp;
 		uint n = void;
 		const ret = GetQueuedCompletionStatusEx(_eventHandle, entries.ptr, entries.length, &n, timeout, 0);
 		if (ret == 0) {
-			const err = GetLastError();
-			if (err != WAIT_TIMEOUT) // && err != ERROR_OPERATION_ABORTED
-				error("error occurred, code=", err);
+			debug (Log) {
+				const err = GetLastError();
+				if (err != WAIT_TIMEOUT) // && err != ERROR_OPERATION_ABORTED
+					error("error occurred, code=", err);
+			}
 			return;
 		}
 		foreach (i; 0 .. n) {

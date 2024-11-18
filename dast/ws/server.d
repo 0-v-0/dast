@@ -118,10 +118,11 @@ nothrow:
 			return false;
 
 		if (settings.maxConnections && connections >= settings.maxConnections) {
-			try
-				warning("Maximum number of connections ", settings.maxConnections, " reached");
-			catch (Exception) {}
-				client.close();
+			debug (Log)
+				try
+					warning("Maximum number of connections ", settings.maxConnections, " reached");
+				catch (Exception) {}
+			client.close();
 			return false;
 		}
 		connections++;
@@ -209,10 +210,7 @@ private:
 		} else {
 			Request req;
 			if (performHandshake(client, data, req)) {
-				try
-					info("Handshake with ", client.id, " done (path=", req.path, ")");
-				catch (Exception) {
-				}
+				debug (Log) info("Handshake with ", client.id, " done (path=", req.path, ")");
 				client.flush();
 				onOpen(client, req);
 			}

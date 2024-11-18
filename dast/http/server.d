@@ -121,7 +121,7 @@ class HTTPServer : TcpListener {
 					};
 					next();
 				} catch (Exception e) {
-					error(e);
+					debug(Log) error(e);
 					client.clear();
 					client.writeHeader("HTTP/1.1 " ~ Status.Error);
 					client.writeHeader("Content-Type: text/html; charset=UTF-8");

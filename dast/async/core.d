@@ -35,9 +35,11 @@ abstract class SocketChannel {
 			_inLoop = loop;
 			_type = type;
 			onError = (msg) {
-				try
-					error(msg);
-				catch (Exception) {
+				debug (Log) {
+					try
+						error(msg);
+					catch (Exception) {
+					}
 				}
 			};
 		}
@@ -102,8 +104,8 @@ enum WatchFlag {
 }
 
 package:
-import std.logger,
-std.socket,
+debug (Log) import std.logger;
+import std.socket,
 std.conv : text;
 
 alias WT = WatcherType,

@@ -61,7 +61,9 @@ version (Posix) import core.stdc.errno;
 			start();
 			_isConnected = true;
 		} catch (Exception e)
-			error(e);
+			debug (Log) {
+				error(e);
+			}
 
 		if (onConnected)
 			onConnected(_isConnected);

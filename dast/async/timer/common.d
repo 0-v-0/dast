@@ -9,12 +9,10 @@ enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
 alias TimeoutHandler = void delegate(Object sender);
 
-nothrow:
-
 /++
 	Timing Wheel manger Class
 +/
-class TimingWheel {
+nothrow class TimingWheel {
 	/++
 		constructor
 		Params:
@@ -104,7 +102,7 @@ private:
 /++
 	The timer parent's class
 +/
-abstract class WheelTimer {
+nothrow abstract class WheelTimer {
 	~this() {
 		stop();
 	}
@@ -212,6 +210,8 @@ unittest {
 		wheel.prevWheel();
 	}
 }
+
+nothrow:
 
 struct CustomTimer {
 	void initialize() {
