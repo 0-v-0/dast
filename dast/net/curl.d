@@ -1,7 +1,6 @@
 module dast.net.curl;
 
-import std.stdio,
-dast.net.curlapi : C = Curl, CurlInf, curl = curlAPI;
+import dast.net.curlapi : C = Curl, CurlInf, curl = curlAPI;
 public import etc.c.curl : CurlError, CurlOption, CurlProto, CURL, CURLcode;
 
 struct Curl {
@@ -90,7 +89,7 @@ private:
 	int msgLeft;
 }
 
-version (unittest) void testFunc(alias f)(in char[] src, string expected) {
+version (unittest) private void testFunc(alias f)(in char[] src, string expected) {
 	char[256] buf = void;
 	assert(f(src, buf) == expected.length);
 	assert(buf[0 .. expected.length] == expected);

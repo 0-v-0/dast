@@ -1,5 +1,6 @@
 module dast.net.curlapi;
 
+import dast.net.dlfcn;
 import etc.c.curl : CurlGlobal;
 
 /++
@@ -48,7 +49,7 @@ enum CurlInf : CurlInfo {
 }
 
 struct CurlAPI {
-	import etc.c.curl : curl_version_info, curl_version_info_data,
+	import etc.c.curl : curl_version_info_data,
 		CURL, CURLcode, CURLINFO, CURLoption, CURLversion, curl_slist;
 
 extern (C) nothrow @nogc:
@@ -97,67 +98,40 @@ private __gshared {
 version (LibcurlPath) {
 	import std.string : strip;
 
-	static immutable names = [strip(import("LibcurlPathFile"))];
+	private immutable names = [strip(import("LibcurlPathFile"))];
 } else version (OSX)
-	static immutable names = ["libcurl.4.dylib"];
+	private immutable names = ["libcurl.4.dylib"];
 else version (Posix) {
-	static immutable names = [
+	private immutable names = [
 		"libcurl.so", "libcurl.so.4",
 		"libcurl-gnutls.so.4", "libcurl-nss.so.4", "libcurl.so.3"
 	];
 } else version (Windows)
-	static immutable names = ["libcurl.dll", "curl.dll"];
+	private immutable names = ["libcurl.dll", "curl.dll"];
 
 void* loadAPI() {
+	import core.stdc.stdlib : atexit;
 	import std.exception : enforce;
+	import std.format : format;
 
-	void* handle = void;
-	version (Posix) {
-		import core.sys.posix.dlfcn : dlsym, dlopen, dlclose, RTLD_LAZY;
-
-		alias loadSym = dlsym;
-		handle = dlopen(null, RTLD_LAZY);
-	} else version (Windows) {
-		import core.sys.windows.winbase : GetProcAddress, GetModuleHandleA,
-			LoadLibraryA;
-
-		alias loadSym = GetProcAddress;
-		handle = GetModuleHandleA(null);
-	} else
-		static assert(0, "unimplemented");
-
-	assert(handle);
-
-	// try to load curl from the executable to allow static linking
-	if (loadSym(handle, "curl_global_init") is null) {
-		import std.format : format;
-
-		version (Posix)
-			dlclose(handle);
-
-		foreach (name; names) {
-			version (Posix)
-				handle = dlopen(name.ptr, RTLD_LAZY);
-			else version (Windows)
-				handle = LoadLibraryA(name.ptr);
-			if (handle !is null)
-				break;
-		}
-
-		enforce!CurlException(handle !is null, "Failed to load curl, tried %(%s, %).".format(names));
+	void* handle;
+	foreach (name; names) {
+		handle = dlopen(name.ptr, RTLD_LAZY);
+		if (handle !is null)
+			break;
 	}
+
+	enforce!CurlException(handle !is null, "Failed to load curl, tried %(%s, %).".format(names));
 
 	foreach (i, ref f; _api.tupleof) {
 		enum name = __traits(identifier, _api.tupleof[i]);
-		auto p = enforce!CurlException(loadSym(handle, "curl_" ~ name),
+		auto p = enforce!CurlException(dlsym(handle, "curl_" ~ name),
 			"Couldn't load curl_" ~ name ~ " from libcurl.");
 		f = cast(typeof(f))p;
 	}
 
 	enforce!CurlException(!_api.global_init(CurlGlobal.all),
 		"Failed to initialize libcurl");
-
-	import core.stdc.stdlib : atexit;
 
 	atexit(&cleanup);
 
@@ -168,16 +142,8 @@ extern (C) void cleanup() {
 	if (_handle is null)
 		return;
 	_api.global_cleanup();
-	version (Posix) {
-		import core.sys.posix.dlfcn : dlclose;
 
-		dlclose(_handle);
-	} else version (Windows) {
-		import core.sys.windows.winbase : FreeLibrary;
-
-		FreeLibrary(_handle);
-	} else
-		static assert(0, "unimplemented");
+	dlclose(_handle);
 	_api = CurlAPI.init;
 	_handle = null;
 }
@@ -431,7 +397,7 @@ struct Curl {
 			return callback(id);
 		};
 		set(CurlOption.file, &this);
-		set(CurlOption.writefunction, &_receiveCallback);
+		set(CurlOption.writefunction, &_receive);
 	}
 
 	/**
@@ -461,8 +427,7 @@ struct Curl {
 			callback(od);
 		};
 		set(CurlOption.writeheader, &this);
-		set(CurlOption.headerfunction,
-			&_receiveHeaderCallback);
+		set(CurlOption.headerfunction, &_receiveHeader);
 	}
 
 	/**
@@ -505,7 +470,7 @@ struct Curl {
 			return callback(od);
 		};
 		set(CurlOption.infile, &this);
-		set(CurlOption.readfunction, &_sendCallback);
+		set(CurlOption.readfunction, &_send);
 	}
 
 	/**
@@ -539,7 +504,7 @@ struct Curl {
 			return callback(ofs, sp);
 		};
 		set(CurlOption.seekdata, &this);
-		set(CurlOption.seekfunction, &_seekCallback);
+		set(CurlOption.seekfunction, &_seek);
 	}
 
 	/**
@@ -573,7 +538,7 @@ struct Curl {
 			return callback(sock, st);
 		};
 		set(CurlOption.sockoptdata, &this);
-		set(CurlOption.sockoptfunction, &_socketOptionCallback);
+		set(CurlOption.sockoptfunction, &_socketOption);
 	}
 
 	/**
@@ -614,7 +579,7 @@ struct Curl {
 		};
 		set(CurlOption.noprogress, 0);
 		set(CurlOption.progressdata, &this);
-		set(CurlOption.progressfunction, &_progressCallback);
+		set(CurlOption.progressfunction, &_progress);
 	}
 
 private:
@@ -647,7 +612,7 @@ import etc.c.curl;
 
 private extern (C):
 // Internal C callbacks to register with libcurl
-size_t _receiveCallback(const char* str,
+size_t _receive(const char* str,
 	size_t size, size_t nmemb, void* ptr) {
 	auto b = cast(Curl*)ptr;
 	if (b._onReceive != null)
@@ -655,19 +620,19 @@ size_t _receiveCallback(const char* str,
 	return size * nmemb;
 }
 
-size_t _receiveHeaderCallback(const char* str,
+size_t _receiveHeader(const char* str,
 	size_t size, size_t nmemb, void* ptr) {
 	import std.string : chomp;
 
 	auto b = cast(Curl*)ptr;
-	auto s = str[0 .. size * nmemb].chomp();
+	const s = str[0 .. size * nmemb].chomp();
 	if (b._onReceiveHeader != null)
 		b._onReceiveHeader(s);
 
 	return size * nmemb;
 }
 
-size_t _sendCallback(char* str, size_t size, size_t nmemb, void* ptr) {
+size_t _send(char* str, size_t size, size_t nmemb, void* ptr) {
 	Curl* b = cast(Curl*)ptr;
 	auto a = cast(void[])str[0 .. size * nmemb];
 	if (b._onSend == null)
@@ -675,7 +640,7 @@ size_t _sendCallback(char* str, size_t size, size_t nmemb, void* ptr) {
 	return b._onSend(a);
 }
 
-int _seekCallback(void* ptr, curl_off_t offset, int origin) {
+int _seek(void* ptr, curl_off_t offset, int origin) {
 	auto b = cast(Curl*)ptr;
 	if (b._onSeek == null)
 		return CurlSeek.cantseek;
@@ -685,7 +650,7 @@ int _seekCallback(void* ptr, curl_off_t offset, int origin) {
 	return b._onSeek(cast(long)offset, cast(CurlSeekPos)origin);
 }
 
-int _socketOptionCallback(void* ptr,
+int _socketOption(void* ptr,
 	curl_socket_t curlfd, curlsocktype purpose) {
 	auto b = cast(Curl*)ptr;
 	if (b._onSocketOption == null)
@@ -695,7 +660,7 @@ int _socketOptionCallback(void* ptr,
 	return b._onSocketOption(curlfd, cast(CurlSockType)purpose);
 }
 
-int _progressCallback(void* ptr,
+int _progress(void* ptr,
 	double dltotal, double dlnow,
 	double ultotal, double ulnow) {
 	auto b = cast(Curl*)ptr;

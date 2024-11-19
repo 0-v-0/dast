@@ -98,6 +98,7 @@ enum WatchFlag {
 	None,
 	Read,
 	Write,
+	ReadWrite = Read | Write,
 
 	OneShot = 8,
 	ETMode = 16

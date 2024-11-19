@@ -382,7 +382,7 @@ class FCGIServer {
 			return;
 
 		listener = new TcpSocket;
-		listener.bind(new InternetAddress("127.0.0.1", port));
+		listener.bind(new InternetAddress(INADDR_LOOPBACK, port));
 		listener.listen(128);
 		running = true;
 		mainTid = thisTid;

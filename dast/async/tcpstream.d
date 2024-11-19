@@ -36,7 +36,7 @@ version (Posix) import core.stdc.errno;
 	// server side
 	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) nothrow @trusted {
 		super(loop, WT.TCP);
-		flags |= WF.Read | WF.Write | WF.ETMode;
+		flags |= WF.ReadWrite | WF.ETMode;
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
 		_rBuf = BUF(bufferSize);

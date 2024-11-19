@@ -191,9 +191,8 @@ class Server {
 	}
 
 	void start(ushort port = 3031, uint maxThread = 1) {
-
 		listener = new TcpSocket;
-		listener.bind(new InternetAddress("127.0.0.1", port));
+		listener.bind(new InternetAddress(INADDR_LOOPBACK, port));
 		listener.listen(128);
 
 		running = true;

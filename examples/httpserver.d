@@ -16,7 +16,7 @@ void main() {
 	scope listener = new TcpListener(loop);
 
 	listener.reusePort = true;
-	listener.bind(new InternetAddress("127.0.0.1", port));
+	listener.bind(new InternetAddress(INADDR_LOOPBACK, port));
 	listener.listen(128);
 	enum writeData = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n" ~
 		"Content-Type: text/plain\r\n\r\nHello, World!";

@@ -61,7 +61,7 @@ class Kqueue : KqueueEventChannel {
 			}
 			EV_SET(&ev[0], fd, EVFILT_READ, read, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, write, 0, 0, cast(void*)watcher);
-			if ((flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+			if ((flags & WF.ReadWrite) == WF.ReadWrite)
 				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
 			else if (flags & WF.Read)
 				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
@@ -100,7 +100,7 @@ class Kqueue : KqueueEventChannel {
 			EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)watcher);
 			EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*)watcher);
 			const flags = watcher.flags;
-			if ((flags & (WF.Read | WF.Write)) == (WF.Read | WF.Write))
+			if ((flags & WF.ReadWrite) == WF.ReadWrite)
 				err = kevent(_eventHandle, &ev[0], 2, null, 0, null);
 			else if (flags & WF.Read)
 				err = kevent(_eventHandle, &ev[0], 1, null, 0, null);
