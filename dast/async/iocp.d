@@ -40,7 +40,7 @@ package alias LPWSAPROTOCOL_INFO = void*;
 
 immutable {
 	LPFN_ACCEPTEX AcceptEx;
-	LPFN_CONNECTEX ConnectEx;
+	extern(Windows) BOOL function(SOCKET, const sockaddr*, int, PVOID, DWORD, LPDWORD, LPOVERLAPPED) nothrow ConnectEx;
 	/*
 	LPFN_DISCONNECTEX DisconnectEx;
 	LPFN_GETACCEPTEXSOCKADDRS GetAcceptexSockAddrs;
@@ -63,10 +63,10 @@ shared static this() {
 	sock.getFuncPointer!WSARecvMsg(WSAID_WSARECVMSG); */
 }
 
-package void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
+private void getFuncPointer(alias pfn)(SOCKET sock, GUID guid) {
 	import std.exception;
 
-	DWORD bytesReturned;
+	DWORD bytesReturned = void;
 	if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, guid.sizeof,
 			cast(void*)&pfn, pfn.sizeof, &bytesReturned, null, null) == SOCKET_ERROR)
 		throw new ErrnoException("Get function failed", WSAGetLastError());

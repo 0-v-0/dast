@@ -18,8 +18,8 @@ abstract class SocketChannel {
 	ErrorHandler onError;
 
 	package WF flags;
-	pure nothrow {
-		@property @nogc {
+	pure nothrow @nogc {
+		@property {
 			final handle() const => _socket.handle;
 
 			final type() const => _type;
@@ -106,7 +106,7 @@ enum WatchFlag {
 
 package:
 debug (Log) import std.logger;
-import std.socket,
+import dast.async.net.socket,
 std.conv : text;
 
 alias WT = WatcherType,

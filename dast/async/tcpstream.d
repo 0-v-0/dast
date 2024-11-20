@@ -3,7 +3,7 @@ module dast.async.tcpstream;
 import core.sync,
 dast.async.core,
 dast.async.selector,
-std.exception,
+tame.buffer,
 tame.meta;
 
 version (Windows) import dast.async.iocp;
@@ -17,20 +17,17 @@ version (Posix) import core.stdc.errno;
 	ConnectionHandler onConnected;
 	SimpleHandler onClosed;
 	/**
-	* Warning: The received data is stored a inner buffer. For a data safe,
+	* Warning: The received data is stored a inner buffer.
 	* you would make a copy of it.
 	*/
 	RecvHandler onReceived;
 	SimpleHandler onDisconnected;
-	DataSentHandler onSent;
-	protected Mutex mutex;
-	protected Condition cond;
 
 	@property final bufferSize() const => _rBuf.length;
 
 	// client side
 	this(Selector loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
-		this(loop, new TcpSocket(family), bufferSize);
+		this(loop, tcpSocket(family), bufferSize);
 	}
 
 	// server side
@@ -41,21 +38,16 @@ version (Posix) import core.stdc.errno;
 			trace("Buffer size for read: ", bufferSize);
 		_rBuf = BUF(bufferSize);
 		this.socket = socket;
-		try {
-			_isConnected = socket.isAlive;
-		} catch (Exception) {
-		}
-		mutex = new Mutex(this);
-		cond = new Condition(mutex);
+		_isConnected = socket.isAlive;
 	}
 
-	void connect(Address addr) @trusted {
+	void connect(in Address addr) @trusted {
 		if (_isConnected)
 			return;
 
 		try {
-			scope Address a = _socket.addressFamily == AddressFamily.INET6 ?
-				new Internet6Address(0) : new InternetAddress(0);
+			const a = _socket.addressFamily == AddressFamily.INET6 ?
+				Inet6Address(0) : InetAddress(0);
 			_socket.bind(a);
 			doConnect(addr);
 			start();
@@ -69,11 +61,11 @@ version (Posix) import core.stdc.errno;
 			onConnected(_isConnected);
 	}
 
-	void reconnect(Address addr) {
+	void reconnect(in Address addr) {
 		if (_isConnected)
 			close();
 		_isConnected = false;
-		socket = new TcpSocket(_socket ? _socket.addressFamily : AddressFamily.INET);
+		socket = tcpSocket(_socket.addressFamily ? _socket.addressFamily : AddressFamily.INET);
 		connect(addr);
 	}
 
@@ -93,22 +85,13 @@ version (Posix) import core.stdc.errno;
 		if (!_isConnected)
 			return onError("The connection has been closed");
 		if (data.length) {
-			mutex.lock_nothrow();
-			scope (exit)
-				mutex.unlock_nothrow();
-			if (_writeQueue.full)
-				try {
-					flush();
-					cond.wait();
-				} catch (Exception) {
-				}
-			_writeQueue.push(data);
-			try {
-				cond.notify();
-			} catch (Exception) {
+			//auto buf = new WSABUF;
+			//*cast(const(void)[]*)buf = data;
+			_iocpWrite.operation = IocpOperation.write;
+			if (checkErro(WSASend(handle, cast(WSABUF*)&data, 1, null, 0,
+					&_iocpWrite.overlapped, null), "write")) {
+				close();
 			}
-			if (_writeQueue.length >= _writeQueue.capacity / 2)
-				flush();
 		}
 	}
 
@@ -118,7 +101,6 @@ version (Posix) import core.stdc.errno;
 				warning("Some data has not been sent yet");
 		}
 
-		clearQueue();
 		super.close();
 		_isConnected = false;
 		_socket.shutdown(SocketShutdown.BOTH);
@@ -161,34 +143,6 @@ version (Posix) import core.stdc.errno;
 	version (Windows) {
 		/// Called by selector after data sent
 		final onWrite(uint len) @trusted {
-			if (isWriteCancelling) {
-				clearQueue();
-				isWriteCancelling = false;
-				return;
-			}
-			mutex.lock_nothrow();
-			if (_writeQueue.empty) {
-				_isWriting = false;
-				cond.wait();
-			}
-			auto data = &_writeQueue.front();
-			*data = (*data)[len .. $];
-			if (!(*data).length) {
-				const sent = _writeQueue.pop();
-				_isWriting = false;
-				cond.notify();
-				mutex.unlock_nothrow();
-				if (onSent)
-					onSent(sent);
-				debug (Log)
-					info("written ", len, " bytes");
-
-				if (!_writeQueue.empty)
-					flush();
-				return;
-			}
-			mutex.unlock_nothrow();
-			assert(0);
 		}
 
 		void onRead(uint len) {
@@ -209,21 +163,6 @@ version (Posix) import core.stdc.errno;
 		}
 
 		final flush() @trusted {
-			if (_isWriting || _writeQueue.empty) {
-				debug (Log)
-					if (_isWriting)
-						warning("Busy in writing on thread: ");
-				return;
-			}
-			_isWriting = true;
-			const data = _writeQueue.front;
-			assert(data.length);
-			_wBuf = data;
-			_iocpWrite.operation = IocpOperation.write;
-			if (checkErro(WSASend(handle, cast(WSABUF*)&_wBuf, 1, null, 0,
-					&_iocpWrite.overlapped, null), "write")) {
-				close();
-			}
 		}
 	}
 
@@ -233,19 +172,19 @@ version (Posix) import core.stdc.errno;
 			onDisconnected();
 	}
 
-	bool isWriteCancelling;
-
 protected:
 	final clearQueue() {
-		mutex.lock_nothrow();
-		scope (exit)
-			mutex.unlock_nothrow();
-		_writeQueue.clear();
-		version (Windows)
-			_isWriting = false;
+		//mutex.lock_nothrow();
+		//scope (exit)
+		//mutex.unlock_nothrow();
+		//_writeQueue.clear();
+		//version (Windows)
+		//_isWriting = false;
 	}
 
 	version (Posix) {
+		bool isWriteCancelling;
+
 		public final flush() nothrow @trusted {
 			size_t len;
 			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
@@ -276,12 +215,7 @@ protected:
 		/// Try to write a block of data.
 		final size_t tryWrite(in void[] data) nothrow
 		in (data.length) {
-			size_t len = void;
-			try
-				len = _socket.send(data);
-			catch (Exception e) {
-				return 0;
-			}
+			auto len = _socket.send(data);
 			debug (Log)
 				trace("actually sent bytes: ", len, " / ", data.length);
 
@@ -291,16 +225,13 @@ protected:
 			// FIXME: check more error status
 			const err = errno;
 			if (err != EINTR && err != EAGAIN && err != EWOULDBLOCK) {
-				try
-					onError(text("Socket error on write: fd=", handle,
-							", errno=", err, ", message: ", lastSocketError()));
-				catch (Exception) {
-				}
+				onError(text("Socket error on write: fd=", handle,
+						", errno=", err, ", message: ", lastSocketError()));
 			}
 			return 0;
 		}
 
-		private void doConnect(Address addr) {
+		private void doConnect(in Address addr) {
 			_socket.connect(addr);
 		}
 
@@ -309,7 +240,7 @@ protected:
 
 	bool _isConnected;
 
-	WriteQueue _writeQueue;
+	//WriteQueue _writeQueue;
 version (Windows) :
 nothrow:
 	const(ubyte)[] _rBuf;
@@ -324,17 +255,12 @@ private:
 				&_iocpRead.overlapped, null), "recv");
 	}
 
-	void doConnect(Address addr) @trusted {
+	void doConnect(in Address addr) @trusted {
 		_iocpWrite.operation = IocpOperation.connect;
-		try
-			checkErro(ConnectEx(handle, addr.name(), addr.nameLen(), null, 0, null,
-					&_iocpWrite.overlapped), "connect");
-		catch (Exception)
-			assert(0);
+		checkErro(ConnectEx(handle, addr.name, addr.nameLen, null, 0, null,
+				&_iocpWrite.overlapped), "connect");
 	}
 
 	mixin checkErro;
 	IocpContext _iocpRead = {operation: IocpOperation.read}, _iocpWrite;
-	const(void)[] _wBuf;
-	bool _isWriting;
 }

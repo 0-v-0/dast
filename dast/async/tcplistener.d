@@ -18,7 +18,7 @@ version (Windows) import dast.async.iocp;
 	this(Selector loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, WT.Accept);
 		flags |= WF.Read;
-		socket = new TcpSocket(family);
+		socket = tcpSocket(family);
 	}
 
 	override void close() {
@@ -83,7 +83,7 @@ private:
 	}
 
 	version (Windows)  : bool accept() @trusted {
-		_clientSock = new TcpSocket(_socket.addressFamily);
+		_clientSock = tcpSocket(_socket.addressFamily);
 		//_clientSock = new Socket(WSASocket(_socket.addressFamily, SocketType.STREAM,
 		//ProtocolType.TCP, null, 0, WSA_FLAG_OVERLAPPED), _socket.addressFamily);
 		uint dwBytesReceived = void;
