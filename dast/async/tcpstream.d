@@ -178,8 +178,6 @@ protected:
 		//scope (exit)
 		//mutex.unlock_nothrow();
 		//_writeQueue.clear();
-		//version (Windows)
-		//_isWriting = false;
 	}
 
 	version (Posix) {
@@ -215,7 +213,7 @@ protected:
 		/// Try to write a block of data.
 		final size_t tryWrite(in void[] data) nothrow
 		in (data.length) {
-			auto len = _socket.send(data);
+			const len = _socket.send(data);
 			debug (Log)
 				trace("actually sent bytes: ", len, " / ", data.length);
 
