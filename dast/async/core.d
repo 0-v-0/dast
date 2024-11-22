@@ -2,22 +2,20 @@ module dast.async.core;
 
 import dast.async.queue,
 std.array;
-public import dast.async.selector : Selector;
+public import dast.async.eventloop : EventLoop;
 
 @safe:
 alias SimpleHandler = void delegate() nothrow,
 ErrorHandler = void delegate(in char[] msg) nothrow,
-TickedHandler = void delegate(Object sender),
 RecvHandler = void delegate(in ubyte[] data),
-AcceptHandler = void delegate(
-	Socket socket),
-ConnectionHandler = void delegate(bool success),
 DataSentHandler = void delegate(in void[] data) nothrow;
 
 abstract class SocketChannel {
 	ErrorHandler onError;
 
 	package WF flags;
+	private WatcherType _type;
+	protected bool _isRegistered;
 	pure nothrow @nogc {
 		@property {
 			final handle() const => _socket.handle;
@@ -31,8 +29,8 @@ abstract class SocketChannel {
 			final bool isRegistered() const => _isRegistered;
 		}
 
-		this(Selector loop, WatcherType type = WT.Event) {
-			_inLoop = loop;
+		this(EventLoop loop, WatcherType type = WT.Event) {
+			_loop = loop;
 			_type = type;
 			onError = (msg) {
 				debug (Log) {
@@ -45,8 +43,6 @@ abstract class SocketChannel {
 		}
 	}
 
-	void start();
-
 	void onRead() {
 		assert(0, "unimplemented");
 	}
@@ -56,10 +52,8 @@ nothrow:
 		if (!_isRegistered)
 			assert(0, text("The watcher(fd=", handle, ") has already been closed"));
 		_isRegistered = false;
-		version (Windows) {
-		} else
-			_inLoop.unregister(this);
-		//  _inLoop = null;
+		_loop.unregister(this);
+		_loop = EventLoop.init;
 		debug (Log)
 			trace("channel closed...", handle);
 	}
@@ -67,20 +61,15 @@ nothrow:
 protected:
 	@property final void socket(Socket s) {
 		version (Posix) {
-			try
-				s.blocking = false;
-			catch (Exception) {
-			}
+			s.blocking = false;
 		}
 		_socket = s;
 		debug (Log)
 			trace("new socket fd: ", handle);
 	}
 
-	Selector _inLoop;
+	EventLoop _loop;
 	Socket _socket;
-	private WatcherType _type;
-	bool _isRegistered;
 }
 
 alias WriteQueue = Queue!(const(void)[], 32, true);
@@ -94,14 +83,15 @@ enum WatcherType : ubyte {
 	Event,
 }
 
-enum WatchFlag {
+enum WatchFlag : uint {
 	None,
-	Read,
-	Write,
+	Read = 0x001,
+	Write = 0x004,
 	ReadWrite = Read | Write,
 
-	OneShot = 8,
-	ETMode = 16
+	OneShot = 0x0010,
+	ETMode = 0x0020,
+	OneShotET = OneShot | ETMode,
 }
 
 package:

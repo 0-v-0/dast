@@ -10,6 +10,8 @@ version (Windows) import dast.async.iocp;
 
 version (Posix) import core.stdc.errno;
 
+alias ConnectionHandler = void delegate(in Address addr) @safe;
+
 /** TCP Client */
 @safe class TcpStream : SocketChannel {
 	mixin Forward!"_socket";
@@ -26,23 +28,23 @@ version (Posix) import core.stdc.errno;
 	@property final bufferSize() const => _rBuf.length;
 
 	// client side
-	this(Selector loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
 		this(loop, tcpSocket(family), bufferSize);
 	}
 
 	// server side
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) nothrow @trusted {
+	this(EventLoop loop, Socket socket, uint bufferSize = 4 * 1024) nothrow @trusted {
 		super(loop, WT.TCP);
 		flags |= WF.ReadWrite | WF.ETMode;
 		debug (Log)
 			trace("Buffer size for read: ", bufferSize);
 		_rBuf = BUF(bufferSize);
 		this.socket = socket;
-		_isConnected = socket.isAlive;
+		_connected = socket.isAlive;
 	}
 
 	void connect(in Address addr) @trusted {
-		if (_isConnected)
+		if (_connected)
 			return;
 
 		try {
@@ -51,30 +53,29 @@ version (Posix) import core.stdc.errno;
 			_socket.bind(a);
 			doConnect(addr);
 			start();
-			_isConnected = true;
+			_connected = true;
+			if (onConnected)
+				onConnected(addr);
 		} catch (Exception e)
 			debug (Log) {
 				error(e);
 			}
-
-		if (onConnected)
-			onConnected(_isConnected);
 	}
 
 	void reconnect(in Address addr) {
-		if (_isConnected)
+		if (_connected)
 			close();
-		_isConnected = false;
+		_connected = false;
 		socket = tcpSocket(_socket.addressFamily ? _socket.addressFamily : AddressFamily.INET);
 		connect(addr);
 	}
 
-	@property isConnected() const => _isConnected;
+	@property isConnected() const => _connected;
 
-	override void start() nothrow {
+	void start() nothrow {
 		if (_isRegistered)
 			return;
-		_inLoop.register(this);
+		_loop.register(this);
 		_isRegistered = true;
 		version (Windows)
 			recv();
@@ -82,13 +83,13 @@ version (Posix) import core.stdc.errno;
 
 	/// safe for big data sending
 	void write(const void[] data) nothrow @trusted {
-		if (!_isConnected)
+		if (!_connected)
 			return onError("The connection has been closed");
 		if (data.length) {
 			//auto buf = new WSABUF;
 			//*cast(const(void)[]*)buf = data;
 			_iocpWrite.operation = IocpOperation.write;
-			if (checkErro(WSASend(handle, cast(WSABUF*)&data, 1, null, 0,
+			if (checkErr(WSASend(handle, cast(WSABUF*)&data, 1, null, 0,
 					&_iocpWrite.overlapped, null), "write")) {
 				close();
 			}
@@ -102,7 +103,7 @@ version (Posix) import core.stdc.errno;
 		}
 
 		super.close();
-		_isConnected = false;
+		_connected = false;
 		_socket.shutdown(SocketShutdown.BOTH);
 		_socket.close();
 
@@ -128,7 +129,7 @@ version (Posix) import core.stdc.errno;
 			} else if (len < 0) {
 				// FIXME: Needing refactor or cleanup
 				// check more error status
-				if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK)
+				if (errno != EINTR && errno != EAGAIN)
 					onError(text("Socket error on write: fd=", handle, ", message=", lastSocketError()));
 			} else {
 				debug (Log)
@@ -181,11 +182,11 @@ protected:
 	}
 
 	version (Posix) {
-		bool isWriteCancelling;
+		bool cancelWriting;
 
 		public final flush() nothrow @trusted {
 			size_t len;
-			while (_isRegistered && !isWriteCancelling && !_writeQueue.empty) {
+			while (_isRegistered && !cancelWriting && !_writeQueue.empty) {
 				const data = _writeQueue.front;
 				const n = tryWrite(data);
 				if (!n) // error
@@ -236,7 +237,7 @@ protected:
 		ubyte[] _rBuf;
 	}
 
-	bool _isConnected;
+	bool _connected;
 
 	//WriteQueue _writeQueue;
 version (Windows) :
@@ -249,16 +250,16 @@ private:
 		debug (Log)
 			trace("start receiving handle=", handle);
 
-		checkErro(WSARecv(handle, cast(WSABUF*)&_rBuf, 1, &dwReceived, &dwFlags,
+		checkErr(WSARecv(handle, cast(WSABUF*)&_rBuf, 1, &dwReceived, &dwFlags,
 				&_iocpRead.overlapped, null), "recv");
 	}
 
 	void doConnect(in Address addr) @trusted {
 		_iocpWrite.operation = IocpOperation.connect;
-		checkErro(ConnectEx(handle, addr.name, addr.nameLen, null, 0, null,
+		checkErr(ConnectEx(handle, addr.name, addr.nameLen, null, 0, null,
 				&_iocpWrite.overlapped), "connect");
 	}
 
-	mixin checkErro;
+	mixin checkErr;
 	IocpContext _iocpRead = {operation: IocpOperation.read}, _iocpWrite;
 }

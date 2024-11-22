@@ -159,7 +159,7 @@ class Kqueue : KqueueEventChannel {
 private immutable tspec = timespec(1, 1000 * 10);
 
 class KqueueEventChannel : SocketChannel {
-    this(Selector loop) {
+    this(EventLoop loop) {
         super(loop);
 		flags |= WF.Read;
 		_pair = socketPair();

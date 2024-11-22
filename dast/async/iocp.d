@@ -4,15 +4,12 @@ version (Windows)  : import dast.async.tcplistener;
 package import core.sys.windows.windows,
 core.sys.windows.mswsock;
 
-package(dast.async) bool checkErro()(int ret, string prefix = null) nothrow {
+package(dast.async) bool checkErr()(int ret, string prefix = null) nothrow {
 	import core.sys.windows.winerror;
 
 	const err = WSAGetLastError();
 	if (ret != 0 || err == 0)
 		return false;
-
-	debug (Log)
-		tracef("fd=", handle, ", dwLastError=", err);
 
 	if (err == WSAEWOULDBLOCK || err == ERROR_IO_PENDING)
 		return false;

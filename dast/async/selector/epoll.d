@@ -14,7 +14,7 @@ version (HaveTimer) import dast.async.timer;
 
 alias Selector = Epoll;
 
-class Epoll {
+template Epoll() {
 	this() {
 		_eventHandle = epoll_create1(0);
 		flags |= WF.Read;
@@ -112,15 +112,8 @@ class Epoll {
 }
 
 epoll_event buildEvent(SocketChannel watch) {
-	uint events = EPOLLRDHUP | EPOLLERR | EPOLLHUP;
 	const flags = watch.flags;
-	if (flags & WF.Read)
-		events |= EPOLLIN;
-	if (flags & WF.Write)
-		events |= EPOLLOUT;
-	if (flags & WF.OneShot)
-		events |= EPOLLONESHOT;
-	if (flags & WF.ETMode)
-		events |= EPOLLET;
+	uint events = EPOLLRDHUP | EPOLLERR | EPOLLHUP | (flags & WF.ReadWrite);
+	events |= (flags & WF.OneShotET) << 26;
 	return epoll_event(events, epoll_data_t(watch));
 }

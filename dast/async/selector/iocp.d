@@ -2,12 +2,17 @@ module dast.async.selector.iocp;
 
 version (Windows)  : import dast.async.core,
 dast.async.iocp,
-dast.async.tcpstream,
-dast.async.thread;
+dast.async.tcpstream;
 
 alias Selector = Iocp;
 
-@safe class Iocp {
+template Iocp() {
+	import dast.async.core,
+	dast.async.iocp,
+	dast.async.tcpstream,
+	dast.async.thread;
+
+@safe:
 	ThreadPool workerPool;
 	this() @trusted {
 		_eventHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
@@ -42,7 +47,7 @@ alias Selector = Iocp;
 		return false;
 	}
 
-	bool unregister(SocketChannel watcher) nothrow {
+	bool unregister(SocketChannel watcher) nothrow @nogc {
 		// FIXME: Needing refactor or cleanup
 		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
 
@@ -81,7 +86,7 @@ private:
 	SocketChannel[] _watchers;
 }
 
-private void handleEvent(OVERLAPPED_ENTRY entry) {
+package(dast.async) void handleEvent(OVERLAPPED_ENTRY entry) {
 	import dast.async.tcplistener;
 
 	const len = entry.dwNumberOfBytesTransferred;
@@ -101,9 +106,9 @@ private void handleEvent(OVERLAPPED_ENTRY entry) {
 		// Notify the client about how many bytes actually sent
 		(cast(TcpStream)channel).onWrite(len);
 		break;
-	case event:
-		(cast(SocketChannel)channel).onRead(); // TODO
-		break;
+		// TODO
+		//case event:
+		//break;
 	default:
 	}
 }

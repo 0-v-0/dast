@@ -8,6 +8,8 @@ tame.meta;
 
 version (Windows) import dast.async.iocp;
 
+alias AcceptHandler = void delegate(Socket socket) @safe;
+
 /** TCP Server */
 @safe class TcpListener : SocketChannel {
 	mixin Forward!"_socket";
@@ -15,7 +17,7 @@ version (Windows) import dast.async.iocp;
 	AcceptHandler onAccept;
 	SimpleHandler onClosed;
 
-	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, WT.Accept);
 		flags |= WF.Read;
 		socket = tcpSocket(family);
@@ -27,8 +29,8 @@ version (Windows) import dast.async.iocp;
 			onClosed();
 	}
 
-	override void start() {
-		_inLoop.register(this);
+	void start() {
+		_loop.register(this);
 		_isRegistered = true;
 		version (Windows)
 			accept();
@@ -44,7 +46,7 @@ version (Windows) import dast.async.iocp;
 				if (onAccept)
 					onAccept(socket);
 				else
-					new TcpStream(_inLoop, socket).start();
+					new TcpStream(_loop, socket).start();
 			})) {
 			close();
 		}
@@ -55,14 +57,14 @@ private:
 		version (Posix) {
 			import core.sys.posix.sys.socket : accept;
 
-			auto clientFd = accept(handle, null, null);
+			const clientFd = accept(handle, null, null);
 			if (clientFd < 0)
 				return false;
 
 			debug (Log)
 				trace("listener fd=", handle, ", client fd=", clientFd);
 
-			handler(new Socket(clientFd, _socket.addressFamily));
+			handler(Socket(clientFd, _socket.addressFamily));
 			return true;
 		}
 
@@ -90,11 +92,11 @@ private:
 
 		debug (Log)
 			trace("client socket=", _clientSock.handle, ", server socket=", handle);
-		return !checkErro(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
+		return !checkErr(AcceptEx(handle, _clientSock.handle, _buf.ptr, 0, size, size,
 				&dwBytesReceived, &_ctx.overlapped), "listener");
 	}
 
-	mixin checkErro;
+	mixin checkErr;
 	enum size = sockaddr_in.sizeof + 16;
 	Socket _clientSock;
 	IocpContext _ctx = {operation: IocpOperation.accept};

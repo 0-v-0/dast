@@ -8,7 +8,7 @@ std.conv : text;
 
 debug (Log) import std.logger;
 
-public import dast.async : EventLoop, EventExecutor, Selector;
+public import dast.async : EventLoop, EventExecutor;
 
 alias
 PeerID = int,
@@ -23,7 +23,7 @@ ReqHandler = void function(WebSocketServer server, WSClient client, in Request r
 nothrow:
 	@property id() => cast(int)handle;
 
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
+	this(EventLoop loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
 		super(loop, socket, bufferSize);
 		p = _rBuf.ptr;
 	}
@@ -80,7 +80,7 @@ class WebSocketServer : TcpListener {
 		super(new EventExecutor, family);
 	}
 
-	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, family);
 	}
 
@@ -90,7 +90,7 @@ class WebSocketServer : TcpListener {
 		bindAndListen(_socket, settings);
 		if (!onAccept)
 			onAccept = (Socket socket) {
-			auto client = new WSClient(_inLoop, socket, settings.bufferSize);
+			auto client = new WSClient(_loop, socket, settings.bufferSize);
 			client.onReceived = (in ubyte[] data) @trusted {
 				onReceive(client, data);
 			};
@@ -102,7 +102,7 @@ class WebSocketServer : TcpListener {
 		};
 
 		start();
-		(cast(EventLoop)_inLoop).run();
+		(cast(EventLoop)_loop).run();
 	}
 
 nothrow:

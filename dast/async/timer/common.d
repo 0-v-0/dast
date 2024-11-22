@@ -7,7 +7,8 @@ enum CustomTimerMinTimeout = 50; // in ms
 enum CustomTimerWheelSize = 500;
 enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
 
-alias TimeoutHandler = void delegate(Object sender);
+alias TickedHandler = void delegate(Object sender),
+TimeoutHandler = void delegate(Object sender);
 
 /++
 	Timing Wheel manger Class

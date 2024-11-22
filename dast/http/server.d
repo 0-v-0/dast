@@ -20,7 +20,7 @@ nothrow:
 	@property headerSent() const => _headerSent;
 	private bool tryParse() => request.tryParse(data);
 
-	this(Selector loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
+	this(EventLoop loop, Socket socket, uint bufferSize = 4 * 1024) @trusted {
 		super(loop, socket, bufferSize);
 		p = _rBuf.ptr;
 	}
@@ -92,7 +92,7 @@ class HTTPServer : TcpListener {
 		super(new EventLoop, family);
 	}
 
-	this(Selector loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
 		super(loop, family);
 	}
 
@@ -104,7 +104,7 @@ class HTTPServer : TcpListener {
 				socket.close();
 				return;
 			}
-			auto client = new HTTPClient(_inLoop, socket, settings.bufferSize);
+			auto client = new HTTPClient(_loop, socket, settings.bufferSize);
 			connections++;
 			client.onReceived = (in ubyte[] data) @trusted {
 				if (!client.put(data.length))
@@ -133,7 +133,7 @@ class HTTPServer : TcpListener {
 			client.start();
 		};
 		start();
-		(cast(EventLoop)_inLoop).run();
+		(cast(EventLoop)_loop).run();
 	}
 
 nothrow:

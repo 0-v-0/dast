@@ -8,6 +8,7 @@ module dast.async.net.socket;
  * Socket primitives.
  */
 
+import core.stdc.stdlib;
 import core.stdc.string;
 import core.time : dur, Duration;
 import std.string : fromStringz;
@@ -23,7 +24,7 @@ else version (TVOS)
 else version (WatchOS)
 	version = iOSDerived;
 
-@safe:
+	@safe:
 
 version (Windows) {
 	pragma(lib, "ws2_32.lib");
@@ -33,7 +34,7 @@ version (Windows) {
 	import core.sys.windows.winsock2;
 
 	enum socket_t : SOCKET {
-		INVALID_SOCKET
+		_init
 	}
 
 	// Windows uses int instead of size_t for length arguments.
@@ -45,8 +46,8 @@ version (Windows) {
 } else version (Posix) {
 	version (linux) {
 		enum {
-			TCP_KEEPIDLE = 4,
-			TCP_KEEPINTVL = 5
+			TCP_KEEPIDLE = cast(SocketOption)4,
+			TCP_KEEPINTVL = cast(SocketOption)5
 		}
 	}
 
@@ -72,31 +73,6 @@ private:
 	size_t capToInt(size_t size) nothrow @nogc pure => size;
 } else
 	static assert(0, "No socket support for this platform yet.");
-
-/**
- * Returns:
- * `true` if the last socket operation failed because the socket
- * was in non-blocking mode and the operation would have blocked,
- * or if the socket is in blocking mode and set a `SNDTIMEO` or `RCVTIMEO`,
- * and the operation timed out.
- */
-bool wouldHaveBlocked() nothrow @nogc {
-	version (Windows)
-		return errno() == WSAEWOULDBLOCK || errno() == WSAETIMEDOUT;
-	else version (Posix)
-		return errno() == EAGAIN;
-	else
-		static assert(0, "No socket support for this platform yet.");
-}
-
-@safe unittest {
-	auto sockets = socketPair();
-	auto s = sockets[0];
-	s.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"msecs"(10));
-	ubyte[16] buffer;
-	auto rec = s.receive(buffer);
-	assert(rec == -1 && wouldHaveBlocked());
-}
 
 version (Windows) {
 	shared static this() @system {
@@ -134,17 +110,17 @@ enum SocketFlags: int {
 
 /// The level at which a socket option is defined:
 enum SocketOptionLevel: int {
-	SOCKET =	SOL_SOCKET,				/// Socket level
-	IP =		ProtocolType.IP,		/// Internet Protocol version 4 level
-	ICMP =		ProtocolType.ICMP,		/// Internet Control Message Protocol level
-	IGMP =		ProtocolType.IGMP,		/// Internet Group Management Protocol level
-	GGP =		ProtocolType.GGP,		/// Gateway to Gateway Protocol level
-	TCP =		ProtocolType.TCP,		/// Transmission Control Protocol level
-	PUP =		ProtocolType.PUP,		/// PARC Universal Packet Protocol level
-	UDP =		ProtocolType.UDP,		/// User Datagram Protocol level
-	IDP =		ProtocolType.IDP,		/// Xerox NS protocol level
-	RAW =		ProtocolType.RAW,		/// Raw IP packet level
-	IPV6 =		ProtocolType.IPV6,		/// Internet Protocol version 6 level
+	SOCKET =	SOL_SOCKET,			/// Socket level
+	IP =		ProtocolType.IP,	/// Internet Protocol version 4 level
+	ICMP =		ProtocolType.ICMP,	/// Internet Control Message Protocol level
+	IGMP =		ProtocolType.IGMP,	/// Internet Group Management Protocol level
+	GGP =		ProtocolType.GGP,	/// Gateway to Gateway Protocol level
+	TCP =		ProtocolType.TCP,	/// Transmission Control Protocol level
+	PUP =		ProtocolType.PUP,	/// PARC Universal Packet Protocol level
+	UDP =		ProtocolType.UDP,	/// User Datagram Protocol level
+	IDP =		ProtocolType.IDP,	/// Xerox NS protocol level
+	RAW =		ProtocolType.RAW,	/// Raw IP packet level
+	IPV6 =		ProtocolType.IPV6,	/// Internet Protocol version 6 level
 }
 
 /// _Linger information for use with SocketOption.LINGER.
@@ -165,22 +141,22 @@ pure nothrow @nogc @property:
 /// Specifies a socket option:
 enum SocketOption: int
 {
-	DEBUG =				SO_DEBUG,		/// Record debugging information
-	BROADCAST =			SO_BROADCAST,	/// Allow transmission of broadcast messages
-	REUSEADDR =			SO_REUSEADDR,	/// Allow local reuse of address
-	LINGER =			SO_LINGER,		/// Linger on close if unsent data is present
-	OOBINLINE =			SO_OOBINLINE,	/// Receive out-of-band data in band
-	SNDBUF =			SO_SNDBUF,		/// Send buffer size
-	RCVBUF =			SO_RCVBUF,		/// Receive buffer size
-	DONTROUTE =			SO_DONTROUTE,	/// Do not route
-	SNDTIMEO =			SO_SNDTIMEO,	/// Send timeout
-	RCVTIMEO =			SO_RCVTIMEO,	/// Receive timeout
-	ERROR =				SO_ERROR,		/// Retrieve and clear error status
-	KEEPALIVE =			SO_KEEPALIVE,	/// Enable keep-alive packets
-	ACCEPTCONN =		SO_ACCEPTCONN,	/// Listen
-	RCVLOWAT =			SO_RCVLOWAT,	/// Minimum number of input bytes to process
-	SNDLOWAT =			SO_SNDLOWAT,	/// Minimum number of output bytes to process
-	TYPE =				SO_TYPE,		/// Socket type
+	DEBUG =			SO_DEBUG,		/// Record debugging information
+	BROADCAST =		SO_BROADCAST,	/// Allow transmission of broadcast messages
+	REUSEADDR =		SO_REUSEADDR,	/// Allow local reuse of address
+	LINGER =		SO_LINGER,		/// Linger on close if unsent data is present
+	OOBINLINE =		SO_OOBINLINE,	/// Receive out-of-band data in band
+	SNDBUF =		SO_SNDBUF,		/// Send buffer size
+	RCVBUF =		SO_RCVBUF,		/// Receive buffer size
+	DONTROUTE =		SO_DONTROUTE,	/// Do not route
+	SNDTIMEO =		SO_SNDTIMEO,	/// Send timeout
+	RCVTIMEO =		SO_RCVTIMEO,	/// Receive timeout
+	ERROR =			SO_ERROR,		/// Retrieve and clear error status
+	KEEPALIVE =		SO_KEEPALIVE,	/// Enable keep-alive packets
+	ACCEPTCONN =	SO_ACCEPTCONN,	/// Listen
+	RCVLOWAT =		SO_RCVLOWAT,	/// Minimum number of input bytes to process
+	SNDLOWAT =		SO_SNDLOWAT,	/// Minimum number of output bytes to process
+	TYPE =			SO_TYPE,		/// Socket type
 
 	// SocketOptionLevel.TCP:
 	TCP_NODELAY =		.TCP_NODELAY,	/// Disable the Nagle algorithm for send coalescing
@@ -197,18 +173,45 @@ enum SocketOption: int
 
 // dfmt on
 
+version (X86_64) {
+	version (LittleEndian) {
+		version = CompactPtr;
+		enum PtrMask = 0xFF_FF_FF_FF_FF_FF;
+	}
+}
+
 /**
- * Create a network communication endpoint using
- * the Berkeley sockets interface.
+ * A network communication endpoint using the Berkeley sockets interface.
  */
 struct Socket {
 private:
 	socket_t sock;
-	AddressFamily _family;
+	version (CompactPtr) {
+		union {
+			struct {
+				byte[6] pad;
+				AddressFamily _family;
+			}
 
+			size_t p;
+		}
+
+		@property pure nothrow @nogc @system {
+			void* ptr()
+				=> cast(void*)(p & PtrMask);
+
+			void ptr(void* val) {
+				p &= ~PtrMask;
+				p |= PtrMask & cast(size_t)val;
+			}
+		}
+	} else {
+		void* ptr;
+		AddressFamily _family;
+	}
+
+	enum BIOFlag = cast(AddressFamily)0x8000;
 	version (Windows) {
-		/// Property to get or set whether the socket is blocking or nonblocking.
-		bool _blocking = true;
 		alias _close = .closesocket;
 	} else version (Posix) {
 		alias _close = .close;
@@ -258,32 +261,28 @@ private:
 		}
 	}
 
-	this(socket_t handle, typeof(this.tupleof[1 .. $]) args) {
-		setSock(handle);
-		this.tupleof[1 .. $] = args;
-	}
-
 public:
+	/**
+	 * Returns: The local machine's host name
+	 */
+	static @property string hostName() @trusted { // getter
+		char[256] result = void; // Host names are limited to 255 chars.
+		if (ERROR == gethostname(result.ptr, result.length))
+			throw new SocketOSException("Unable to obtain host name");
+		return cast(string)fromStringz(result.ptr);
+	}
 
 	/**
 	 * Create a blocking socket. If a single protocol type exists to support
 	 * this socket type within the address family, the `ProtocolType` may be
 	 * omitted.
 	 */
-	this(AddressFamily af, SocketType type, ProtocolType protocol) {
+	this(AddressFamily af, SocketType type, ProtocolType protocol = ProtocolType.IP) {
 		_family = af;
 		const handle = cast(socket_t)socket(af, type, protocol);
 		if (handle == socket_t.init)
 			throw new SocketOSException("Unable to create socket");
 		setSock(handle);
-	}
-
-	/// ditto
-	this(AddressFamily af, SocketType type) {
-		/* A single protocol exists to support this socket type within the
-		 * protocol family, so the ProtocolType is assumed.
-		 */
-		this(af, type, cast(ProtocolType)0); // Pseudo protocol number.
 	}
 
 	/**
@@ -296,9 +295,9 @@ public:
 
 	nothrow @nogc {
 		/// Use an existing socket handle.
-		this(socket_t sock, AddressFamily af) pure {
-			assert(sock != socket_t.init);
-			this.sock = sock;
+		this(socket_t s, AddressFamily af) pure
+		in (s != socket_t.init) {
+			sock = s;
 			_family = af;
 		}
 
@@ -319,6 +318,10 @@ public:
 			return h;
 		}
 
+		/// Get the socket's address family.
+		@property AddressFamily addressFamily() const @trusted pure
+			=> cast(AddressFamily)(_family & ~BIOFlag);
+
 		/**
 	 	 * Get/set socket's blocking flag.
 	 	 *
@@ -328,22 +331,22 @@ public:
 	 	 */
 		@property bool blocking() @trusted const {
 			version (Windows) {
-				return _blocking;
+				return (_family & BIOFlag) == 0;
 			} else version (Posix) {
 				return !(fcntl(handle, F_GETFL, 0) & O_NONBLOCK);
 			}
 		}
-
-		/// Get the socket's address family.
-		@property AddressFamily addressFamily() => _family;
 	}
 	/// ditto
 	@property int blocking(bool byes) @trusted {
 		version (Windows) {
 			uint num = !byes;
-			if (SOCKET_ERROR == ioctlsocket(sock, FIONBIO, &num))
+			if (ERROR == ioctlsocket(sock, FIONBIO, &num))
 				return errno();
-			_blocking = byes;
+			if (num)
+				_family |= BIOFlag;
+			else
+				_family &= ~BIOFlag;
 		} else version (Posix) {
 			const x = fcntl(sock, F_GETFL, 0);
 			if (-1 == x)
@@ -366,6 +369,20 @@ public:
 	}
 
 	/**
+	 * Accept an incoming connection. If the socket is blocking, `accept`
+	 * waits for a connection request. Returns Socket.init if the socket is
+	 * unable to _accept. See `accepting` for use with derived classes.
+	 */
+	Socket accept() @trusted {
+		auto newsock = cast(socket_t).accept(sock, null, null);
+		if (socket_t.init == newsock)
+			return Socket.init;
+
+		//inherits blocking mode
+		return Socket(newsock, _family);
+	}
+
+	/**
 	 * Associate a local address with this socket.
 	 *
 	 * Params:
@@ -383,19 +400,17 @@ public:
 	 * returns immediately and the connection attempt is still in progress.
 	 */
 	void connect(in Address to) @trusted {
-		if (SOCKET_ERROR == .connect(sock, to.name, to.nameLen)) {
+		if (ERROR == .connect(sock, to.name, to.nameLen)) {
 			const err = errno();
 
-			if (!blocking) {
-				version (Windows) {
-					if (WSAEWOULDBLOCK == err)
-						return;
-				} else version (Posix) {
-					if (EINPROGRESS == err)
-						return;
-				} else
-					static assert(0);
-			}
+			version (Windows) {
+				if (WSAEWOULDBLOCK == err)
+					return;
+			} else version (Posix) {
+				if (EINPROGRESS == err)
+					return;
+			} else
+				static assert(0);
 			throw new SocketOSException("Unable to connect socket", err);
 		}
 	}
@@ -408,50 +423,28 @@ public:
 	void listen(int backlog) @trusted
 		=> checkError(.listen(sock, backlog), "Unable to listen on socket");
 
-	/**
-	 * Accept an incoming connection. If the socket is blocking, `accept`
-	 * waits for a connection request. Returns Socket.init if the socket is
-	 * unable to _accept. See `accepting` for use with derived classes.
-	 */
-	Socket accept() @trusted {
-		auto newsock = cast(socket_t).accept(sock, null, null);
-		if (socket_t.init == newsock)
-			return Socket.init;
+	nothrow @nogc {
+		/// Disables sends and/or receives.
+		int shutdown(SocketShutdown how) @trusted
+			=> .shutdown(sock, how);
 
-		//inherits blocking mode
-		return Socket(newsock, this.tupleof[1 .. $]);
-	}
-
-	/// Disables sends and/or receives.
-	int shutdown(SocketShutdown how) @trusted nothrow @nogc
-		=> .shutdown(sock, how);
-
-	/**
-	 * Immediately drop any connections and release socket resources.
-	 * The `Socket` object is no longer usable after `close`.
-	 * Calling `shutdown` before `close` is recommended
-	 * for connection-oriented sockets.
-	 */
-	void close() scope @trusted nothrow @nogc {
-		_close(sock);
-		sock = socket_t.init;
-	}
-
-	/**
-	 * Returns: The local machine's host name
-	 */
-	static @property string hostName() @trusted // getter
-	{
-		char[256] result = void; // Host names are limited to 255 chars.
-		if (SOCKET_ERROR == gethostname(result.ptr, result.length))
-			throw new SocketOSException("Unable to obtain host name");
-		return cast(string)fromStringz(result.ptr);
+		/**
+		 * Immediately drop any connections and release socket resources.
+		 * The `Socket` object is no longer usable after `close`.
+		 * Calling `shutdown` before `close` is recommended
+		 * for connection-oriented sockets.
+		 */
+		void close() @trusted {
+			free(ptr);
+			_close(sock);
+			sock = socket_t.init;
+		}
 	}
 
 	/// Remote endpoint `Address`.
 	@property Address remoteAddress() @trusted
-	out (addr; addr.addressFamily == _family) {
-		Address addr = createAddress(_family);
+	out (addr; addr.addressFamily == addressFamily) {
+		Address addr = createAddress();
 		socklen_t nameLen = addr.nameLen;
 		checkError(.getpeername(sock, addr.name, &nameLen),
 			"Unable to obtain remote socket address");
@@ -461,8 +454,8 @@ public:
 
 	/// Local endpoint `Address`.
 	@property Address localAddress() @trusted
-	out (addr; addr.addressFamily == _family) {
-		Address addr = createAddress(_family);
+	out (addr; addr.addressFamily == addressFamily) {
+		Address addr = createAddress();
 		socklen_t nameLen = addr.nameLen;
 		checkError(.getsockname(sock, addr.name, &nameLen),
 			"Unable to obtain local socket address");
@@ -509,9 +502,8 @@ public:
 	}
 
 	/// ditto
-	ptrdiff_t sendTo(scope const(void)[] buf, in Address to) {
-		return sendTo(buf, SocketFlags.NONE, to);
-	}
+	ptrdiff_t sendTo(scope const(void)[] buf, in Address to)
+		=> sendTo(buf, SocketFlags.NONE, to);
 
 	//assumes you connect()ed
 	/// ditto
@@ -542,14 +534,14 @@ public:
 	ptrdiff_t receiveFrom(scope void[] buf, SocketFlags flags, ref Address from) @trusted {
 		if (!buf.length) //return 0 and don't think the connection closed
 			return 0;
-		if (from.addressFamily != _family)
-			from = createAddress(_family);
+		if (from.addressFamily != addressFamily)
+			from = createAddress();
 		socklen_t nameLen = from.nameLen;
 		const read = .recvfrom(sock, buf.ptr, capToInt(buf.length), flags, from.name, &nameLen);
 
 		if (read >= 0) {
 			from.nameLen = nameLen;
-			assert(from.addressFamily == _family);
+			assert(from.addressFamily == addressFamily);
 		}
 		return read;
 	}
@@ -721,34 +713,38 @@ public:
 			options.keepaliveinterval = interval * 1000;
 			uint cbBytesReturned = void;
 			checkError(WSAIoctl(sock, SIO_KEEPALIVE_VALS,
-				&options, options.sizeof,
-				null, 0,
-				&cbBytesReturned, null, null), "Error setting keep-alive");
+					&options, options.sizeof, null, 0,
+					&cbBytesReturned, null, null), "Error setting keep-alive");
 		} else static if (is(typeof(TCP_KEEPIDLE)) && is(typeof(TCP_KEEPINTVL))) {
-			setOption(SocketOptionLevel.TCP, cast(SocketOption)TCP_KEEPIDLE, time);
-			setOption(SocketOptionLevel.TCP, cast(SocketOption)TCP_KEEPINTVL, interval);
+			setOption(SocketOptionLevel.TCP, TCP_KEEPIDLE, time);
+			setOption(SocketOptionLevel.TCP, TCP_KEEPINTVL, interval);
 			setOption(SocketOptionLevel.SOCKET, SocketOption.KEEPALIVE, true);
 		} else
 			throw new SocketFeatureException(
 				"Setting keep-alive options is not supported on this platform");
 	}
-}
 
-/**
- * Returns: A new `Address` object for the current address family.
- */
-private Address createAddress(AddressFamily af) pure nothrow {
-	switch (af) {
-		static if (is(UnixAddress)) {
-	case AddressFamily.UNIX:
-			return *new UnixAddress();
+	/**
+	* Returns: A new `Address` object for the current address family.
+	*/
+	private Address createAddress() nothrow @nogc @trusted {
+		free(ptr);
+		switch (addressFamily) {
+			static if (is(UnixAddress)) {
+		case AddressFamily.UNIX:
+				ptr = calloc(1, UnixAddress.sizeof);
+				return *cast(UnixAddress*)ptr;
+			}
+		case AddressFamily.INET:
+			ptr = calloc(1, InetAddress.sizeof);
+			return *cast(InetAddress*)ptr;
+		case AddressFamily.INET6:
+			ptr = calloc(1, Inet6Address.sizeof);
+			return *cast(Inet6Address*)ptr;
+		default:
 		}
-	case AddressFamily.INET:
-		return *new InetAddress();
-	case AddressFamily.INET6:
-		return *new Inet6Address();
-	default:
-		return *new UnknownAddress();
+		ptr = calloc(1, UnknownAddress.sizeof);
+		return *cast(UnknownAddress*)ptr;
 	}
 }
 
@@ -771,6 +767,7 @@ auto udpSocket(AddressFamily af = AddressFamily.INET)
 	byte[] buf;
 	buf.length = 1;
 	auto s = udpSocket();
+	assert(s.blocking);
 	s.blocking = false;
 	s.bind(InetAddress(InetAddress.PORT_ANY));
 	Address addr;
@@ -828,4 +825,27 @@ Socket[2] socketPair() {
 	ubyte[data.length] buf;
 	pair[1].receive(buf);
 	assert(buf == data);
+}
+
+/**
+ * Returns:
+ * `true` if the last socket operation failed because the socket
+ * was in non-blocking mode and the operation would have blocked,
+ * or if the socket is in blocking mode and set a `SNDTIMEO` or `RCVTIMEO`,
+ * and the operation timed out.
+ */
+bool wouldHaveBlocked() nothrow @nogc {
+	version (Windows)
+		return errno() == WSAEWOULDBLOCK || errno() == WSAETIMEDOUT;
+	else version (Posix)
+		return errno() == EAGAIN;
+}
+
+@safe unittest {
+	auto sockets = socketPair();
+	auto s = sockets[0];
+	s.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"msecs"(10));
+	ubyte[16] buffer;
+	auto rec = s.receive(buffer);
+	assert(rec == -1 && wouldHaveBlocked());
 }

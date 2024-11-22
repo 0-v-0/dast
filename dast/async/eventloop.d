@@ -2,7 +2,9 @@ module dast.async.eventloop;
 
 import dast.async.selector;
 
-class EventLoop : Selector {
+class EventLoop {
+	mixin Selector;
+
 	private bool running;
 
 	void run() {
