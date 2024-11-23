@@ -1,7 +1,6 @@
 module dast.http.server;
 
-import dast.async,
-std.socket;
+import dast.async;
 
 public import dast.async : EventLoop, EventExecutor;
 public import dast.http : Request, Status, ServerSettings;

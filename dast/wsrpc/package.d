@@ -60,7 +60,6 @@ LFQ = LockFreeQueue!SReq;
 class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
 	public import dast.ws : Request;
 	import core.memory,
-	std.socket,
 	tame.meta;
 
 	alias AllActions = Filter!(isCallable, getSymbolsWith!(Action, modules));

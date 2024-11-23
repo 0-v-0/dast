@@ -2,23 +2,29 @@ module dast.net.dlfcn;
 
 version (Posix)
 	public import core.sys.posix.dlfcn : dlclose, dlopen, dlsym, RTLD_LAZY, RTLD_NOW, RTLD_GLOBAL, RTLD_LOCAL;
-else version (Windows)
+else version (Windows){
 	import core.sys.windows.windows;
-else
+	enum {
+		RTLD_LAZY = 0x00001,
+		RTLD_NOW = 0x00002,
+		RTLD_GLOBAL = 0x00100,
+		RTLD_LOCAL = 0,
+	}
+}else
 	static assert(0, "unimplemented");
 
 nothrow @nogc:
 
 string dlerr() @trusted {
+	import std.string : fromStringz;
 	version (Posix) {
 		import core.sys.posix.dlfcn : dlerror;
-		import std.string : fromStringz;
 
-		return fromStringz(dlerror());
+		return cast(string)fromStringz(dlerror());
 	} else version (Windows) {
 		if (errorOccurred) {
 			errorOccurred = false;
-			return errorBuffer.ptr;
+			return cast(string)fromStringz(errorBuffer.ptr);
 		}
 		return null;
 	}
@@ -26,7 +32,7 @@ string dlerr() @trusted {
 
 version (Windows):
 
-import core.stdc.string : memcpy;
+import core.stdc.string : memcpy, strlen;
 
 void* dlopen(const char* filename, int) @trusted {
 	errorOccurred = false;
@@ -65,7 +71,7 @@ __gshared {
 }
 
 void saveErrStr(const char* str, uint dwMessageId) {
-	size_t len = str.length;
+	size_t len = strlen(str);
 	if (len > errorBuffer.sizeof - 5)
 		len = errorBuffer.sizeof - 5;
 
@@ -99,14 +105,14 @@ void saveErrStr(const char* str, uint dwMessageId) {
 }
 
 void saveErrPtrStr(const void* ptr, uint dwMessageId) {
-	char[2 + 2 * ptr.sizeof + 1] ptrBuf;
+	char[2 + 2 * ptr.sizeof + 1] ptrBuf = void;
 
 	ptrBuf[0] = '0';
 	ptrBuf[1] = 'x';
 
 	for (size_t i; i < 2 * ptr.sizeof; i++) {
-		char num = cast(char)(cast(ulong)ptr >> (8 * ptr.sizeof - 4 * (i + 1)) & 0xF);
-		ptrBuf[2 + i] = num + ((num < 0xA) ? '0' : ('A' - 0xA));
+		const num = cast(ulong)ptr >> (8 * ptr.sizeof - 4 * (i + 1)) & 0xF;
+		ptrBuf[2 + i] = cast(char)(num + (num < 0xA ? '0' : 'A' - 0xA));
 	}
 
 	ptrBuf[2 + 2 * ptr.sizeof] = 0;

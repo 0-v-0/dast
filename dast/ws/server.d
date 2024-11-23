@@ -3,7 +3,6 @@ module dast.ws.server;
 import dast.async,
 dast.http,
 dast.ws.frame,
-std.socket,
 std.conv : text;
 
 debug (Log) import std.logger;
