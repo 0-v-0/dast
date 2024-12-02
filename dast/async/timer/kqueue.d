@@ -19,7 +19,7 @@ dast.async.timer.common;
 
 class TimerBase : Timer {
 	this() {
-		_sock = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+		_sock = Socket(AddrFamily.UNIX, SocketType.STREAM);
 		handle = _sock.handle;
 	}
 

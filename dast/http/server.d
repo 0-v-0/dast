@@ -9,7 +9,7 @@ alias NextHandler = void delegate(),
 ReqHandler = void function(HTTPServer server, HTTPClient client, scope NextHandler next);
 
 ///
-@safe class HTTPClient : TcpStream {
+@safe class HTTPClient : TCPClient {
 	Request request;
 	bool keepConnection;
 
@@ -82,16 +82,16 @@ protected:
 	bool _headerSent;
 }
 
-class HTTPServer : TcpListener {
+class HTTPServer : TCPServer {
 	private ReqHandler[] handlers;
 	ServerSettings settings;
 	uint connections;
 
-	this(AddressFamily family = AddressFamily.INET) {
+	this(AddrFamily family = AddrFamily.IPv4) {
 		super(new EventLoop, family);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddrFamily family = AddrFamily.IPv4) {
 		super(loop, family);
 	}
 

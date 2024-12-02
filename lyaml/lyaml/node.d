@@ -171,35 +171,37 @@ struct Node {
 	T get(T)() const if (is(T == enum)) => cast(T)get!(OriginalType!T);
 
 	T get(T)() @trusted const if (isScalarType!T && !is(T == enum)) {
-		if (type_ == NodeType.boolean)
+		switch (type_) with (NodeType) {
+		case boolean:
 			return cast(T)*cast(bool*)&p;
-		if (type_ == NodeType.integer)
+		case integer:
 			return to!T(*cast(long*)&p);
-		if (type_ == NodeType.decimal)
+		case decimal:
 			return to!T(*cast(double*)&p);
-		if (type_ == NodeType.string)
-			return to!(Unqual!T)(*cast(string*)&p);
+		case string:
+			return to!(Unqual!T)(*cast(.string*)&p);
+		default:
+		}
 		throw new NodeException(text("Cannot convert ", type_, " to " ~ T.stringof), mark_);
 	}
 
 	T get(T : const(char)[])() @trusted const if (!is(T == enum)) {
-		if (type_ == NodeType.string)
-			return *cast(T*)&p;
-
-		switch (type_) {
-		case NodeType.null_:
+		switch (type_) with (NodeType) {
+		case null_:
 			return null;
-		case NodeType.boolean:
+		case boolean:
 			return toStr(*cast(bool*)&p);
-		case NodeType.integer:
+		case integer:
 			return toStr(*cast(long*)&p);
-		case NodeType.decimal:
+		case decimal:
 			return toStr(*cast(double*)&p);
-		case NodeType.timestamp:
+		case timestamp:
 			return time.toString();
+		case string:
+			return *cast(T*)&p;
 		default:
-			throw new NodeException(text("Cannot convert ", type_, " to string"), mark_);
 		}
+		throw new NodeException(text("Cannot convert ", type_, " to string"), mark_);
 	}
 
 	@safe unittest {
@@ -618,26 +620,26 @@ struct Node {
 	}
 
 	// Compute hash of the node.
-	hash_t toHash() const @trusted pure {
-		switch (type_) {
-		case NodeType.null_:
+	size_t toHash() const @trusted pure {
+		switch (type_) with (NodeType) {
+		case null_:
 			return 0;
-		case NodeType.boolean,
-			NodeType.integer,
-			NodeType.decimal:
-			return cast(hash_t)(~type_ ^ *cast(long*)&p);
-		case NodeType.timestamp:
+		case boolean,
+			integer,
+			decimal:
+			return cast(size_t)(~type_ ^ *cast(long*)&p);
+		case timestamp:
 			return time.toHash();
-		case NodeType.string:
-			return strhash(*cast(string*)&p);
-		case NodeType.sequence:
-			hash_t hash;
+		case string:
+			return strhash(*cast(.string*)&p);
+		case sequence:
+			size_t hash;
 			foreach (node; children)
 				hash ^= ~node.toHash();
 			return hash;
-		case NodeType.map:
-			hash_t hash;
-			foreach (key, value; map)
+		case map:
+			size_t hash;
+			foreach (key, value; this.map)
 				hash ^= (strhash(key) << 5) + (value.toHash() ^ 0x38495ab5);
 			return hash;
 		default:

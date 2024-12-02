@@ -1,4 +1,4 @@
-module dast.async.tcpstream;
+module dast.async.tcpclient;
 
 import core.sync,
 dast.async.core,
@@ -12,23 +12,23 @@ version (Posix) import core.stdc.errno;
 
 alias ConnectionHandler = void delegate(in Address addr) @safe;
 
-/** TCP Client */
-@safe class TcpStream : SocketChannel {
+/// TCP Client
+@safe class TCPClient : SocketChannel {
 	mixin Forward!"_socket";
 
 	ConnectionHandler onConnected;
 	SimpleHandler onClosed;
-	/**
-	* Warning: The received data is stored a inner buffer.
-	* you would make a copy of it.
-	*/
+	/++
+		Warning: The received data is stored a inner buffer.
+		you would make a copy of it.
+	+/
 	RecvHandler onReceived;
 	SimpleHandler onDisconnected;
 
 	@property final bufferSize() const => _rBuf.length;
 
 	// client side
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET, uint bufferSize = 4 * 1024) {
+	this(EventLoop loop, AddrFamily family = AddrFamily.IPv4, uint bufferSize = 4 * 1024) {
 		this(loop, tcpSocket(family), bufferSize);
 	}
 
@@ -48,8 +48,8 @@ alias ConnectionHandler = void delegate(in Address addr) @safe;
 			return;
 
 		try {
-			const a = _socket.addressFamily == AddressFamily.INET6 ?
-				Inet6Address(0) : InetAddress(0);
+			const a = _socket.addressFamily == AddrFamily.IPv6 ?
+				IPv6Addr(0) : IPv4Addr(0);
 			_socket.bind(a);
 			doConnect(addr);
 			start();
@@ -66,7 +66,7 @@ alias ConnectionHandler = void delegate(in Address addr) @safe;
 		if (_connected)
 			close();
 		_connected = false;
-		socket = tcpSocket(_socket.addressFamily ? _socket.addressFamily : AddressFamily.INET);
+		socket = tcpSocket(_socket.addressFamily ? _socket.addressFamily : AddrFamily.IPv4);
 		connect(addr);
 	}
 
@@ -104,7 +104,7 @@ alias ConnectionHandler = void delegate(in Address addr) @safe;
 
 		super.close();
 		_connected = false;
-		_socket.shutdown(SocketShutdown.BOTH);
+		_socket.shutdown(SocketShutdown.both);
 		_socket.close();
 
 		if (onClosed)

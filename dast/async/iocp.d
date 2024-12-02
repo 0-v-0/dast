@@ -1,6 +1,6 @@
 module dast.async.iocp;
 
-version (Windows)  : import dast.async.tcplistener;
+version (Windows)  : import dast.async.tcpserver;
 package import core.sys.windows.windows,
 core.sys.windows.mswsock;
 

@@ -123,8 +123,6 @@ struct HTTPContext {
 alias C = Context!(HTTPContext, SocketData);
 alias Socket = C.Socket;
 
-Mutex mutex;
-
 void main() {
 	enum port = 8090;
 	enum writeData = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n" ~
@@ -142,8 +140,8 @@ void main() {
 			ctx.onEnd = &onEnd;
 			ctx.onTimeout = &onTimeout;
 
-			auto listener = ctx.listen("127.0.0.1", port);
-			if (!listener) {
+			auto server = ctx.listen("127.0.0.1", port);
+			if (!server) {
 				printf("Failed to listen on port %d\n", port);
 				return;
 			}

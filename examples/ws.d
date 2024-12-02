@@ -2,7 +2,7 @@ import std.logger;
 
 import dast.ws;
 
-class EchoSocketServer : WebSocketServer {
+class EchoServer : WSServer {
 	override void onOpen(WSClient client, in Request req) {
 		try
 			trace("Peer ", client.id, " connect to '", req.path, "'");
@@ -18,7 +18,7 @@ class EchoSocketServer : WebSocketServer {
 	}
 }
 
-class BroadcastServer : WebSocketServer {
+class BroadcastServer : WSServer {
 	private const(char)[][PeerID] peers;
 	WSClient[PeerID] clients;
 
@@ -57,19 +57,19 @@ class BroadcastServer : WebSocketServer {
 void main() {
 	version (echo) {
 		pragma(msg, "echo");
-		auto server = new EchoSocketServer;
+		auto server = new EchoServer;
 	}
 	version (broadcast) {
 		pragma(msg, "broadcast");
 		auto server = new BroadcastServer;
 	}
 	version (wshttp) {
-		static void handle(WebSocketServer, WSClient client, in Request) {
+		static void handle(WSServer, WSClient client, in Request) {
 			client.write("HTTP/1.1 200 OK\r\nContent-Length: 13\r\n" ~
 				"Connection: keep-alive\r\nContent-Type: text/plain\r\n\r\nHello, World!");
 		}
 		pragma(msg, "wshttp");
-		auto server = new WebSocketServer;
+		auto server = new WSServer;
 		server.handler = &handle;
 		server.settings.maxConnections = 90_000;
 	}

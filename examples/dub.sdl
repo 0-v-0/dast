@@ -4,6 +4,7 @@ targetType "executable"
 buildOptions "debugInfoC" platform="windows"
 configuration "httpserver" {
 	dependency "dast:async" path=".."
+	dflags "-dip1008"
 	sourceFiles "httpserver.d"
 	subConfiguration "dast:async" "lite"
 }

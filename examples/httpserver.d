@@ -1,6 +1,6 @@
 import dast.async;
-import dast.async.net.socket;
 import std.stdio;
+import tame.net.socket;
 
 extern (C) __gshared {
 	bool rt_cmdline_enabled = false;
@@ -13,16 +13,16 @@ extern (C) __gshared {
 void main() {
 	enum port = 8090;
 	scope loop = new EventLoop;
-	scope listener = new TcpListener(loop);
+	scope server = new TCPServer(loop);
 
-	listener.reusePort = true;
-	const addr = InetAddress(InetAddress.LOOPBACK, port);
-	listener.bind(addr);
-	listener.listen(128);
+	server.reusePort = true;
+	const addr = IPv4Addr(IPv4Addr.loopback, port);
+	server.bind(addr);
+	server.listen();
 	enum writeData = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n" ~
 		"Content-Type: text/plain\r\n\r\nHello, World!";
-	listener.onAccept = (Socket socket) {
-		auto client = new TcpStream(loop, socket);
+	server.onAccept = (Socket socket) {
+		auto client = new TCPClient(loop, socket);
 		client.onReceived = (in ubyte[] data) {
 			//debug writeln("received: ", cast(string)data);
 
@@ -40,8 +40,8 @@ void main() {
 		};
 		client.start();
 	};
-	listener.start();
+	server.start();
 
-	writeln("The server is listening on ", listener.localAddress);
+	writeln("The server is listening on ", server.localAddr);
 	loop.run();
 }

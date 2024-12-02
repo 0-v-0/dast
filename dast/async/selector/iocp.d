@@ -2,14 +2,14 @@ module dast.async.selector.iocp;
 
 version (Windows)  : import dast.async.core,
 dast.async.iocp,
-dast.async.tcpstream;
+dast.async.tcpclient;
 
 alias Selector = Iocp;
 
 template Iocp() {
 	import dast.async.core,
 	dast.async.iocp,
-	dast.async.tcpstream,
+	dast.async.tcpclient,
 	dast.async.thread;
 
 @safe:
@@ -87,24 +87,24 @@ private:
 }
 
 package(dast.async) void handleEvent(OVERLAPPED_ENTRY entry) {
-	import dast.async.tcplistener;
+	import dast.async.tcpserver;
 
 	const len = entry.dwNumberOfBytesTransferred;
 	auto ev = cast(IocpContext*)entry.lpOverlapped;
 	auto channel = cast(void*)entry.lpCompletionKey;
 	switch (ev.operation) with (IocpOperation) {
 	case accept:
-		(cast(TcpListener)channel).onRead();
+		(cast(TCPServer)channel).onRead();
 		break;
 	case read:
 		if (len && !(cast(SocketChannel)channel).isClosed)
-			(cast(TcpStream)channel).onRead(len);
+			(cast(TCPClient)channel).onRead(len);
 		break;
 	case write:
 		debug (Log)
 			info("finishing writing ", len, " bytes");
 		// Notify the client about how many bytes actually sent
-		(cast(TcpStream)channel).onWrite(len);
+		(cast(TCPClient)channel).onWrite(len);
 		break;
 		// TODO
 		//case event:

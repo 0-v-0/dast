@@ -9,7 +9,7 @@ version (Have_database_util) {
 
 	enum ignore; // @suppress(dscanner.style.phobos_naming_convention)
 
-	import tame.ascii;
+	import tame.text.ascii;
 
 	S snakeCase(S)(S input, char sep = '_') {
 		if (!input.length)

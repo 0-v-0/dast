@@ -21,7 +21,7 @@ struct Headers {
 	}
 
 	void opIndexAssign(in char[] value, in char[] key) pure @trusted nothrow {
-		import tame.ascii;
+		import tame.text.ascii;
 
 		data[cast(string)toLower(key.dup)] = value;
 	}
@@ -50,9 +50,9 @@ struct Request {
 	}
 
 	bool tryParse(const ubyte[] data) nothrow {
-		import httparsed;
+		import dast.http.parser;
 
-		MsgParser!Request parser;
+		Parser!Request parser;
 		int res = parser.parseRequest(data);
 		this = parser.msg;
 		return res <= data.length;

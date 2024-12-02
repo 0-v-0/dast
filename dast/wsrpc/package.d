@@ -4,7 +4,7 @@ lmpl4d,
 std.traits;
 public import dast.ws.server : PeerID, WSClient;
 import core.thread,
-lockfree.queue;
+tame.lockfree.queue;
 
 /// A WebSocket RPC request
 struct WSRequest {
@@ -57,7 +57,7 @@ private alias
 SReq = shared WSRequest,
 LFQ = LockFreeQueue!SReq;
 
-class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
+class WSRPCServer(uint pageCount, modules...) : WSServer {
 	public import dast.ws : Request;
 	import core.memory,
 	tame.meta;
@@ -75,14 +75,14 @@ class WSRPCServer(uint pageCount, modules...) : WebSocketServer {
 		}
 	}
 
-	this(AddressFamily family = AddressFamily.INET) {
+	this(AddrFamily family = AddrFamily.IPv4) {
 		static if (pageCount)
 			super(new EventExecutor, family);
 		else
 			super(family);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddrFamily family = AddrFamily.IPv4) {
 		super(loop, family);
 	}
 

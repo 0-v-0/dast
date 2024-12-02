@@ -3,7 +3,7 @@ description "Lightweight YAML parser"
 authors "0-v-0"
 copyright "Copyright © 2022-2024 0-v-0"
 license "MIT"
-dependency "tame" version="~>0.0.11"
+dependency "tame" version="~>0.0.13"
 sourcePaths "lyaml"
 importPaths "."
 configuration "library" {

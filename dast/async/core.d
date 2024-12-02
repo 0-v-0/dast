@@ -96,7 +96,7 @@ enum WatchFlag : uint {
 
 package:
 debug (Log) import std.logger;
-import dast.async.net.socket,
+import tame.net.socket,
 std.conv : text;
 
 alias WT = WatcherType,

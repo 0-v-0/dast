@@ -4,7 +4,7 @@ module lyaml.loader;
 import lyaml.node;
 import lyaml.util;
 import std.datetime;
-import tame.ascii;
+import tame.text.ascii;
 import tame.string;
 import std.ascii : isWhite;
 import std.string : replace, toStringz;

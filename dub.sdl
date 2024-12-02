@@ -18,7 +18,8 @@ subPackage {
 	dflags "-preview=in" "-dip1008"
 	sourcePaths "dast/async"
 	importPaths "."
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
+	dependency "tame:net" version="~>0.0.13"
 
 	configuration "full" {
 		versions "HaveTimer"
@@ -33,7 +34,7 @@ subPackage {
 	name "config"
 	sourceFiles "dast/config.d"
 	importPaths "."
-	dependency "ctfepp" version="775759f" optional=true default=false repository="git+https://github.com/rikkimax/ctfepp.git"
+	//dependency "ctfepp" version="775759f" optional=true default=false repository="git+https://github.com/rikkimax/ctfepp.git"
 	dependency "dast:util" path="."
 	dependency "lyaml" path="lyaml"
 }
@@ -43,7 +44,7 @@ subPackage {
 	sourceFiles "dast/fcgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 	dflags "-preview=in"
 }
 
@@ -52,7 +53,7 @@ subPackage {
 	sourcePaths "dast/gen"
 	importPaths "."
 	dependency "dast:util" path="."
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -61,8 +62,7 @@ subPackage {
 	sourcePaths "dast/http"
 	importPaths "."
 	dependency "dast:async" path="."
-	dependency "httparsed" version="~>1.2.1"
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 	dflags "-dip1008" "-preview=in"
 }
 
@@ -88,7 +88,7 @@ subPackage {
 	sourceFiles "dast/ssr.d"
 	importPaths "."
 	dependency "simpletpl" path="simpletpl"
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 }
 subPackage "md2d"
 
@@ -97,7 +97,7 @@ subPackage {
 	sourceFiles "dast/util.d"
 	importPaths "."
 	dependency "database:util" version="*" optional=true
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 }
 
 subPackage {
@@ -105,7 +105,7 @@ subPackage {
 	sourceFiles "dast/uwsgi.d"
 	importPaths "."
 	dependency "dast:map" path="."
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 	dflags "-preview=in" "-dip1008"
 }
 
@@ -124,7 +124,7 @@ subPackage {
 	dependency "dast:async" path="."
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
-	dependency "tame" version="~>0.0.11"
+	dependency "tame" version="~>0.0.13"
 
 	configuration "full" {
 		subConfiguration "dast:async" "full"
@@ -143,8 +143,8 @@ subPackage {
 	dependency "dast:ws" path="."
 	dependency "dast:util" path="."
 	dependency "lmpl4d" version="~>0.0.13"
-	dependency "tame" version="~>0.0.11"
-	dependency "tame:lockfree" version="*"
+	dependency "tame" version="~>0.0.13"
+	dependency "tame:lockfree" version="~>0.0.13"
 }
 dependency ":config" path="."
 dependency ":util" path="."

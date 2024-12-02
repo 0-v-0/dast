@@ -19,7 +19,7 @@ Node readyml(string content, bool preprocess = PP) {
 			executePPParser(file);
 			auto edata = EvaluateData(file);
 			static foreach (s; [
-				"Windows", "Win32", "Win64", "linux", "OSX", "iOS", "TVOS",
+				"Windows", "Win32", "Win64", "linux", "OSX", "iOS", "TVOS", "VisionOS",
 				"Posix", "Android", "Emscripten", "PlayStation",
 				"PlayStation4",
 				"Cygwin", "MinGW", "X86", "X86_64", "ARM", "AArch64",

@@ -8,14 +8,15 @@ std.conv : text;
 debug (Log) import std.logger;
 
 public import dast.async : EventLoop, EventExecutor;
+public import tame.net.socket;
 
 alias
 PeerID = int,
 NextHandler = void delegate(),
-ReqHandler = void function(WebSocketServer server, WSClient client, in Request req, scope NextHandler next);
+ReqHandler = void function(WSServer server, WSClient client, in Request req, scope NextHandler next);
 
 ///
-@safe class WSClient : TcpStream {
+@safe class WSClient : TCPClient {
 	const(ubyte)[] data;
 	Frame[] frames;
 	Frame frame;
@@ -70,16 +71,16 @@ private:
 	typeof(_rBuf.ptr) p;
 }
 
-class WebSocketServer : TcpListener {
+class WSServer : TCPServer {
 	ReqHandler[] handlers;
 	ServerSettings settings;
 	uint connections;
 
-	this(AddressFamily family = AddressFamily.INET) {
+	this(AddrFamily family = AddrFamily.IPv4) {
 		super(new EventExecutor, family);
 	}
 
-	this(EventLoop loop, AddressFamily family = AddressFamily.INET) {
+	this(EventLoop loop, AddrFamily family = AddrFamily.IPv4) {
 		super(loop, family);
 	}
 
@@ -111,7 +112,7 @@ nothrow:
 	void onTextMessage(WSClient, string) {}
 	void onBinaryMessage(WSClient, const(ubyte)[]) {}
 
-	bool add(TcpStream client)
+	bool add(TCPClient client)
 	in (client.handle) {
 		if (!client.isConnected)
 			return false;
