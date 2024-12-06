@@ -1,6 +1,6 @@
 import dast.http.server;
 
-void handle(HTTPServer server, HTTPClient client, scope NextHandler next) {
+void handle(HTTPServer, HTTPClient client, scope NextHandler next) {
 	client.writeHeader("HTTP/1.1 " ~ Status.OK);
 	client.writeHeader("Content-Type: text/html; charset=UTF-8");
 	client.writeHeader("Connection: keep-alive");

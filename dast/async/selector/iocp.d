@@ -10,15 +10,16 @@ template Iocp() {
 	import dast.async.core,
 	dast.async.iocp,
 	dast.async.tcpclient,
-	dast.async.thread;
+	dast.async.thread,
+	std.parallelism : totalCPUs;
 
 @safe:
-	ThreadPool workerPool;
+	ThreadPool* workerPool;
 	this() @trusted {
 		_eventHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
 		if (!_eventHandle)
 			throw new Exception("CreateIoCompletionPort failed");
-		workerPool = new ThreadPool();
+		workerPool = new ThreadPool(totalCPUs - 1);
 	}
 
 	/+ ~this() {
@@ -42,24 +43,12 @@ template Iocp() {
 		return true;
 	}
 
-	bool reregister(SocketChannel watcher) nothrow {
-		// IOCP does not support reregister
-		return false;
-	}
-
-	bool unregister(SocketChannel watcher) nothrow @nogc {
-		// FIXME: Needing refactor or cleanup
-		// https://stackoverflow.com/questions/6573218/removing-a-handle-from-a-i-o-completion-port-and-other-questions-about-iocp
-
-		return true;
-	}
-
 	void weakUp() nothrow @trusted {
 		IocpContext ctx = {operation: IocpOperation.event}; // TODO
 		PostQueuedCompletionStatus(_eventHandle, 0, 0, &ctx.overlapped);
 	}
 
-	void onWeakUp() @system {
+	void onWeakUp() @trusted {
 		enum timeout = 250, N = 32;
 		OVERLAPPED_ENTRY[N] entries = void;
 		uint n = void;
@@ -97,7 +86,7 @@ package(dast.async) void handleEvent(OVERLAPPED_ENTRY entry) {
 		(cast(TCPServer)channel).onRead();
 		break;
 	case read:
-		if (len && !(cast(SocketChannel)channel).isClosed)
+		if (len && (cast(SocketChannel)channel).isRegistered)
 			(cast(TCPClient)channel).onRead(len);
 		break;
 	case write:

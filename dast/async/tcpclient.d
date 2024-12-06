@@ -10,10 +10,12 @@ version (Windows) import dast.async.iocp;
 
 version (Posix) import core.stdc.errno;
 
-alias ConnectionHandler = void delegate(in Address addr) @safe;
+@safe:
+
+alias ConnectionHandler = void delegate(in Address addr);
 
 /// TCP Client
-@safe class TCPClient : SocketChannel {
+class TCPClient : SocketChannel {
 	mixin Forward!"_socket";
 
 	ConnectionHandler onConnected;
@@ -86,8 +88,6 @@ alias ConnectionHandler = void delegate(in Address addr) @safe;
 		if (!_connected)
 			return onError("The connection has been closed");
 		if (data.length) {
-			//auto buf = new WSABUF;
-			//*cast(const(void)[]*)buf = data;
 			_iocpWrite.operation = IocpOperation.write;
 			if (checkErr(WSASend(handle, cast(WSABUF*)&data, 1, null, 0,
 					&_iocpWrite.overlapped, null), "write")) {
@@ -117,7 +117,7 @@ alias ConnectionHandler = void delegate(in Address addr) @safe;
 		while (_isRegistered) {
 			const len = _socket.receive(_rBuf);
 			debug (Log)
-				trace("read nbytes...", len);
+				trace("read nbytes", len);
 
 			if (len > 0) {
 				if (onReceived)

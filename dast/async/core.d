@@ -1,7 +1,7 @@
 module dast.async.core;
 
-import dast.async.queue,
-std.array;
+import std.array,
+tame.fixed.queue;
 public import dast.async.eventloop : EventLoop;
 
 @safe:
@@ -14,24 +14,20 @@ abstract class SocketChannel {
 	ErrorHandler onError;
 
 	package WF flags;
-	private WatcherType _type;
+	const WatcherType type;
 	protected bool _isRegistered;
 	pure nothrow @nogc {
 		@property {
 			final handle() const => _socket.handle;
 
-			final type() const => _type;
-
 			final socket() => _socket;
-
-			final bool isClosed() const => !_isRegistered;
 
 			final bool isRegistered() const => _isRegistered;
 		}
 
 		this(EventLoop loop, WatcherType type = WT.Event) {
 			_loop = loop;
-			_type = type;
+			this.type = type;
 			onError = (msg) {
 				debug (Log) {
 					try
@@ -52,7 +48,8 @@ nothrow:
 		if (!_isRegistered)
 			assert(0, text("The watcher(fd=", handle, ") has already been closed"));
 		_isRegistered = false;
-		_loop.unregister(this);
+		static if(is(typeof(_loop.unregister(this))))
+			_loop.unregister(this);
 		_loop = EventLoop.init;
 		debug (Log)
 			trace("channel closed...", handle);
@@ -72,7 +69,7 @@ protected:
 	Socket _socket;
 }
 
-alias WriteQueue = Queue!(const(void)[], 32, true);
+//alias WriteQueue = Queue!(const(void)[], 32, true);
 
 enum WatcherType : ubyte {
 	None,

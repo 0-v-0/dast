@@ -3,7 +3,7 @@ module dast.async.thread;
 import core.atomic,
 core.thread;
 
-struct TaskBase {
+private struct TaskBase {
 	void function(void*) run;
 }
 
@@ -36,10 +36,10 @@ final class TaskThread : Thread {
 	shared bool running;
 }
 
-final class ThreadPool {
-	import core.sync,
-	dast.async.queue,
-	std.parallelism : totalCPUs;
+struct ThreadPool {
+	import core.stdc.stdlib,
+	core.sync,
+	tame.fixed.queue;
 
 	enum State : ubyte {
 		running,
@@ -52,22 +52,16 @@ final class ThreadPool {
 		Mutex mutex;
 		Condition cond;
 		State status;
-		Queue!(TaskBase*, 2048 / size_t.sizeof, true) queue;
+		Queue!(TaskBase*, 2048 / size_t.sizeof) queue;
 		shared uint nWorkers;
 	}
 	immutable uint timeoutMs;
 
-	this() @trusted {
-		this(totalCPUs - 1);
-	}
-
-	this(uint size, uint timeout_ms = 0) {
-		import std.array;
-
+	this(uint size, uint timeout_ms = 0) @trusted {
 		timeoutMs = timeout_ms;
-		pool = uninitializedArray!(TaskThread[])(size);
+		pool = cast(TaskThread[])malloc(size * TaskThread.sizeof)[0 .. size];
 		nWorkers = size;
-		mutex = new Mutex(this);
+		mutex = new Mutex();
 		cond = new Condition(mutex);
 		foreach (ref t; pool) {
 			t = new TaskThread(&workLoop);
@@ -75,7 +69,8 @@ final class ThreadPool {
 		}
 	}
 
-	~this() {
+	~this() @trusted {
+		free(pool.ptr);
 		finish(true);
 	}
 

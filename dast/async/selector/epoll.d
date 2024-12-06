@@ -49,7 +49,7 @@ template Epoll() {
 		}
 		return true;
 	}
-
+	/+
 	bool reregister(SocketChannel watcher)
 	in (watcher) {
 		const fd = watcher.handle;
@@ -58,6 +58,7 @@ template Epoll() {
 		auto ev = buildEvent(watcher);
 		return epoll_ctl(_eventHandle, EPOLL_CTL_MOD, fd, &ev) == 0;
 	}
++/
 
 	bool unregister(SocketChannel watcher)
 	in (watcher) {

@@ -260,20 +260,13 @@ class Response {
 		buf.clear();
 	}
 
-	Response opBinary(string op : "<<", T)(T content) {
-		write(content);
-		return this;
-	}
-
-	void writeHeader(T...)(T args) {
-		static foreach (arg; args)
-			head ~= arg; //.to!string;
+	void writeHeader(in char[] header) {
+		head ~= header;
 		head ~= "\r\n";
 	}
 
-	void write(T...)(T args) {
-		static foreach (arg; args)
-			buf ~= arg;
+	void write(in char[] data) {
+		buf ~= data;
 	}
 
 	alias put = write;

@@ -1,6 +1,7 @@
 module dast.async.eventloop;
 
 import dast.async.selector;
+@safe:
 
 class EventLoop {
 	mixin Selector;
@@ -24,32 +25,32 @@ class EventLoop {
 
 class EventExecutor : EventLoop {
 	import core.thread,
-	dast.async.queue;
+	tame.fixed.queue;
 
-	private Queue!(Fiber, 64, true) tasks;
+	private Queue!(Fiber, 64) tasks;
 	private Fiber task;
 
 	void queueTask(Fiber fiber) {
 		if (tasks.full)
 			throw new Exception("EventExecutor: tasks queue is full");
-		tasks.enqueue(fiber);
+		tasks.push(fiber);
 	}
 
-	override void run() {
+	override void run() @trusted {
 		task = new Fiber(&super.onWeakUp);
 		super.run();
 	}
 
-	override void onWeakUp() {
+	override void onWeakUp() @trusted {
 		if (task.state == Fiber.State.TERM)
 			task.reset();
 		task.call();
 		for (uint count = tasks.size; count--;) {
-			auto t = tasks.dequeue();
+			auto t = tasks.pop();
 			if (t.state == Fiber.State.HOLD) {
 				t.call();
 				if (t.state == Fiber.State.HOLD) {
-					tasks.enqueue(t);
+					tasks.push(t);
 				}
 			}
 		}

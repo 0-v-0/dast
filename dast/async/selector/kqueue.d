@@ -3,13 +3,13 @@ module dast.async.selector.kqueue;
 import dast.async.core;
 
 version (OSX)
-    version = Kqueue;
+	version = Kqueue;
 else version (iOS)
-    version = Kqueue;
+	version = Kqueue;
 else version (TVOS)
-    version = Kqueue;
+	version = Kqueue;
 else version (WatchOS)
-    version = Kqueue;
+	version = Kqueue;
 
 version (Kqueue)  : import core.time,
 core.stdc.string,
@@ -40,6 +40,7 @@ class Kqueue : KqueueEventChannel {
 		if (!_eventHandle)
 			return;
 		unregister(this);
+
 		.close(_eventHandle);
 		_eventHandle = 0;
 	}
@@ -81,13 +82,13 @@ class Kqueue : KqueueEventChannel {
 		}
 		return err >= 0;
 	}
-
+	/+
 	bool reregister(SocketChannel watcher)
 	in (watcher) {
 		// Kqueue does not support reregister
 		return false;
 	}
-
++/
 	bool unregister(SocketChannel watcher) @trusted nothrow
 	in (watcher) {
 		const fd = watcher.handle;
@@ -159,8 +160,8 @@ class Kqueue : KqueueEventChannel {
 private immutable tspec = timespec(1, 1000 * 10);
 
 class KqueueEventChannel : SocketChannel {
-    this(EventLoop loop) {
-        super(loop);
+	this(EventLoop loop) {
+		super(loop);
 		flags |= WF.Read;
 		_pair = socketPair();
 		_pair[0].blocking = false;

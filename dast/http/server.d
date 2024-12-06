@@ -24,9 +24,8 @@ nothrow:
 		p = _rBuf.ptr;
 	}
 
-	void writeHeader(T...)(T args) {
-		foreach (arg; args)
-			header ~= arg;
+	void writeHeader(in char[] data) pure nothrow @safe {
+		header ~= data;
 		header ~= "\r\n";
 	}
 

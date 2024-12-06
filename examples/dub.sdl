@@ -14,6 +14,7 @@ configuration "fcgi" {
 }
 configuration "http1" {
 	dependency "dast:http" path=".."
+	dflags "-dip1008"
 	sourceFiles "http1.d"
 }
 configuration "uwsgi" {

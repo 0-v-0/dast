@@ -90,28 +90,23 @@ class Response {
 	int requestId = void;
 	protected Socket sock = void;
 
-	void initialize(Socket socket, int reqId) pure @nogc nothrow @safe {
-		sock = socket;
-		requestId = reqId;
-		headerSent = false;
-		head.clear();
-		buf.clear();
-	}
+	pure @nogc nothrow @safe {
+		void initialize(Socket socket, int reqId) {
+			sock = socket;
+			requestId = reqId;
+			headerSent = false;
+			head.clear();
+			buf.clear();
+		}
 
-	Response opBinary(string op : "<<", T)(T content) {
-		write(content);
-		return this;
-	}
+		void writeHeader(in char[] header) {
+			head ~= header;
+			head ~= "\r\n";
+		}
 
-	void writeHeader(T...)(T args) {
-		static foreach (arg; args)
-			head ~= arg; //.to!string;
-		head ~= "\r\n";
-	}
-
-	void write(T...)(T args) {
-		static foreach (arg; args)
-			buf ~= arg;
+		void write(in char[] data) {
+			buf ~= data;
+		}
 	}
 
 	alias put = write;
@@ -184,7 +179,7 @@ class Server {
 					onError(e);
 				resp.writeHeader("HTTP/1.1 500 Internal Server Error");
 				resp.writeHeader("Content-Type: text/html; charset=UTF-8");
-				resp << e.toString;
+				resp.write(e.toString());
 			}
 			resp.finish();
 		}

@@ -13,7 +13,7 @@ class CurlException : Exception {
 			file = The file where the exception occurred.
 			line = The line number where the exception occurred.
 			next = The previous exception in the chain of exceptions, if any.
-	  +/
+	+/
 	@safe pure nothrow
 	this(string msg,
 		string file = __FILE__,
@@ -33,7 +33,7 @@ class CurlTimeoutException : CurlException {
 			file = The file where the exception occurred.
 			line = The line number where the exception occurred.
 			next = The previous exception in the chain of exceptions, if any.
-	  +/
+	+/
 	@safe pure nothrow
 	this(string msg,
 		string file = __FILE__,

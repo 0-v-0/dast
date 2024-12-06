@@ -1,1 +1,0 @@
-ldc2 sniffer.d -L-lcurl -L-lphobos2-ultralight -defaultlib=druntime-ldc -dip1000 -dip1008 -O --release
