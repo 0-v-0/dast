@@ -75,10 +75,10 @@ class TCPClient : SocketChannel {
 	@property isConnected() const => _connected;
 
 	void start() nothrow {
-		if (_isRegistered)
+		if (_isReg)
 			return;
 		_loop.register(this);
-		_isRegistered = true;
+		_isReg = true;
 		version (Windows)
 			recv();
 	}
@@ -114,7 +114,7 @@ class TCPClient : SocketChannel {
 	version (Posix) override void onRead() {
 		debug (Log)
 			trace("start reading");
-		while (_isRegistered) {
+		while (_isReg) {
 			const len = _socket.receive(_rBuf);
 			debug (Log)
 				trace("read nbytes", len);
@@ -168,7 +168,7 @@ class TCPClient : SocketChannel {
 	}
 
 	private void disconnected() {
-		_isRegistered = false;
+		_isReg = false;
 		if (onDisconnected)
 			onDisconnected();
 	}
@@ -186,7 +186,7 @@ protected:
 
 		public final flush() nothrow @trusted {
 			size_t len;
-			while (_isRegistered && !cancelWriting && !_writeQueue.empty) {
+			while (_isReg && !cancelWriting && !_writeQueue.empty) {
 				const data = _writeQueue.front;
 				const n = tryWrite(data);
 				if (!n) // error

@@ -5,10 +5,10 @@ dast.http,
 dast.ws.frame,
 std.conv : text;
 
-debug (Log) import std.logger;
+debug (Log) import tame.logger;
 
-public import dast.async : EventLoop, EventExecutor;
-public import tame.net.socket;
+public import tame.net.socket,
+dast.async : EventLoop, EventExecutor;
 
 alias
 PeerID = int,
@@ -210,7 +210,8 @@ private:
 		} else {
 			Request req;
 			if (performHandshake(client, data, req)) {
-				debug (Log) info("Handshake with ", client.id, " done (path=", req.path, ")");
+				debug (Log)
+					info("Handshake with ", client.id, " done (path=", req.path, ")");
 				client.flush();
 				onOpen(client, req);
 			}
@@ -219,8 +220,8 @@ private:
 
 	void handleFrame(WSClient client, in Frame frame) {
 		debug (Log)
-			tracef("From client %s received frame: done=%s; fin=%s; op=%s; length=%u",
-				client.id, frame.done, frame.fin, frame.op, frame.length);
+			trace("From client ", client.id, " received frame: done=", frame.done,
+				"; fin=", frame.fin, "; op=", frame.op, "; length=", frame.length);
 		if (!frame.done)
 			return;
 		switch (frame.op) {

@@ -15,14 +15,14 @@ abstract class SocketChannel {
 
 	package WF flags;
 	const WatcherType type;
-	protected bool _isRegistered;
+	protected bool _isReg;
 	pure nothrow @nogc {
 		@property {
 			final handle() const => _socket.handle;
 
 			final socket() => _socket;
 
-			final bool isRegistered() const => _isRegistered;
+			final bool isRegistered() const => _isReg;
 		}
 
 		this(EventLoop loop, WatcherType type = WT.Event) {
@@ -45,9 +45,9 @@ abstract class SocketChannel {
 
 nothrow:
 	void close() {
-		if (!_isRegistered)
+		if (!_isReg)
 			assert(0, text("The watcher(fd=", handle, ") has already been closed"));
-		_isRegistered = false;
+		_isReg = false;
 		static if(is(typeof(_loop.unregister(this))))
 			_loop.unregister(this);
 		_loop = EventLoop.init;
@@ -92,7 +92,7 @@ enum WatchFlag : uint {
 }
 
 package:
-debug (Log) import std.logger;
+debug (Log) import tame.logger;
 import tame.net.socket,
 std.conv : text;
 

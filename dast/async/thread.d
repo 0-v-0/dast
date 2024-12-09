@@ -37,7 +37,7 @@ final class TaskThread : Thread {
 }
 
 struct ThreadPool {
-	import core.stdc.stdlib,
+	import core.memory,
 	core.sync,
 	tame.fixed.queue;
 
@@ -59,7 +59,8 @@ struct ThreadPool {
 
 	this(uint size, uint timeout_ms = 0) @trusted {
 		timeoutMs = timeout_ms;
-		pool = cast(TaskThread[])malloc(size * TaskThread.sizeof)[0 .. size];
+		pool = (cast(TaskThread*)pureMalloc(size * TaskThread.sizeof))[0 .. size];
+		// TODO: check pool is null
 		nWorkers = size;
 		mutex = new Mutex();
 		cond = new Condition(mutex);
@@ -70,7 +71,7 @@ struct ThreadPool {
 	}
 
 	~this() @trusted {
-		free(pool.ptr);
+		pureFree(pool.ptr);
 		finish(true);
 	}
 

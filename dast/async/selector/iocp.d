@@ -11,20 +11,21 @@ template Iocp() {
 	dast.async.iocp,
 	dast.async.tcpclient,
 	dast.async.thread,
-	std.parallelism : totalCPUs;
+	tame.env : totalCPUs;
 
 @safe:
 	ThreadPool* workerPool;
-	this() @trusted {
+	this(uint threads = totalCPUs - 1) @trusted {
 		_eventHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null, 0, 0);
 		if (!_eventHandle)
 			throw new Exception("CreateIoCompletionPort failed");
-		workerPool = new ThreadPool(totalCPUs - 1);
+		if (threads)
+			workerPool = new ThreadPool(threads);
 	}
 
-	/+ ~this() {
-		.close(_eventHandle);
-	} +/
+	~this() @nogc nothrow {
+		CloseHandle(_eventHandle);
+	}
 
 	bool register(SocketChannel watcher) @trusted nothrow
 	in (watcher.type <= WT.Event) {

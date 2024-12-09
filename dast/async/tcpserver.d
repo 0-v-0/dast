@@ -33,7 +33,7 @@ class TCPServer : SocketChannel {
 
 	void start() {
 		_loop.register(this);
-		_isRegistered = true;
+		_isReg = true;
 		version (Windows)
 			accept();
 	}
@@ -82,7 +82,7 @@ private:
 
 			debug (Log)
 				trace("accept next connection");
-			return _isRegistered && accept();
+			return _isReg && accept();
 		}
 	}
 

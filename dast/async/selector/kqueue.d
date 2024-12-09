@@ -32,11 +32,11 @@ class Kqueue : KqueueEventChannel {
 		register(handle);
 	}
 
-	~this() {
+	~this() nothrow {
 		dispose();
 	}
 
-	void dispose() {
+	void dispose() nothrow {
 		if (!_eventHandle)
 			return;
 		unregister(this);
