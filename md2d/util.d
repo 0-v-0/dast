@@ -8,12 +8,12 @@ import std.range,
 std.string;
 import std.algorithm : canFind;
 public import std.conv : to;
-public import tame.uri : asSlug;
+public import tame.text.uri : asSlug;
 
 @safe pure:
 /++
 	Checks if all characters in 'str' are contained in 'chars'.
- +/
++/
 bool allOf(S)(S str, S chars) {
 	foreach (ch; str)
 		if (!chars.canFind(ch))
@@ -23,7 +23,7 @@ bool allOf(S)(S str, S chars) {
 
 /++
 	Checks if any character in 'str' is contained in 'chars'.
- +/
++/
 bool anyOf(S)(S str, S chars) {
 	foreach (ch; str)
 		if (chars.canFind(ch))
@@ -68,13 +68,13 @@ ptrdiff_t matchBracket(string str, bool nested = true) nothrow {
 	return -1;
 }
 
-bool isLineBlank(S)(S ln) => allOf(ln, " \t");
+bool isLineBlank(in char[] ln) => allOf(ln, " \t");
 
 pure @safe:
 @nogc {
-	bool isLineIndented(S)(S ln) => ln.startsWith('\t') || ln.startsWith("    ");
+	bool isLineIndented(in char[] ln) => ln.startsWith('\t') || ln.startsWith("    ");
 
-	string unindentLine(S)(S ln) {
+	auto unindentLine(in char[] ln) {
 		if (ln.startsWith('\t'))
 			return ln[1 .. $];
 		if (ln.startsWith("    "))
@@ -82,7 +82,7 @@ pure @safe:
 		return ln;
 	}
 
-	bool isAtxHeaderLine(S)(S ln) {
+	bool isAtxHeaderLine(const(char)[] ln) {
 		ln = ln.stripLeft;
 		size_t i = 0;
 		while (i < ln.length && ln[i] == '#')
@@ -93,7 +93,7 @@ pure @safe:
 	}
 }
 
-bool isSetextHeaderLine(S)(S ln, char subHeaderChar) {
+bool isSetextHeaderLine(const(char)[] ln, char subHeaderChar) {
 	ln = ln.stripLeft;
 	if (ln.length < 1)
 		return false;
@@ -110,14 +110,14 @@ bool isSetextHeaderLine(S)(S ln, char subHeaderChar) {
 	return false;
 }
 
-bool isHlineLine(S)(S ln) =>
+bool isHlineLine(in char[] ln) =>
 	(allOf(ln, " -") && count(ln, '-') >= 3) ||
 	(allOf(ln, " *") && count(ln, '*') >= 3) ||
 	(allOf(ln, " _") && count(ln, '_') >= 3);
 
-bool isQuoteLine(S)(S ln) => ln.stripLeft().startsWith(">");
+bool isQuoteLine(in char[] ln) => ln.stripLeft().startsWith(">");
 
-size_t getQuoteLevel(S)(S ln) {
+size_t getQuoteLevel(const(char)[] ln) {
 	size_t level;
 	ln = stripLeft(ln);
 	while (ln.length > 0 && ln[0] == '>') {
@@ -127,7 +127,7 @@ size_t getQuoteLevel(S)(S ln) {
 	return level;
 }
 
-bool isUListLine(S)(S ln) {
+bool isUListLine(const(char)[] ln) {
 	ln = ln.stripLeft;
 	if (ln.length < 2)
 		return false;
@@ -138,7 +138,7 @@ bool isUListLine(S)(S ln) {
 	return true;
 }
 
-bool isOListLine(S)(S ln) {
+bool isOListLine(const(char)[] ln) {
 	ln = ln.stripLeft;
 	if (!ln.length || ln[0] < '0' || ln[0] > '9')
 		return false;
@@ -154,7 +154,7 @@ bool isOListLine(S)(S ln) {
 	return true;
 }
 
-bool isTableRowLine(bool proper = false)(string ln) {
+bool isTableRowLine(bool proper = false)(in char[] ln) {
 	static if (proper)
 		return ln.indexOf(" | ") >= 0
 			&& !ln.isOListLine
@@ -164,4 +164,4 @@ bool isTableRowLine(bool proper = false)(string ln) {
 		return ln.indexOf(" | ") >= 0;
 }
 
-bool isCodeBlockDelimiter(S)(S ln) => ln.startsWith("```");
+bool isCodeBlockDelimiter(in char[] ln) => ln.startsWith("```");

@@ -1,8 +1,0 @@
-name "net"
-description "dast.net"
-authors "0-v-0"
-copyright "Copyright © 2024 0-v-0"
-license "MIT"
-sourcePaths "."
-importPaths "../.."
-targetType "library"

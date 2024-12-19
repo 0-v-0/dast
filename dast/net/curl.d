@@ -17,15 +17,17 @@ struct Curl {
 
 	@disable this();
 
-	@property void connTimeout(long secs) => set(CurlOption.connecttimeout, secs);
+	@property {
+		void connTimeout(long secs) => set(CurlOption.connecttimeout, secs);
 
-	@property void timeout(long secs) => set(CurlOption.timeout, secs);
+		void timeout(long secs) => set(CurlOption.timeout, secs);
 
-	@property void nobody(bool v) => set(CurlOption.nobody, v);
+		void nobody(bool v) => set(CurlOption.nobody, v);
 
-	@property void maxredirs(long v) => set(CurlOption.maxredirs, v);
+		void maxredirs(long v) => set(CurlOption.maxredirs, v);
 
-	@property long contentLength() => c.get(CurlInf.contentlengthdownload);
+		long contentLength() => c.get(CurlInf.contentlengthdownload);
+	}
 
 private:
 	void* ch;
@@ -33,6 +35,7 @@ private:
 
 struct CurlSet {
 	import etc.c.curl : CurlM, CurlMsg, CURLMsg;
+
 	this(Curl[] cs) {
 		mh = curl.multi_init();
 		_rc = 1;
@@ -54,14 +57,16 @@ struct CurlSet {
 		}
 	}
 
-	@property handle() => mh;
+	@property {
+		auto handle() => mh;
 
-	@property bool running() => _running > 0;
+		bool running() => _running > 0;
 
-	@property empty() {
-		if (msgLeft < 0)
-			msg = curl.multi_info_read(mh, &msgLeft);
-		return msgLeft == 0;
+		bool empty() {
+			if (msgLeft < 0)
+				msg = curl.multi_info_read(mh, &msgLeft);
+			return msgLeft == 0;
+		}
 	}
 
 	auto tryWait(int timeout_ms = 1000) => curl.multi_wait(mh, null, 0, timeout_ms, null);

@@ -23,9 +23,9 @@ template Iocp() {
 			workerPool = new ThreadPool(threads);
 	}
 
-	~this() @nogc nothrow {
+	/*~this() @nogc nothrow {
 		CloseHandle(_eventHandle);
-	}
+	}*/
 
 	bool register(SocketChannel watcher) @trusted nothrow
 	in (watcher.type <= WT.Event) {

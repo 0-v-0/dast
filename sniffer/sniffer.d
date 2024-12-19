@@ -16,7 +16,7 @@ int main(string[] args) {
 	import std.range : iota;
 
 	if (args.length < 2) {
-		puts("Usage: scraper [start] [end] <outfile>");
+		puts("Usage: sniffer [start] [end] <outfile>");
 		return 1;
 	}
 	auto file = File(args[$ - 1], "ab");

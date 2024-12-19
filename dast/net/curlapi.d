@@ -69,8 +69,8 @@ extern (C) nothrow @nogc:
 	curl_slist* function(curl_slist*, char*) slist_append;
 	void function(curl_slist*) slist_free_all;
 	void function(void*) free;
-	char* function(CURL* curl, scope const(char) *s, int length) easy_escape;
-	char* function(CURL* curl, scope const(char) *s, int length, int *outlength) easy_unescape;
+	char* function(CURL* curl, scope const(char)* s, int length) easy_escape;
+	char* function(CURL* curl, scope const(char)* s, int length, int* outlength) easy_unescape;
 
 	CURL* function() multi_init;
 	CURLMcode function(void* multi_handle, void* extra_fds, uint extra_nfds, int timeout_ms, int* ret) multi_wait;
@@ -224,22 +224,22 @@ struct Curl {
 		Curl copy = Curl(curl.easy_duphandle(ch));
 
 		with (CurlOption) {
-			foreach (option; AliasSeq!(file, writefunction, writeheader,
+			foreach (opt; AliasSeq!(file, writefunction, writeheader,
 					headerfunction, infile, readfunction, ioctldata, ioctlfunction,
 					seekdata, seekfunction, sockoptdata, sockoptfunction,
 					opensocketdata, opensocketfunction, progressdata,
 					progressfunction, debugdata, debugfunction, interleavedata,
 					interleavefunction, chunk_data, chunk_bgn_function,
 					chunk_end_function, fnmatch_data, fnmatch_function, cookiejar, postfields))
-				copy.clear(option);
-		}
+				copy.clear(opt);
 
-		// The options are only supported by libcurl when it has been built
-		// against certain versions of OpenSSL - if your libcurl uses an old
-		// OpenSSL, or uses an entirely different SSL engine, attempting to
-		// clear these normally will raise an exception
-		copy.clearIfSupported(CurlOption.ssl_ctx_function);
-		copy.clearIfSupported(CurlOption.ssh_keydata);
+			// The options are only supported by libcurl when it has been built
+			// against certain versions of OpenSSL - if your libcurl uses an old
+			// OpenSSL, or uses an entirely different SSL engine, attempting to
+			// clear these normally will raise an exception
+			copy.tryClear(ssl_ctx_function);
+			copy.tryClear(ssh_keydata);
+		}
 
 		// Enable for curl version > 7.21.7
 		static if (LIBCURL_VERSION_MAJOR >= 7 &&
@@ -256,9 +256,9 @@ struct Curl {
 
 		/*
 		  Allow sharing of conv functions
-		  copy.clear(CurlOption.conv_to_network_function);
-		  copy.clear(CurlOption.conv_from_network_function);
-		  copy.clear(CurlOption.conv_from_utf8_function);
+			copy.clear(CurlOption.conv_to_network_function);
+			copy.clear(CurlOption.conv_from_network_function);
+			copy.clear(CurlOption.conv_from_utf8_function);
 		*/
 
 		return copy;
@@ -276,7 +276,7 @@ struct Curl {
 	}
 
 	/**
-	   Pausing and continuing transfers.
+		 Pausing and continuing transfers.
 	*/
 	void pause(bool sendingPaused, bool receivingPaused) {
 		throwOnStopped();
@@ -287,10 +287,10 @@ struct Curl {
 	}
 
 	/**
-	   Set a string curl option.
-	   Params:
-	   option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
-	   value = The string
+		Set a string curl option.
+		Params:
+		option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
+		value = The string
 	*/
 	void set(CurlOption option, const(char)[] value) {
 		import std.internal.cstring : tempCString;
@@ -300,10 +300,10 @@ struct Curl {
 	}
 
 	/**
-	   Set a long curl option.
-	   Params:
-	   option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
-	   value = The long
+		Set a long curl option.
+		Params:
+		option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
+		value = The long
 	*/
 	void set(CurlOption option, long value) {
 		throwOnStopped();
@@ -311,10 +311,10 @@ struct Curl {
 	}
 
 	/**
-	   Set a void* curl option.
-	   Params:
-	   option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
-	   value = The pointer
+		Set a void* curl option.
+		Params:
+		option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
+		value = The pointer
 	*/
 	void set(CurlOption option, void* value) {
 		throwOnStopped();
@@ -322,38 +322,35 @@ struct Curl {
 	}
 
 	/**
-	   Clear a pointer option.
-	   Params:
-	   option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
+		Clear a pointer option.
+		Params:
+		option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
 	*/
 	void clear(CurlOption option) {
-		throwOnStopped();
-		check(curl.easy_setopt(ch, option, null));
+		check(tryClear(option));
 	}
 
 	/**
-	   Clear a pointer option. Does not raise an exception if the underlying
-	   libcurl does not support the option. Use sparingly.
-	   Params:
-	   option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
+		Clear a pointer option. Does not raise an exception if the underlying
+		libcurl does not support the option. Use sparingly.
+		Params:
+		option = A $(REF CurlOption, etc,c,curl) as found in the curl documentation
 	*/
-	void clearIfSupported(CurlOption option) {
+	CURLcode tryClear(CurlOption option) {
 		throwOnStopped();
-		auto rval = curl.easy_setopt(ch, option, null);
-		if (rval != CurlError.unknown_option && rval != CurlError.not_built_in)
-			check(rval);
+		return curl.easy_setopt(ch, option, null);
 	}
 
 	/**
-	   perform the curl request by doing the HTTP,FTP etc. as it has
-	   been setup beforehand.
+		perform the curl request by doing the HTTP,FTP etc. as it has
+		been setup beforehand.
 
-	   Params:
-	   throwOnError = whether to throw an exception or return a CURLcode on error
+		Params:
+		throwOnError = whether to throw an exception or return a CURLcode on error
 	*/
 	CURLcode perform(bool throwOnError = true) {
 		throwOnStopped();
-		CURLcode code = curl.easy_perform(ch);
+		const code = curl.easy_perform(ch);
 		if (throwOnError)
 			check(code);
 		return code;

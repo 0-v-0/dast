@@ -15,7 +15,7 @@ targetType "library"
 
 subPackage {
 	name "async"
-	dflags "-preview=in" "-dip1008"
+	dflags "-dip1000" "-dip1008" "-preview=in" "-preview=inclusiveincontracts" "-preview=fieldwise" "-preview=fixImmutableConv" "-preview=systemVariables"
 	sourcePaths "dast/async"
 	importPaths "."
 	dependency "tame" version="~>0.0.13"
@@ -36,7 +36,8 @@ subPackage {
 	importPaths "."
 	//dependency "ctfepp" version="775759f" optional=true default=false repository="git+https://github.com/rikkimax/ctfepp.git"
 	dependency "dast:util" path="."
-	dependency "lyaml" path="lyaml"
+	dependency "tame" version="~>0.0.13"
+	dependency "tame:yaml" version="~>0.0.13"
 }
 
 subPackage {
@@ -63,7 +64,7 @@ subPackage {
 	importPaths "."
 	dependency "dast:async" path="."
 	dependency "tame" version="~>0.0.13"
-	dflags "-dip1008" "-preview=in"
+	dflags "-dip1008" "-preview=in" "-mcpu=native"
 }
 
 subPackage {
@@ -72,7 +73,16 @@ subPackage {
 	importPaths "."
 }
 
-subPackage "./dast/net"
+subPackage {
+	name "net"
+	description "dast.net"
+	authors "0-v-0"
+	copyright "Copyright © 2024 0-v-0"
+	license "MIT"
+	sourcePaths "dast/net"
+	importPaths "."
+	targetType "library"
+}
 
 subPackage {
 	name "session"

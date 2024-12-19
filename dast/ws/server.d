@@ -141,7 +141,7 @@ nothrow:
 	bool performHandshake(WSClient client, in ubyte[] msg, ref Request req) {
 		import sha1ct : sha1Of;
 		import std.uni : toLower;
-		import tame.base64 : encode;
+		import tame.data.base64 : encode;
 
 		enum MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
 			KEY = "Sec-WebSocket-Key".toLower(),

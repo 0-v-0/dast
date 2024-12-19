@@ -3,10 +3,6 @@ module dast.async.timer.common;
 import dast.async.core;
 import std.datetime;
 
-enum CustomTimerMinTimeout = 50; // in ms
-enum CustomTimerWheelSize = 500;
-enum CustomTimerNextTimeout = cast(long)(CustomTimerMinTimeout * 2.0 / 3.0);
-
 alias TickedHandler = void delegate(Object sender),
 TimeoutHandler = void delegate(Object sender);
 
@@ -32,7 +28,7 @@ nothrow class TimingWheel {
 		Params:
 			tm = the timer
 	+/
-	void addNewTimer(WheelTimer tm, size_t wheel = 0) {
+	void addTimer(WheelTimer tm, size_t wheel = 0) {
 		size_t index;
 		if (wheel > 0)
 			index = nextWheel(wheel);
@@ -40,12 +36,12 @@ nothrow class TimingWheel {
 			index = getPrev();
 
 		NullWheelTimer timer = _list[index];
-		tm._next = timer._next;
-		tm._prev = timer;
-		if (timer._next)
-			timer._next._prev = tm;
-		timer._next = tm;
-		tm._tw = this;
+		tm.next = timer.next;
+		tm.prev = timer;
+		if (timer.next)
+			timer.next.prev = tm;
+		timer.next = tm;
+		tm.tw = this;
 	}
 
 	/++
@@ -83,16 +79,17 @@ protected:
 	/// rest a timer
 	void rest(WheelTimer tm, size_t next) {
 		remove(tm);
-		addNewTimer(tm, next);
+		addTimer(tm, next);
 	}
+
 	/// remove the timer
 	void remove(WheelTimer tm) {
-		tm._prev._next = tm._next;
-		if (tm._next)
-			tm._next._prev = tm._prev;
-		tm._tw = null;
-		tm._next = null;
-		tm._prev = null;
+		tm.prev.next = tm.next;
+		if (tm.next)
+			tm.next.prev = tm.prev;
+		tm.tw = null;
+		tm.next = null;
+		tm.prev = null;
 	}
 
 private:
@@ -115,51 +112,51 @@ nothrow abstract class WheelTimer {
 	pragma(inline, true) final {
 		/// rest the timer
 		void rest(size_t next = 0) {
-			if (_tw) {
-				_tw.rest(this, next);
+			if (tw) {
+				tw.rest(this, next);
 			}
 		}
 
 		/// stop the time, it will remove from Wheel
 		void stop() {
-			if (_tw)
-				_tw.remove(this);
+			if (tw)
+				tw.remove(this);
 		}
 
 		/// the time is active
-		@property isActive() const => _tw !is null;
+		@property isActive() const => tw !is null;
 	}
 	/// whether the timer only run once
 	bool oneShop;
 
 private:
-	WheelTimer _next;
-	WheelTimer _prev;
-	TimingWheel _tw;
+	WheelTimer next;
+	WheelTimer prev;
+	TimingWheel tw;
 }
 
 /// the Header Timer in the wheel
 class NullWheelTimer : WheelTimer {
 	override void onTimeout() {
-		WheelTimer tm = _next;
+		WheelTimer tm = next;
 
 		while (tm) {
-			// WheelTimer timer = tm._next;
+			// WheelTimer timer = tm.next;
 			if (tm.oneShop) {
 				tm.stop();
 			}
 			tm.onTimeout();
-			tm = tm._next;
+			tm = tm.next;
 		}
 	}
 }
 
+///
 unittest {
 	import std.datetime;
-	import std.stdio;
-	import std.conv : to;
 	import core.thread;
 	import std.exception;
+	import tame.io.stdio;
 
 	class TestWheelTimer : WheelTimer {
 		this() {
@@ -167,11 +164,11 @@ unittest {
 		}
 
 		override void onTimeout() nothrow @trusted {
-			collectException(writeln("\nname is ", name, " \tcutterTime is : ",
-					Clock.currTime.toSimpleString(), "\t new time is : ", time.toSimpleString()));
+			collectException(writeln("\nid is ", id, " \tcurrTime: ",
+					Clock.currTime.toSimpleString(), "\tnew time: ", time.toSimpleString()));
 		}
 
-		string name;
+		size_t id;
 		private SysTime time;
 	}
 
@@ -182,32 +179,30 @@ unittest {
 		timers[tm] = new TestWheelTimer;
 	}
 
-	int i;
-	foreach (timer; timers) {
-		timer.name = i.to!string;
-		wheel.addNewTimer(timer);
-		writeln("i  = ", i);
-		++i;
+	foreach (i, timer; timers) {
+		timer.id = i;
+		wheel.addTimer(timer);
+		writeln("i = ", i);
 	}
-	writeln("prevWheel(5) the _now = ", wheel._now);
+	writeln("prevWheel(5) _now = ", wheel._now);
 	wheel.prevWheel(5);
 	Thread.sleep(2.seconds);
 	timers[4].stop();
-	writeln("prevWheel(5) the _now = ", wheel._now);
+	writeln("prevWheel(5) _now = ", wheel._now);
 	wheel.prevWheel(5);
 	Thread.sleep(2.seconds);
-	writeln("prevWheel(3) the _now = ", wheel._now);
+	writeln("prevWheel(3) _now = ", wheel._now);
 	wheel.prevWheel(3);
 	assert(wheel._now == 3);
 	timers[2].rest();
 	timers[4].rest();
-	writeln("rest prevWheel(2) the _now = ", wheel._now);
+	writeln("rest prevWheel(2) _now = ", wheel._now);
 	wheel.prevWheel(2);
 	assert(wheel._now == 0);
 
 	foreach (u; 0 .. 20) {
 		Thread.sleep(2.seconds);
-		writeln("prevWheel() the _now = ", wheel._now);
+		writeln("prevWheel() _now = ", wheel._now);
 		wheel.prevWheel();
 	}
 }
@@ -215,28 +210,32 @@ unittest {
 nothrow:
 
 struct CustomTimer {
+	enum MinTimeout = 50; // in ms
+	enum WheelSize = 500;
+	enum NextTimeout = cast(long)(MinTimeout * 2 / 3.0);
+
 	void initialize() {
-		if (_timeWheel is null)
-			_timeWheel = new TimingWheel(CustomTimerWheelSize);
-		_nextTime = Clock.currStdTime / 10_000 + CustomTimerMinTimeout;
+		if (_wheel is null)
+			_wheel = new TimingWheel(WheelSize);
+		_nextTime = Clock.currStdTime / 10_000 + MinTimeout;
 	}
 
 	int doWheel() {
 		auto nowTime = Clock.currStdTime / 10_000;
 		// trace("nowTime - _nextTime = ", nowTime - _nextTime);
 		while (nowTime >= _nextTime) {
-			_timeWheel.prevWheel();
-			_nextTime += CustomTimerMinTimeout;
+			_wheel.prevWheel();
+			_nextTime += MinTimeout;
 			nowTime = Clock.currStdTime / 10_000;
 		}
 		nowTime = _nextTime - nowTime;
 		return cast(int)nowTime;
 	}
 
-	@property TimingWheel timeWheel() => _timeWheel;
+	@property TimingWheel timeWheel() => _wheel;
 
 private:
-	TimingWheel _timeWheel;
+	TimingWheel _wheel;
 	long _nextTime;
 }
 

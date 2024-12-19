@@ -445,8 +445,8 @@ string[] skipText(ref Line[] lines, IndentType[] indent) {
 	}
 }
 
-Block splitTableRow(BlockType dataType = BlockType.TableData)(Line line) {
-	static assert(dataType == BlockType.TableHeader || dataType == BlockType.TableData);
+Block splitTableRow(BlockType type = BlockType.TableData)(Line line) {
+	static assert(type == BlockType.TableHeader || type == BlockType.TableData);
 
 	string ln = line.text.strip();
 	immutable b = ln[0 .. 2] == "| " ? 2 : 0;
@@ -455,8 +455,8 @@ Block splitTableRow(BlockType dataType = BlockType.TableData)(Line line) {
 	ret.type = BlockType.TableRow;
 	foreach (txt; ln[b .. e].split(" | ")) {
 		Block d;
-		d.text = [txt.strip(" ")];
-		d.type = dataType;
+		d.text = [txt.strip(" ").replace("\\|", "|")];
+		d.type = type;
 		ret.blocks ~= d;
 	}
 	return ret;
