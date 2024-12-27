@@ -38,8 +38,8 @@ struct Parser(MSG) {
 		Parses message request (request line + headers).
 
 		Params:
-			- buffer = buffer to parse message from
-			- lastPos = optional argument to store / pass previous position to which message was
+			buffer = buffer to parse message from
+			lastPos = optional argument to store / pass previous position to which message was
 						already parsed (speeds up parsing when message comes in parts)
 
 		Returns:
@@ -68,8 +68,8 @@ struct Parser(MSG) {
 		Parses message response (status line + headers).
 
 		Params:
-			- buffer = buffer to parse message from
-			- lastPos = optional argument to store / pass previous position to which message was
+			buffer = buffer to parse message from
+			lastPos = optional argument to store / pass previous position to which message was
 						already parsed (speeds up parsing when message comes in parts)
 
 		Returns:
@@ -354,14 +354,14 @@ private:
 		return 0;
 	}
 
-	/*
+	/**
 	 * Advances buffer over the token to the next character while checking for valid characters.
 	 * On success, buffer index is left on the next character.
 	 *
 	 * Params:
-	 *      - ranges = ranges of characters to stop on
-	 *      - sseRanges = if null, same ranges is used, but they are limited to 8 ranges
-	 *      - next  = next character/s to stop on (must be present in the provided ranges too)
+	 *      ranges = ranges of characters to stop on
+	 *      sseRanges = if null, same ranges is used, but they are limited to 8 ranges
+	 *      next  = next character/s to stop on (must be present in the provided ranges too)
 	 * Returns: 0 on success error code otherwise
 	 */
 	int parseToken(string ranges, alias next, string sseRanges = null)(
@@ -418,7 +418,7 @@ private:
 			}
 		} else {
 			// faster unrolled loop to iterate over 8 characters
-			loop: while (expect(buf.length - i >= 8, true)) {
+			while (expect(buf.length - i >= 8, true)) {
 				static foreach (_; 0 .. 8) {
 					if (expect(!charMap[buf[i]], false))
 						goto FOUND;

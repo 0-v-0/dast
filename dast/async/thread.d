@@ -10,10 +10,10 @@ private struct TaskBase {
 struct Task(alias fun, Args...) {
 private:
 	TaskBase base = TaskBase(&impl);
-	public Args _args;
+	Args _args;
 
 	static if (Args.length) {
-		private this(Args args) {
+		this(Args args) {
 			_args = args;
 		}
 	}
@@ -129,7 +129,7 @@ struct ThreadPool {
 		cond.notifyAll();
 	}
 
-	void run(alias fn, Args...)(Args args) {
+	void run(alias fn, Args...)(auto ref Args args) {
 		run(&new Task!(fn, Args)(args).base);
 	}
 

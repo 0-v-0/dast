@@ -88,9 +88,9 @@ struct CurlSet {
 
 private:
 	void* mh;
+	CURLMsg* msg;
 	uint _rc;
 	int _running;
-	CURLMsg* msg;
 	int msgLeft;
 }
 

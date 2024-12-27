@@ -2,6 +2,7 @@ module dast.net.curlapi;
 
 import dast.net.dlfcn;
 import etc.c.curl : CurlGlobal;
+import std.exception : enforce;
 
 /++
 	Exception thrown on errors in std.net.curl functions.
@@ -111,7 +112,6 @@ else version (Posix) {
 
 void* loadAPI() {
 	import core.stdc.stdlib : atexit;
-	import std.exception : enforce;
 	import std.format : format;
 
 	void* handle;
@@ -149,16 +149,15 @@ extern (C) void cleanup() {
 }
 
 /**
-  Wrapper to provide a better interface to libcurl than using the plain C API.
+	Wrapper to provide a better interface to libcurl than using the plain C API.
 
-  Warning: This struct uses interior pointers for callbacks. Only allocate it
-  on the stack if you never move or copy it. This also means passing by reference
-  when passing Curl to other functions. Otherwise always allocate on
-  the heap.
+	Warning: This struct uses interior pointers for callbacks. Only allocate it
+	on the stack if you never move or copy it. This also means passing by reference
+	when passing Curl to other functions. Otherwise always allocate on
+	the heap.
 */
 struct Curl {
 	import etc.c.curl;
-	import std.exception : enforce;
 
 	alias OutData = void[];
 	alias InData = ubyte[];
@@ -211,12 +210,12 @@ struct Curl {
 	@property bool stopped() const => ch is null;
 
 	/**
-	   Duplicate this handle.
+		Duplicate this handle.
 
-	   The new handle will have all options set as the one it was duplicated
-	   from. An exception to this is that all options that cannot be shared
-	   across threads are reset thereby making it safe to use the duplicate
-	   in a new thread.
+		The new handle will have all options set as the one it was duplicated
+		from. An exception to this is that all options that cannot be shared
+		across threads are reset thereby making it safe to use the duplicate
+		in a new thread.
 	*/
 	Curl dup() {
 		import std.meta : AliasSeq;
@@ -255,7 +254,7 @@ struct Curl {
 		// copy.clear(CurlOption.ssh_keyfunction); Let key function be shared
 
 		/*
-		  Allow sharing of conv functions
+			Allow sharing of conv functions
 			copy.clear(CurlOption.conv_to_network_function);
 			copy.clear(CurlOption.conv_from_network_function);
 			copy.clear(CurlOption.conv_from_utf8_function);
@@ -276,7 +275,7 @@ struct Curl {
 	}
 
 	/**
-		 Pausing and continuing transfers.
+		Pausing and continuing transfers.
 	*/
 	void pause(bool sendingPaused, bool receivingPaused) {
 		throwOnStopped();
@@ -379,16 +378,16 @@ struct Curl {
 	  * current request.
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl, std.stdio, std.conv;
 	  * Curl curl;
 	  * curl.initialize();
 	  * curl.set(CurlOption.url, "http://dlang.org");
 	  * curl.onReceive = (ubyte[] data) { writeln("Got data", to!(const(char)[])(data)); return data.length;};
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
-	@property void onReceive(size_t delegate(InData) callback) {
+	@property void onReceive(typeof(_onReceive) callback) {
 		_onReceive = (InData id) {
 			throwOnStopped("Receive callback called on cleaned up Curl instance");
 			return callback(id);
@@ -408,14 +407,14 @@ struct Curl {
 	  * the backend and may very likely change.
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl, std.stdio;
 	  * Curl curl;
 	  * curl.initialize();
 	  * curl.set(CurlOption.url, "http://dlang.org");
 	  * curl.onReceiveHeader = (in char[] header) { writeln(header); };
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
 	@property void onReceiveHeader(void delegate(in char[]) callback) {
 		_onReceiveHeader = (in char[] od) {
@@ -442,7 +441,7 @@ struct Curl {
 	  * pause the current request.
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl;
 	  * Curl curl;
 	  * curl.initialize();
@@ -459,9 +458,9 @@ struct Curl {
 	  *     return length;
 	  * };
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
-	@property void onSend(size_t delegate(OutData) callback) {
+	@property void onSend(typeof(_onSend) callback) {
 		_onSend = (OutData od) {
 			throwOnStopped("Send callback called on cleaned up Curl instance");
 			return callback(od);
@@ -483,7 +482,7 @@ struct Curl {
 	  * $(REF CurlSeek, etc,c,curl)
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl;
 	  * Curl curl;
 	  * curl.initialize();
@@ -493,9 +492,9 @@ struct Curl {
 	  *     return CurlSeek.cantseek;
 	  * };
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
-	@property void onSeek(CurlSeek delegate(long, CurlSeekPos) callback) {
+	@property void onSeek(typeof(_onSeek) callback) {
 		_onSeek = (long ofs, CurlSeekPos sp) {
 			throwOnStopped("Seek callback called on cleaned up Curl instance");
 			return callback(ofs, sp);
@@ -518,17 +517,16 @@ struct Curl {
 	  * and make curl close the socket
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl;
 	  * Curl curl;
 	  * curl.initialize();
 	  * curl.set(CurlOption.url, "http://dlang.org");
 	  * curl.onSocketOption = delegate int(curl_socket_t s, CurlSockType t) { /+ do stuff +/ };
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
-	@property void onSocketOption(int delegate(curl_socket_t,
-			CurlSockType) callback) {
+	@property void onSocketOption(typeof(_onSocketOption) callback) {
 		_onSocketOption = (curl_socket_t sock, CurlSockType st) {
 			throwOnStopped("Socket option callback called on " ~
 					"cleaned up Curl instance");
@@ -551,7 +549,7 @@ struct Curl {
 	  * transfer
 	  *
 	  * Example:
-	  * ----
+	  * ---
 	  * import std.net.curl, std.stdio;
 	  * Curl curl;
 	  * curl.initialize();
@@ -563,12 +561,9 @@ struct Curl {
 	  *     return 0;
 	  * };
 	  * curl.perform();
-	  * ----
+	  * ---
 	  */
-	@property void onProgress(int delegate(size_t dlTotal,
-			size_t dlNow,
-			size_t ulTotal,
-			size_t ulNow) callback) {
+	@property void onProgress(typeof(_onProgress) callback) {
 		_onProgress = (size_t dlt, size_t dln, size_t ult, size_t uln) {
 			throwOnStopped("Progress callback called on cleaned " ~
 					"up Curl instance");
@@ -593,13 +588,13 @@ private:
 		import std.string : fromStringz;
 		import std.format : format;
 
-		auto msgZ = curl.easy_strerror(code);
+		const msgZ = curl.easy_strerror(code);
 		// doing the following (instead of just using std.conv.to!string) avoids 1 allocation
 		return "%s on handle %s".format(fromStringz(msgZ), ch);
 	}
 
 	void throwOnStopped(string message = null) {
-		auto def = "Curl instance called after being cleaned up";
+		enum def = "Curl instance called after being cleaned up";
 		enforce!CurlException(!stopped,
 			message == null ? def : message);
 	}
