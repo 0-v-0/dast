@@ -247,16 +247,15 @@ char[] getComment(string filename, uint line, uint col = 1) {
 	char[] result;
 	try {
 		foreach (l; File(filename).byLine) {
-			if ((i + 1 == line || i == line) && l.length >= col) {
+			++i;
+			if ((i - line <= 1) && l.length >= col) {
 				l = l[col .. $].stripLeft;
 				if (l.startsWith("///")) {
 					if (result.length)
 						result ~= "\n *";
 					result ~= l[3 .. $];
-				} else
-					result = null;
+				}
 			}
-			++i;
 		}
 	} catch (Exception) {
 	}

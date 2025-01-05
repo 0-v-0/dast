@@ -51,7 +51,7 @@ struct ThreadPool {
 		TaskThread[] pool;
 		Mutex mutex;
 		Condition cond;
-		State status;
+		shared State status;
 		Queue!(TaskBase*, 2048 / size_t.sizeof) queue;
 		shared uint nWorkers;
 	}
@@ -111,7 +111,7 @@ struct ThreadPool {
 			mutex.lock_nothrow();
 			scope (exit)
 				mutex.unlock_nothrow();
-			cas(cast(shared)&status, State.running, State.done);
+			cas(&status, State.running, State.done);
 			cond.notifyAll();
 		}
 		if (blocking) {
@@ -125,7 +125,7 @@ struct ThreadPool {
 		mutex.lock_nothrow();
 		scope (exit)
 			mutex.unlock_nothrow();
-		cas(cast(shared)&status, State.running, State.stop);
+		cas(&status, State.running, State.stop);
 		cond.notifyAll();
 	}
 
@@ -140,7 +140,7 @@ struct ThreadPool {
 			mutex.unlock_nothrow();
 		if (queue.full)
 			cond.wait();
-		if (status != State.running)
+		if (atomicLoad(status) != State.running)
 			return;
 		queue.push(task);
 		if (timeoutMs && atomicLoad(nWorkers) < pool.length) {
