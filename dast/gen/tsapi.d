@@ -1,8 +1,15 @@
 module dast.gen.tsapi;
 import dast.util,
-std.meta,
 std.traits,
 tame.meta;
+import std.meta : Seq = AliasSeq,
+IndexOf = staticIndexOf,
+SeqMap = staticMap;
+
+import std.traits : FuncTypeOf = FunctionTypeOf,
+Params = Parameters,
+ParamDefaults = ParameterDefaults,
+ParamIds = ParameterIdentifierTuple;
 
 struct type { // @suppress(dscanner.style.phobos_naming_convention)
 	string name;
@@ -15,22 +22,22 @@ struct summary { // @suppress(dscanner.style.phobos_naming_convention)
 
 private enum shouldInclude(alias x) = isCallable!x && !hasUDA!(x, ignore);
 private enum hasName(alias x) = __traits(compiles, (string s) { s = x.name; });
-template getName(alias x, string defaultName = "") {
+template getName(alias x, string defName = "") {
 	static if (hasName!x)
 		enum getName = x.name;
 	else
-		enum getName = defaultName;
+		enum getName = defName;
 }
 
-enum isString(alias x) = is(typeof(x) : const(char)[]);
+enum isStr(alias x) = is(typeof(x) : const(char)[]);
 
 alias AllActions(alias attr, modules...) = Filter!(shouldInclude, getSymbolsWith!(attr, modules));
 
 template ForModules(modules...) {
 	template allActions(alias attr) {
-		alias allActions = AliasSeq!();
+		alias allActions = Seq!();
 		static foreach (f; AllActions!(attr, modules)) {
-			allActions = AliasSeq!(allActions, getUDAs!(f, attr));
+			allActions = Seq!(allActions, getUDAs!(f, attr));
 		}
 	}
 
@@ -92,8 +99,8 @@ template ForModules(modules...) {
 					sink.put(Enum.stringof);
 					sink.put(" = ");
 					{
-						alias toOriginal(alias x) = AliasSeq!(cast(OriginalType!Enum)x, " | ");
-						sink.put(text(staticMap!(toOriginal, EnumMembers!Enum)[0 .. $ - 1]));
+						alias toOriginal(alias x) = Seq!(cast(OriginalType!Enum)x, " | ");
+						sink.put(text(SeqMap!(toOriginal, EnumMembers!Enum)[0 .. $ - 1]));
 					}
 					sink.put("\nexport const ");
 					sink.put(Enum.stringof);
@@ -136,9 +143,9 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 		sink.put(getComment(loc[0], loc[1] - 1));
 		sink.put('\n');
 	}
-	static if (is(FunctionTypeOf!f P == __parameters)) {
-		alias PIT = ParameterIdentifierTuple!f;
-		alias set = Filter!(isString, __traits(getAttributes, f));
+	static if (is(FuncTypeOf!f P == __parameters)) {
+		alias PIT = ParamIds!f;
+		alias set = Filter!(isStr, __traits(getAttributes, f));
 		static foreach (i, T; P) {
 			{
 				alias p = P[i .. i + 1];
@@ -153,7 +160,7 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					sink.put(' ');
 					static foreach (attr; __traits(getAttributes, p))
-						static if (isString!attr && staticIndexOf!(attr, set) == -1)
+						static if (isStr!attr && IndexOf!(attr, set) == -1)
 							sink.put(attr);
 					sink.put('\n');
 				}
@@ -162,7 +169,7 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 		if (set.length)
 			sink.put(" * @returns ");
 		foreach (attr; set)
-			static if (isString!attr)
+			static if (isStr!attr)
 				sink.put(attr);
 		if (set.length)
 			sink.put('\n');
@@ -172,21 +179,21 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 
 template getParamUDAs(alias attr, alias f, attrs...) {
 	alias fAttr = __traits(getAttributes, f);
-	alias getParamUDAs = AliasSeq!();
+	alias getParamUDAs = Seq!();
 	static foreach (a; attrs) {
-		static if (staticIndexOf!(a, fAttr) == -1) {
+		static if (IndexOf!(a, fAttr) == -1) {
 			static if (__traits(isSame, a, attr))
-				getParamUDAs = AliasSeq!(getParamUDAs, a);
+				getParamUDAs = Seq!(getParamUDAs, a);
 			else static if (is(typeof(a)))
 				static if (is(typeof(a) == attr))
-					getParamUDAs = AliasSeq!(getParamUDAs, a);
+					getParamUDAs = Seq!(getParamUDAs, a);
 		}
 	}
 }
 
 void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 	static if (is(typeof(f) P == __parameters)) {
-		alias PIT = ParameterIdentifierTuple!f;
+		alias PIT = ParamIds!f;
 		static foreach (i, T; P) {
 			{
 				alias p = P[i .. i + 1];
@@ -198,7 +205,7 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 				}
 				static if (typeName.length) {
 					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
-					static if (!is(ParameterDefaults!f[i] == void))
+					static if (!is(ParamDefaults!f[i] == void))
 						sink.put('?');
 					sink.put(": ");
 					sink.put(typeName);

@@ -46,11 +46,11 @@ struct Action {
 
 /// get all functions with @Action
 template getActions(T...) {
-	import std.meta;
+	import std.meta : Seq = AliasSeq;
 
-	alias getActions = AliasSeq!();
+	alias getActions = Seq!();
 	static foreach (f; T)
-		getActions = AliasSeq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
+		getActions = Seq!(getActions, Filter!(isCallable, getSymbolsByUDA!(f, Action)));
 }
 
 private alias

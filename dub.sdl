@@ -2,7 +2,7 @@ name "dast"
 description "A flexible, lightweight framework for D programming language."
 homepage "https://github.com/0-v-0/dast"
 authors "0-v-0"
-copyright "Copyright © 2022-2024 0-v-0"
+copyright "Copyright © 2022-2025 0-v-0"
 license "MIT"
 
 buildType "debug" {
@@ -135,6 +135,7 @@ subPackage {
 	dependency "dast:http" path="."
 	dependency "sha1ct" version="~>1.0.0"
 	dependency "tame" version="~>0.0.13"
+	libs "ucrtbase" platform="windows"
 
 	configuration "full" {
 		subConfiguration "dast:async" "full"

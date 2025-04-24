@@ -30,7 +30,7 @@ pure nothrow:
 
 	@property size_t remaining() const @nogc => cast(size_t)length - data.length;
 
-	ubyte[] serialize() scope @trusted {
+	ubyte[] serialize() scope const @trusted {
 		ubyte[14] buf = void;
 		auto p = buf.ptr;
 
@@ -184,7 +184,7 @@ save_data:
 }
 
 unittest { // test multiple frames in one go
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 
 	auto f1 = Frame(true, Op.TEXT, true, State.done, [0, 0, 0, 0],
 		6, [0, 1, 2, 3, 4, 5]);
@@ -202,7 +202,7 @@ unittest { // test multiple frames in one go
 }
 
 unittest { // test one splitted frame
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 	auto f = Frame(false, Op.BINARY, true, State.done, [47, 119, 231, 3],
 		10, [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
 	const d1 = f.serialize[0 .. 7];
@@ -215,7 +215,7 @@ unittest { // test one splitted frame
 }
 
 unittest { // test streaming one byte at a time
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 
 	auto f = Frame(true, Op.TEXT, true, State.done, [1, 2, 3, 4],
 		6, [0, 1, 2, 3, 4, 5]);
@@ -230,7 +230,7 @@ unittest { // test streaming one byte at a time
 }
 
 unittest { // test some funky streaming
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 
 	ubyte[] data;
 	foreach (i; 0 .. 1 << 20)
@@ -255,7 +255,7 @@ unittest { // test some funky streaming
 }
 
 unittest { // test edge-case length=127
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 
 	ubyte[127] data = void;
 	for (size_t i; i < 127; i++)
@@ -266,7 +266,7 @@ unittest { // test edge-case length=127
 }
 
 unittest { // test edge-case length=0
-	scope c = new WSClient(null, null);
+	scope c = new WSClient(null, Socket.init);
 
 	auto f = Frame(true, Op.CLOSE, false, State.done, [0, 0, 0, 0], 0, []);
 	auto _f = c.parse(f.serialize);

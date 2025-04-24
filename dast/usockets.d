@@ -14,7 +14,7 @@ alias integrate = us_loop_integrate;
 	alias LoopCallback = extern (C) void function(typeof(this) loop);
 
 	private us_loop_t* loop;
-	// 需要保证EventLoop和us_loop_t*的大小一致
+	// 需要保证EventLoop和us_loop_t的大小一致
 	enum uint extSize = T.sizeof;
 
 	@property handle() => loop;
@@ -76,7 +76,7 @@ struct SSLOptions {
 	bool preferLowMemoryUsage;
 }
 
-// 将函数参数第一个类型替换为第二个类型参数，返回这个类型
+/// 将函数参数第一个类型替换为第二个类型参数，返回这个类型
 private template ReplaceFirstParam(F, T) {
 	import std.traits;
 
@@ -98,7 +98,7 @@ Params:
 	T: User data type
 	S: Socket data type
 	SSL: Whether to use SSL
- +/
++/
 @nogc struct Context(CT = void[0], ST = void[0], bool SSL = false) {
 	private alias S = Socket,
 	OnSocketOpen = extern (C) S function(S socket, int isClient, char* ip, int ipLength),
