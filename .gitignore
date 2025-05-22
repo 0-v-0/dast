@@ -19,12 +19,12 @@
 docs.json
 __dummy.html
 docs/
-*.redub_cache_json
 .ldc2_cache
+trace.json
 
 # Code coverage
 *.lst
 dub.selections.json
 
 *.pdb
-trace.json
+.DS_Store

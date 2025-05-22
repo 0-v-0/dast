@@ -88,6 +88,8 @@ class TCPClient : SocketChannel {
 		if (!_connected)
 			return onError("The connection has been closed");
 		if (data.length) {
+			//auto buf = new WSABUF;
+			//*cast(const(void)[]*)buf = data;
 			_iocpWrite.operation = IocpOperation.write;
 			if (checkErr(WSASend(handle, cast(WSABUF*)&data, 1, null, 0,
 					&_iocpWrite.overlapped, null), "write")) {
@@ -198,6 +200,7 @@ protected:
 					if (onSent)
 						onSent(data);
 					len += n;
+					/+
 					mutex.lock_nothrow();
 					scope (exit)
 						mutex.unlock_nothrow();
@@ -205,7 +208,7 @@ protected:
 						cond.notify();
 					catch (Exception) {
 						assert(0);
-					}
+					}+/
 				}
 			}
 			return len;

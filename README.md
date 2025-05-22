@@ -6,7 +6,7 @@ A collection of modules mainly about server-side code
 | ----------- | ---------------------------------------------------------------------- |
 | dast.async  | Asynchronous network library                                           |
 | dast.config | A yaml config reader                                                   |
-| dast.fcgi   | FastCGI server                                                         |
+| dast.fcgi   | (UNMAINTAINED) FastCGI server                                          |
 | dast.http   | Common HTTP components                                                 |
 | dast.http1  | A simple HTTP/1.1 server                                               |
 | dast.map    | A map container                                                        |
