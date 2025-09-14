@@ -86,7 +86,9 @@ class WSRPCServer(uint pageCount, modules...) : WSServer {
 		super(loop, family);
 	}
 
-	override void onBinaryMessage(WSClient src, const(ubyte)[] msg) {
+	override void onMessage(WSClient src, Op type, const(ubyte)[] msg) {
+		if (type != Op.BINARY)
+			return;
 		auto req = WSRequest(src, unpacker(msg));
 		static if (pageCount)
 			queue.enqueue(cast(shared)req);

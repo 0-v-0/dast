@@ -28,3 +28,4 @@ dub.selections.json
 
 *.pdb
 .DS_Store
+.vscode

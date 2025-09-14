@@ -31,24 +31,13 @@ class BroadcastServer : WSServer {
 		peers.remove(client.id);
 	}
 
-	override void onTextMessage(WSClient client, string msg) {
+	override void onMessage(WSClient client, Op type, const(ubyte)[] msg) {
 		auto src = client.id;
 		auto srcPath = peers[src];
 		try {
 			foreach (id, path; peers)
 				if (id != src && path == srcPath)
-					clients[id].send(msg);
-		} catch (Exception) {
-		}
-	}
-
-	override void onBinaryMessage(WSClient client, const(ubyte)[] msg) {
-		auto src = client.id;
-		auto srcPath = peers[src];
-		try {
-			foreach (id, path; peers)
-				if (id != src && path == srcPath)
-					clients[id].send(msg);
+					clients[id].send(type, msg);
 		} catch (Exception) {
 		}
 	}

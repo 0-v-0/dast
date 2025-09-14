@@ -6,7 +6,7 @@ extern (C) __gshared {
 	bool rt_cmdline_enabled = false;
 	bool rt_envvars_enabled = false;
 	auto rt_options = [
-		"gcopt=gc:precise", "scanDataSeg=precise"
+		"gcopt=profile:1 gc:precise maxPoolSize:1 incPoolSize:1", "scanDataSeg=precise"
 	];
 }
 

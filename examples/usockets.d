@@ -14,7 +14,6 @@ uint totalCPUs() @nogc nothrow @trusted {
 		return max(1, cast(uint)si.dwNumberOfProcessors);
 	} else version (linux) {
 		import core.stdc.stdlib : calloc;
-		import core.stdc.string : memset;
 		import core.sys.linux.sched : CPU_ALLOC_SIZE, CPU_FREE, CPU_COUNT, CPU_COUNT_S, cpu_set_t, sched_getaffinity;
 		import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
 

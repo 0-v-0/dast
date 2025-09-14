@@ -29,18 +29,18 @@ nothrow:
 	}
 
 	void send(T)(in T msg) {
-		import std.traits,
-		std.string : representation;
+		import std.string : representation;
 
 		static if (is(T : const(char)[])) {
-			auto bytes = msg.representation;
-			enum op = Op.TEXT;
+			send(Op.TEXT, msg.representation);
 		} else {
-			alias bytes = msg;
-			enum op = Op.BINARY;
+			send(Op.BINARY, msg);
 		}
-		const data = Frame(true, op, false, State.done, [0, 0, 0, 0],
-			bytes.length, bytes).serialize;
+	}
+
+	void send(Op type, in ubyte[] msg) {
+		const data = Frame(true, type, false, State.done, [0, 0, 0, 0],
+			msg.length, msg).serialize;
 		write(data);
 		return flush();
 	}
@@ -109,8 +109,7 @@ nothrow:
 	// dfmt off
 	void onOpen(WSClient, in Request) {}
 	void onClose(WSClient) {}
-	void onTextMessage(WSClient, string) {}
-	void onBinaryMessage(WSClient, const(ubyte)[]) {}
+	void onMessage(WSClient client, Op type, const(ubyte)[] msg) {}
 
 	bool add(TCPClient client)
 	in (client.handle) {
@@ -227,8 +226,8 @@ private:
 		switch (frame.op) {
 			// dfmt off
 		case Op.CONT: return handleCont(client, frame);
-		case Op.TEXT: return handle!false(client, frame);
-		case Op.BINARY: return handle!true(client, frame);
+		case Op.TEXT: return handle(client, frame);
+		case Op.BINARY: return handle(client, frame);
 		// dfmt on
 		case Op.PING:
 			enum pong = Frame(true, Op.PONG, false, State.done, [0, 0, 0, 0], 0, [
@@ -263,19 +262,13 @@ private:
 			data ~= f.data;
 		data ~= frame.data;
 		client.frames.length = 0;
-		if (originalOp == Op.TEXT)
-			onTextMessage(client, cast(string)data[]);
-		else if (originalOp == Op.BINARY)
-			onBinaryMessage(client, data[]);
+		onMessage(client, originalOp, data);
 	}
 
-	void handle(bool binary)(WSClient client, in Frame frame)
+	void handle(WSClient client, in Frame frame)
 	in (!client.frames.length, "Protocol error") {
 		if (frame.fin) {
-			static if (binary)
-				onBinaryMessage(client, frame.data);
-			else
-				onTextMessage(client, cast(string)frame.data);
+			onMessage(client, frame.op, frame.data);
 		} else
 			client.frames ~= frame;
 	}

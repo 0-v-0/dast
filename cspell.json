@@ -1,0 +1,25 @@
+{
+    "version": "0.2",
+    // language - current active spelling language
+    "language": "en",
+    // words - list of words to be always considered correct
+    "words": [
+        "alignof",
+        "alloca",
+        "calloc",
+        "conv",
+        "ctfe",
+        "errno",
+        "nogc",
+        "nothrow",
+        "readln",
+        "stdc",
+        "stdlib",
+        "stringof",
+        "typecons",
+        "ubyte",
+        "Unqual",
+        "writefln",
+        "writeln"
+    ]
+}
