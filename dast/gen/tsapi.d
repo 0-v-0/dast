@@ -2,9 +2,7 @@ module dast.gen.tsapi;
 import dast.util,
 std.traits,
 tame.meta;
-import std.meta : Filter, Seq = AliasSeq,
-IndexOf = staticIndexOf,
-SeqMap = staticMap;
+import std.meta : Filter;
 
 import std.traits : FuncTypeOf = FunctionTypeOf,
 Params = Parameters,

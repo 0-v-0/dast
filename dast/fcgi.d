@@ -2,12 +2,10 @@ module dast.fcgi;
 
 // dfmt off
 import
-	dast.map,
-	std.array,
-	std.socket,
-	std.string;
-
-size_t align8(size_t n) => (n + 7) & ~7;
+dast.map,
+std.array,
+std.socket,
+std.string;
 
 size_t intToStr(char* buf, size_t value) {
 	char* p = buf;
@@ -236,6 +234,7 @@ class Response {
 
 	protected {
 		import tame.buffer : Buffer = FixedBuffer;
+		import tame.bitop;
 
 		bool* ipcSockClosed;
 	}
@@ -306,7 +305,7 @@ class Response {
 
 	protected int putstr(in char[] str) {
 		size_t contentLength = str.length,
-		alignLength = align8(contentLength);
+		alignLength = alignTo!8(contentLength);
 		auto header = Header(RequestType.Stdout, contentLength, requestId, cast(ubyte)(
 				alignLength - contentLength));
 		return cast(int)(sock.send(

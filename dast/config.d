@@ -17,7 +17,7 @@ Node readyml(string content, bool preprocess = PP) {
 
 			auto file = PPFile(content);
 			executePPParser(file);
-			auto edata = EvaluateData(file);
+			auto data = EvaluateData(file);
 			static foreach (s; [
 				"Windows", "Win32", "Win64", "linux", "OSX", "iOS", "TVOS",
 				"VisionOS",
@@ -26,17 +26,17 @@ Node readyml(string content, bool preprocess = PP) {
 				"Cygwin", "MinGW", "X86", "X86_64", "ARM", "AArch64",
 				"LittleEndian", "BigEndian", "D_SIMD", "D_AVX", "D_AVX2"
 			]) {
-				mixin("version(", s, `) edata.defineValues[s] = "1";`);
+				mixin("version(", s, `) data.defineValues[s] = "1";`);
 			}
-			executeEvaulator(edata);
-			content = edata.output;
+			executeEvaulator(data);
+			content = data.output;
 		} else
 			throw new Exception("Preprocess is not supported");
 	}
 	return loadyml(content);
 }
 
-Exception readcfgEnv(alias s)(string path = null, bool preprocess = PP) {
+Exception readCfgEnv(alias s)(string path = null, bool preprocess = PP) {
 	import std.array;
 	import std.conv : to;
 	import dast.util;
@@ -79,7 +79,7 @@ Exception readcfgEnv(alias s)(string path = null, bool preprocess = PP) {
 	return null;
 }
 
-void readcfg(alias s, S)(S path = null, bool preprocess = PP) {
+void readCfg(alias s, S)(S path = null, bool preprocess = PP) {
 	import std.file : read;
 	import dast.util;
 

@@ -16,6 +16,7 @@
         "stdc",
         "stdlib",
         "stringof",
+        "tupleof",
         "typecons",
         "ubyte",
         "Unqual",
