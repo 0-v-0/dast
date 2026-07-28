@@ -39,53 +39,53 @@ template ForModules(modules...) {
 		}
 	}
 
-	void genAPIDef(alias attr, alias getType = TSTypeOf, R)(ref R sink) {
+	void genAPIDef(alias attr, alias getType = TSTypeOf, R)(ref R r) {
 		foreach (f; AllActions!(attr, modules)) {
 			foreach (attr; getUDAs!(f, attr)) {
-				sink.put("/**\n");
-				getDoc!(f, getType)(sink);
-				sink.put(" */\n");
-				sink.put(getName!(attr, __traits(identifier, f)));
-				sink.put('(');
-				getArgs!(f, getType)(sink);
-				sink.put("): ");
+				r.put("/**\n");
+				getDoc!(f, getType)(r);
+				r.put(" */\n");
+				r.put(getName!(attr, __traits(identifier, f)));
+				r.put('(');
+				getArgs!(f, getType)(r);
+				r.put("): ");
 				static if (hasUDA!(f, type))
-					sink.put(getUDAs!(f, type)[0].name);
+					r.put(getUDAs!(f, type)[0].name);
 				else
-					sink.put(getType!(ReturnType!f));
-				sink.put('\n');
+					r.put(getType!(ReturnType!f));
+				r.put('\n');
 			}
 		}
 	}
 
-	void genTypeDef(alias getType = TSTypeOf, R)(ref R sink) {
+	void genTypeDef(alias getType = TSTypeOf, R)(ref R r) {
 		foreach (t; modules) {
-			sink.put("export type ");
-			sink.put(__traits(identifier, t));
-			sink.put(" = {\n\t");
+			r.put("export type ");
+			r.put(__traits(identifier, t));
+			r.put(" = {\n\t");
 			foreach (i, alias f; t.tupleof) {
 				alias loc = __traits(getLocation, f);
 				const comment = getComment(loc[0], loc[1] - 1);
 				if (comment) {
-					sink.put("/**");
-					sink.put(comment);
-					sink.put(" */\n\t");
+					r.put("/**");
+					r.put(comment);
+					r.put(" */\n\t");
 				}
-				sink.put(__traits(identifier, f));
-				sink.put(": ");
+				r.put(__traits(identifier, f));
+				r.put(": ");
 				static if (hasUDA!(f, type))
-					sink.put(getUDAs!(f, type)[0].name);
+					r.put(getUDAs!(f, type)[0].name);
 				else
-					sink.put(getType!(typeof(f)));
-				sink.put('\n');
+					r.put(getType!(typeof(f)));
+				r.put('\n');
 				static if (i + 1 < t.tupleof.length)
-					sink.put('\t');
+					r.put('\t');
 			}
-			sink.put("}\n");
+			r.put("}\n");
 		}
 	}
 
-	void genEnum(R)(ref R sink) {
+	void genEnum(R)(ref R r) {
 		import std.string,
 		std.conv : text;
 
@@ -93,26 +93,26 @@ template ForModules(modules...) {
 			foreach (name; __traits(allMembers, m)) {
 				alias Enum = __traits(getMember, m, name);
 				static if (is(Enum == enum)) {
-					sink.put("export type ");
-					sink.put(Enum.stringof);
-					sink.put(" = ");
+					r.put("export type ");
+					r.put(Enum.stringof);
+					r.put(" = ");
 					{
 						alias toOriginal(alias x) = Seq!(cast(OriginalType!Enum)x, " | ");
-						sink.put(text(SeqMap!(toOriginal, EnumMembers!Enum)[0 .. $ - 1]));
+						r.put(text(SeqMap!(toOriginal, EnumMembers!Enum)[0 .. $ - 1]));
 					}
-					sink.put("\nexport const ");
-					sink.put(Enum.stringof);
-					sink.put(": Record<string, string> = {\n");
+					r.put("\nexport const ");
+					r.put(Enum.stringof);
+					r.put(": Record<string, string> = {\n");
 					foreach (member; __traits(allMembers, Enum)) {
-						sink.put("\t'");
+						r.put("\t'");
 						alias f = __traits(getMember, Enum, member);
-						sink.put(text(cast(OriginalType!Enum)f));
-						sink.put("': '");
+						r.put(text(cast(OriginalType!Enum)f));
+						r.put("': '");
 						alias loc = __traits(getLocation, f);
-						sink.put(getComment(loc[0], loc[1] - 1).strip());
-						sink.put("',\n");
+						r.put(getComment(loc[0], loc[1] - 1).strip());
+						r.put("',\n");
 					}
-					sink.put("}\n");
+					r.put("}\n");
 				}
 			}
 		}
@@ -131,15 +131,15 @@ unittest {
 	writeln(app[]);
 }
 
-void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
+void getDoc(alias f, alias getType = TSTypeOf, R)(ref R r) {
 	alias loc = __traits(getLocation, f);
 	if (loc[1] > 1) {
-		sink.put(" *");
+		r.put(" *");
 		foreach (attr; getUDAs!(f, summary)) {
-			sink.put(attr.content);
+			r.put(attr.content);
 		}
-		sink.put(getComment(loc[0], loc[1] - 1));
-		sink.put('\n');
+		r.put(getComment(loc[0], loc[1] - 1));
+		r.put('\n');
 	}
 	static if (is(FuncTypeOf!f P == __parameters)) {
 		alias PIT = ParamIds!f;
@@ -154,23 +154,23 @@ void getDoc(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 					enum typeName = getType!p;
 				}
 				static if (typeName.length) {
-					sink.put(" * @param ");
-					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
-					sink.put(' ');
+					r.put(" * @param ");
+					r.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
+					r.put(' ');
 					static foreach (attr; __traits(getAttributes, p))
 						static if (isStr!attr && IndexOf!(attr, set) == -1)
-							sink.put(attr);
-					sink.put('\n');
+							r.put(attr);
+					r.put('\n');
 				}
 			}
 		}
 		if (set.length)
-			sink.put(" * @returns ");
+			r.put(" * @returns ");
 		foreach (attr; set)
 			static if (isStr!attr)
-				sink.put(attr);
+				r.put(attr);
 		if (set.length)
-			sink.put('\n');
+			r.put('\n');
 	} else
 		static assert(0, f.stringof ~ " is not a function");
 }
@@ -189,7 +189,7 @@ template getParamUDAs(alias attr, alias f, attrs...) {
 	}
 }
 
-void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
+void getArgs(alias f, alias getType = TSTypeOf, R)(ref R r) {
 	static if (is(typeof(f) P == __parameters)) {
 		alias PIT = ParamIds!f;
 		static foreach (i, T; P) {
@@ -202,13 +202,13 @@ void getArgs(alias f, alias getType = TSTypeOf, R)(ref R sink) {
 					enum typeName = getType!p;
 				}
 				static if (typeName.length) {
-					sink.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
+					r.put(KeyName!(p, PIT[i].length ? PIT[i] : "arg" ~ i.stringof));
 					static if (!is(ParamDefaults!f[i] == void))
-						sink.put('?');
-					sink.put(": ");
-					sink.put(typeName);
+						r.put('?');
+					r.put(": ");
+					r.put(typeName);
 					static if (i + 1 < P.length)
-						sink.put(", ");
+						r.put(", ");
 				}
 			}
 		}
